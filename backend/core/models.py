@@ -518,6 +518,7 @@ class Student(models.Model):
     section = models.ForeignKey(Section, on_delete=models.SET_NULL, null=True, related_name='students')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     admission_date = models.DateField()
+    profile_image = models.ImageField(upload_to='student_profiles/', blank=True, null=True)
     alumni_type = models.CharField(max_length=20, choices=ALUMNI_TYPE_CHOICES, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -584,3 +585,24 @@ class StudentFee(models.Model):
 
     def __str__(self):
         return f"{self.student.user.name} - {self.amount} ({self.status})"
+
+
+class StudentDocumentType(models.Model):
+    name = models.CharField(max_length=100, unique=True)  # e.g., "Marksheet", "Transfer Certificate", "ID Card"
+    description = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.name
+
+from django.conf import settings
+
+class StudentDocument(models.Model):
+    student = models.ForeignKey('Student', on_delete=models.CASCADE, related_name='documents')
+    document_type = models.ForeignKey('StudentDocumentType', on_delete=models.SET_NULL, null=True, related_name='documents')
+    session = models.ForeignKey('AcademicSession', on_delete=models.SET_NULL, null=True, blank=True, related_name='student_documents')
+    file = models.FileField(upload_to='student_documents/%Y/%m/%d/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    description = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.student.user.name} - {self.document_type.name if self.document_type else 'Document'}"

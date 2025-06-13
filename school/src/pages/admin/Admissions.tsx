@@ -1,39 +1,50 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '../../contexts/AuthContext';
-import { useForm, Controller, useWatch } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
-  UserPlus,
-  Search,
-  Filter,
-  FileText,
-  Users,
-  Check,
-  X,
-  Eye,
-  Download,
-  Edit,
+  UserPlus, Search, Filter, FileText, Users, Check, X, Eye, Download, Edit, Trash2, Upload, Image
 } from "lucide-react";
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import Modal from '../../components/common/Modal';
 import { format } from "date-fns";
 import api from '../../api';
 
+// Define your backend URL here (update as needed)
+const backendUrl = import.meta.env.VITE_REACT_APP_BACKEND_URL || "http://localhost:8000";
+
 interface Student {
   id: number;
-  user?: { name: string; email: string }; // Make user optional
-  email: string; // Add root-level fields
+  user?: { name: string; email: string };
+  email: string;
   name: string;
-  class_id: { id: number; name: string };
-  section: { id: number; name: string } | null;
+  class_id: number;
+  class_name: string;
+  section?: { id: number; name: string } | null;
   status: "active" | "on_leave" | "alumni";
   admission_date: string;
   alumni_type?: "graduated" | "transferred";
   academic_session?: { id: number; name: string };
+  dob: string;
+  gender: "male" | "female" | "other";
+  address: string;
+  phone: string;
+  profile_picture?: string;
+  documents?: Document[];
+  previousSchool?: string;
 }
 
+interface Document {
+  id: number;
+  file: string;
+  file_name: string;
+  document_type: string;
+  uploaded_at: string;
+  description?: string;
+}
 
 interface Class {
   id: number;
@@ -49,14 +60,6 @@ interface Parent {
   id: number;
   user: { name: string; email: string };
   phone: string;
-}
-
-interface AdmissionFee {
-  id: number;
-  class_id: { id: number; name: string } | null; // Allow null
-  section: { id: number; name: string } | null;
-  section_name: string | null; // Add this
-  amount: number;
 }
 
 interface AcademicSession {
@@ -86,29 +89,49 @@ interface NewApplicationForm {
   relationship: string;
   previousSchool: string;
   documents: FileList | null;
+  profilePicture: FileList | null;
+}
+
+interface EditStudentForm {
+  studentName: string;
+  studentEmail: string;
+  classId: string;
+  sectionId: string;
+  admissionDate: string;
+  academicSessionId: string;
+  dob: string;
+  gender: "male" | "female" | "other";
+  address: string;
+  phone: string;
+  previousSchool: string;
+  profilePicture: FileList | null;
 }
 
 const Admissions: React.FC = () => {
+  const totalSteps = 3;
   const { user } = useAuth();
   const navigate = useNavigate();
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [sections, setSections] = useState<{ [key: number]: Section[] }>({});
   const [parents, setParents] = useState<Parent[]>([]);
-  const [admissionFees, setAdmissionFees] = useState<AdmissionFee[]>([]);
   const [sessions, setSessions] = useState<AcademicSession[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [classFilter, setClassFilter] = useState("all");
   const [activeTab, setActiveTab] = useState<"active" | "alumni">("active");
   const [showNewApplicationForm, setShowNewApplicationForm] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [editingDocId, setEditingDocId] = useState<number | null>(null);
+  const [editDocName, setEditDocName] = useState<string>("");
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [credentials, setCredentials] = useState<{
     student: { username: string; password: string };
     parent?: { username: string; password: string };
   } | null>(null);
-  const [newFee, setNewFee] = useState({ classId: "", sectionId: "", amount: "" });
 
   const {
     register,
@@ -140,14 +163,26 @@ const Admissions: React.FC = () => {
       relationship: "Parent",
       previousSchool: "",
       documents: null,
+      profilePicture: null,
     },
+  });
+
+  const {
+    register: registerEdit,
+    handleSubmit: handleSubmitEdit,
+    control: controlEdit,
+    watch: watchEdit,
+    setValue: setValueEdit,
+    formState: { errors: errorsEdit },
+    reset: resetEdit,
+  } = useForm<EditStudentForm>({
+    mode: "onChange",
   });
 
   const selectedClassId = watch("classId");
   const parentOption = watch("parentOption");
-  const feeClassId = watch(() => newFee.classId);
+  const editClassId = watchEdit("classId");
 
-  // Redirect unauthorized users
   if (!user || user.role !== "admin") {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -161,21 +196,19 @@ const Admissions: React.FC = () => {
       </div>
     );
   }
-    useEffect(() => {
+
+  useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [studentsRes, classesRes, parentsRes, feesRes, sessionsRes] = await Promise.all([
+        const [studentsRes, classesRes, parentsRes, sessionsRes] = await Promise.all([
           api.get("/students/"),
           api.get("/school/settings/classes/"),
           api.get("/parents/"),
-          api.get("/admission-fees/"),
           api.get("/school/settings/sessions/"),
         ]);
-        console.log("Full Students Response:", studentsRes.data); // Debug
         setStudents(studentsRes.data);
         setClasses(classesRes.data);
         setParents(parentsRes.data);
-        setAdmissionFees(feesRes.data);
         setSessions(sessionsRes.data);
         const activeSession = sessionsRes.data.find((s: AcademicSession) => s.status === "active");
         if (activeSession) {
@@ -197,66 +230,22 @@ const Admissions: React.FC = () => {
   }, [selectedClassId, setValue]);
 
   useEffect(() => {
-    console.log("Admission Fees:", admissionFees);
-  }, [admissionFees]);
-
-  useEffect(() => {
-    if (newFee.classId) {
-      fetchSections(parseInt(newFee.classId));
+    if (editClassId) {
+      fetchSections(parseInt(editClassId));
     } else {
-      setNewFee((prev) => ({ ...prev, sectionId: "" }));
+      setValueEdit("sectionId", "");
     }
-  }, [newFee.classId]);
+  }, [editClassId, setValueEdit]);
 
   const fetchSections = async (classId: number) => {
     try {
-      const response = await api.get(
-        `/school/settings/classes/${classId}/sections/`
-      );
+      const response = await api.get(`/school/settings/classes/${classId}/sections/`);
       setSections((prev) => ({ ...prev, [classId]: response.data }));
     } catch (err) {
       setSections((prev) => ({ ...prev, [classId]: [] }));
       toast.error("Failed to load sections.");
     }
   };
-
-  const fetchStudents = async () => {
-    try {
-      const response = await api.get("/students/");
-      setStudents(response.data);
-    } catch (err) {
-      toast.error("Failed to load students.");
-    }
-  };
-
-  const fetchClasses = async () => {
-    try {
-      const response = await api.get("/school/settings/classes/");
-      setClasses(response.data);
-    } catch (err) {
-      toast.error("Failed to load classes.");
-    }
-  };
-
-  const fetchParents = async () => {
-    try {
-      const response = await api.get("/parents/");
-      setParents(response.data);
-    } catch (err) {
-      toast.error("Failed to load parents.");
-    }
-  };
-
-const fetchAdmissionFees = async () => {
-  try {
-    const response = await api.get("/admission-fees/");
-    console.log("Fetched Admission Fees:", response.data); // Debug
-    setAdmissionFees(response.data);
-  } catch (err) {
-    console.error("Error fetching admission fees:", err); // Detailed error
-    toast.error("Failed to load admission fees.");
-  }
-};
 
   const handleStatusChange = async (
     id: number,
@@ -270,11 +259,129 @@ const fetchAdmissionFees = async () => {
           student.id === id ? { ...student, status, alumni_type: alumniType } : student
         )
       );
-      toast.success(
-        `Student status updated to ${status}${alumniType ? ` (${alumniType})` : ""}`
-      );
+      toast.success(`Student status updated to ${status}${alumniType ? ` (${alumniType})` : ""}`);
     } catch (err) {
       toast.error("Failed to update student status.");
+    }
+  };
+
+  const handleDeleteStudent = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this student?")) return;
+    try {
+      await api.delete(`/students/${id}/`);
+      setStudents(students.filter((student) => student.id !== id));
+      toast.success("Student deleted successfully.");
+    } catch (err) {
+      toast.error("Failed to delete student.");
+    }
+  };
+
+  const handleEditStudent = (student: Student) => {
+    setSelectedStudent(student);
+    setValueEdit("studentName", student.name);
+    setValueEdit("studentEmail", student.email);
+    setValueEdit("classId", student.class_id.toString());
+    setValueEdit("sectionId", student.section?.id.toString() || "");
+    setValueEdit("admissionDate", student.admission_date);
+    setValueEdit("academicSessionId", student.academic_session?.id.toString() || "");
+    setValueEdit("dob", student.dob);
+    setValueEdit("gender", student.gender);
+    setValueEdit("address", student.address);
+    setValueEdit("phone", student.phone);
+    setValueEdit("previousSchool", student.previousSchool || "");
+    setShowEditModal(true);
+  };
+
+  const handleUpdateDocumentName = async (studentId: number, docId: number, newName: string) => {
+  if (!newName.trim()) {
+    toast.error("Document name cannot be empty");
+    return;
+  }
+  try {
+    const response = await api.put(`/students/${studentId}/documents/${docId}/`, {
+      description: newName.trim(),
+    });
+    setSelectedStudent((prev) =>
+      prev
+        ? {
+            ...prev,
+            documents: prev.documents?.map((doc) =>
+              doc.id === docId ? { ...doc, description: newName.trim() } : doc
+            ),
+          }
+        : null
+    );
+    setEditingDocId(null);
+    setEditDocName("");
+    toast.success("Document name updated successfully");
+  } catch (err) {
+    toast.error("Failed to update document name");
+    console.error(err);
+  }
+};
+
+  const handleViewDocuments = async (student: Student) => {
+    try {
+      const response = await api.get(`/students/${student.id}/documents/`);
+      setSelectedStudent({ ...student, documents: response.data });
+      setShowDocumentModal(true);
+    } catch (err) {
+      toast.error("Failed to load documents.");
+    }
+  };
+
+  const handleDownloadDocument = async (doc: Document) => {
+  if (!doc.file) {
+    toast.error("Invalid document URL");
+    return;
+  }
+  try {
+    const fileUrl = doc.file.startsWith("http") ? doc.file : `${backendUrl}${doc.file}`;
+    const response = await api.get(fileUrl, { responseType: 'blob' });
+    const blob = new Blob([response.data], { type: response.headers['content-type'] });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', doc.file_name || doc.document_type || 'document');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    toast.success("Document downloaded successfully");
+  } catch (err) {
+    toast.error("Failed to download document");
+    console.error(err);
+  }
+};
+
+  const handleDeleteDocument = async (studentId: number, docId: number) => {
+    if (!window.confirm("Are you sure you want to delete this document?")) return;
+    try {
+      await api.delete(`/students/${studentId}/documents/${docId}/`);
+      setSelectedStudent((prev) => prev ? {
+        ...prev,
+        documents: prev.documents?.filter((doc) => doc.id !== docId)
+      } : null);
+      toast.success("Document deleted successfully.");
+    } catch (err) {
+      toast.error("Failed to delete document.");
+    }
+  };
+
+  const handleUploadDocument = async (studentId: number, files: FileList) => {
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach((file) => formData.append("documents", file));
+      const response = await api.post(`/students/${studentId}/documents/`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setSelectedStudent((prev) => prev ? {
+        ...prev,
+        documents: [...(prev.documents || []), ...response.data]
+      } : null);
+      toast.success("Documents uploaded successfully.");
+    } catch (err) {
+      toast.error("Failed to upload documents.");
     }
   };
 
@@ -282,14 +389,7 @@ const fetchAdmissionFees = async () => {
     let fields: (keyof NewApplicationForm)[] = [];
     switch (step) {
       case 1:
-        fields = [
-          "studentName",
-          "dob",
-          "gender",
-          "classId",
-          "address",
-          "academicSessionId",
-        ];
+        fields = ["studentName", "dob", "gender", "classId", "address", "academicSessionId"];
         break;
       case 2:
         fields = ["studentEmail", "phone", "relationship"];
@@ -315,119 +415,147 @@ const fetchAdmissionFees = async () => {
     }
   };
 
-const onSubmit = async (data: NewApplicationForm) => {
-  setIsLoading(true);
-  try {
-    const studentData = {
-      email: data.studentEmail.trim(),
-      name: data.studentName.trim(),
-      class_id: parseInt(data.classId),
-      section: data.sectionId ? parseInt(data.sectionId) : null,
-      admission_date: data.admissionDate,
-      academic_session_id: parseInt(data.academicSessionId),
-      status: "active",
-    };
-    console.log("Submitting Student:", studentData);
-    const studentResponse = await api.post("/students/", studentData);
-    const student = studentResponse.data.student;
-
-    let parentId: number | undefined;
-    let parentCredentials: { username: string; password: string } | undefined;
-    if (data.parentOption === "new") {
-      const parentData = {
-        email: data.parentEmail.trim(),
-        name: data.parentName.trim(),
-        phone: data.parentPhone.trim(),
-        address: data.address.trim(),
+  const onSubmit = async (data: NewApplicationForm) => {
+    setIsLoading(true);
+    try {
+      const studentData = {
+        email: data.studentEmail.trim(),
+        name: data.studentName.trim(),
+        class_id: parseInt(data.classId),
+        section: data.sectionId ? parseInt(data.sectionId) : null,
+        admission_date: data.admissionDate,
+        academic_session_id: parseInt(data.academicSessionId),
+        status: "active",
+        dob: data.dob,
+        gender: data.gender,
+        address: data.address,
+        phone: data.phone,
+        previousSchool: data.previousSchool,
       };
-      console.log("Submitting Parent:", parentData);
-      const parentResponse = await api.post("/parents/", parentData);
-      console.log("Parent Response:", parentResponse.data); // Debug
-      parentId = parentResponse.data.parent.id;
-      parentCredentials = {
-        username: parentResponse.data.username,
-        password: parentResponse.data.password,
-      };
-    } else {
-      parentId = parseInt(data.existingParentId);
-    }
-
-    if (parentId) {
-      const studentParentData = {
-        parent: parentId,
-        relationship: data.relationship,
-      };
-      console.log("Submitting Student-Parent:", studentParentData);
-      await api.post(`/students/${student.id}/parents/`, studentParentData);
-    }
-
-    if (data.documents) {
       const formData = new FormData();
-      Array.from(data.documents).forEach((file) => formData.append("documents", file));
-      await api.post(`/students/${student.id}/documents/`, formData, {
+      Object.entries(studentData).forEach(([key, value]) => {
+        formData.append(key, value as string);
+      });
+      if (data.profilePicture && data.profilePicture[0]) {
+        formData.append("profile_picture", data.profilePicture[0]);
+      }
+      const studentResponse = await api.post("/students/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-    }
+      const student = studentResponse.data.student;
 
-    setCredentials({
-      student: {
-        username: studentResponse.data.username,
-        password: studentResponse.data.password,
-      },
-      parent: parentCredentials,
-    });
-    reset();
-    setShowNewApplicationForm(false);
-    toast.success("Application submitted successfully!");
-  } catch (error: any) {
-    console.error("Submission Error:", error.response?.data || error.message);
-    toast.error("Failed to submit application: " + (error.response?.data?.detail || JSON.stringify(error.response?.data) || error.message));
-  } finally {
-    setIsLoading(false);
-  }
-};
+      let parentId: number | undefined;
+      let parentCredentials: { username: string; password: string } | undefined;
+      if (data.parentOption === "new") {
+        const parentData = {
+          email: data.parentEmail.trim(),
+          name: data.parentName.trim(),
+          phone: data.parentPhone.trim(),
+          address: data.address.trim(),
+        };
+        const parentResponse = await api.post("/parents/", parentData);
+        parentId = parentResponse.data.parent.id;
+        parentCredentials = {
+          username: parentResponse.data.username,
+          password: parentResponse.data.password,
+        };
+      } else {
+        parentId = parseInt(data.existingParentId);
+      }
 
-  const handleFeeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFee.classId || !newFee.amount || parseFloat(newFee.amount) <= 0) {
-      toast.error("Please select class and enter a valid amount");
-      return;
-    }
-    try {
-      await api.post("/admission-fees/", {
-        class_id: parseInt(newFee.classId),
-        section: newFee.sectionId ? parseInt(newFee.sectionId) : null,
-        amount: parseFloat(newFee.amount),
+      if (parentId) {
+        const studentParentData = {
+          parent: parentId,
+          relationship: data.relationship,
+        };
+        await api.post(`/students/${student.id}/parents/`, studentParentData);
+      }
+
+      if (data.documents) {
+        const docFormData = new FormData();
+        Array.from(data.documents).forEach((file) => docFormData.append("documents", file));
+        await api.post(`/students/${student.id}/documents/`, docFormData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+
+      const studentsRes = await api.get("/students/");
+      setStudents(studentsRes.data);
+
+      setCredentials({
+        student: {
+          username: studentResponse.data.username,
+          password: studentResponse.data.password,
+        },
+        parent: parentCredentials,
       });
-      toast.success("Admission fee added!");
-      setNewFee({ classId: "", sectionId: "", amount: "" });
-      await fetchAdmissionFees();
-    } catch (err) {
-      toast.error("Failed to add admission fee.");
+      reset();
+      setShowNewApplicationForm(false);
+      toast.success("Application submitted successfully!");
+    } catch (error: any) {
+      toast.error("Failed to submit application: " + (error.response?.data?.detail || error.message));
+    } finally {
+      setIsLoading(false);
     }
   };
 
-const filteredStudents = students.filter((student) => {
-  const matchesSearch =
-    student.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.email?.toLowerCase().includes(searchTerm.toLowerCase()) || // Fallback to root email
-    student.name?.toLowerCase().includes(searchTerm.toLowerCase()); // Fallback to root name
-  const matchesStatus =
-    statusFilter === "all" ||
-    (activeTab === "active"
-      ? student.status === statusFilter
-      : student.alumni_type === statusFilter);
-  const matchesClass =
-    classFilter === "all" || student.class_id.name === classFilter;
-  const matchesCategory =
-    activeTab === "active"
-      ? student.status !== "alumni"
-      : student.status === "alumni";
+  const onEditSubmit = async (data: EditStudentForm) => {
+    if (!selectedStudent) return;
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("email", data.studentEmail.trim());
+      formData.append("name", data.studentName.trim());
+      formData.append("class_id", data.classId);
+      formData.append("section", data.sectionId || "");
+      formData.append("admission_date", data.admissionDate);
+      formData.append("academic_session_id", data.academicSessionId);
+      formData.append("dob", data.dob);
+      formData.append("gender", data.gender);
+      formData.append("address", data.address);
+      formData.append("phone", data.phone);
+      formData.append("previousSchool", data.previousSchool);
+      if (data.profilePicture && data.profilePicture[0]) {
+        formData.append("profile_picture", data.profilePicture[0]);
+      }
+      const response = await api.put(`/students/${selectedStudent.id}/`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setStudents(
+        students.map((student) =>
+          student.id === selectedStudent.id ? response.data : student
+        )
+      );
+      setShowEditModal(false);
+      resetEdit();
+      toast.success("Student updated successfully!");
+    } catch (error: any) {
+      toast.error("Failed to update student: " + (error.response?.data?.detail || error.message));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  return matchesSearch && matchesStatus && matchesClass && matchesCategory;
-});
+  const filteredStudents = students.filter((student) => {
+    const matchesSearch =
+      student.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" ||
+      (activeTab === "active"
+        ? student.status === statusFilter
+        : student.alumni_type === statusFilter);
+    const matchesClass =
+      classFilter === "all" || student.class_name === classFilter;
+    const matchesCategory =
+      activeTab === "active"
+        ? student.status !== "alumni"
+        : student.status === "alumni";
 
+    return matchesSearch && matchesStatus && matchesClass && matchesCategory;
+  });
 
   const renderApplicationForm = () => {
     switch (currentStep) {
@@ -435,10 +563,7 @@ const filteredStudents = students.filter((student) => {
         return (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
-              <label
-                htmlFor="studentName"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="studentName" className="block text-sm font-medium text-gray-700">
                 Full Name
               </label>
               <input
@@ -446,24 +571,16 @@ const filteredStudents = students.filter((student) => {
                 type="text"
                 {...register("studentName", {
                   required: "Student name is required",
-                  minLength: {
-                    value: 2,
-                    message: "Name must be at least 2 characters",
-                  },
+                  minLength: { value: 2, message: "Name must be at least 2 characters" },
                 })}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
               />
               {errors.studentName && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.studentName.message}
-                </p>
+                <p className="mt-1 text-sm text-red-600">{errors.studentName.message}</p>
               )}
             </div>
             <div>
-              <label
-                htmlFor="dob"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="dob" className="block text-sm font-medium text-gray-700">
                 Date of Birth
               </label>
               <input
@@ -484,10 +601,7 @@ const filteredStudents = students.filter((student) => {
               )}
             </div>
             <div>
-              <label
-                htmlFor="gender"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
                 Gender
               </label>
               <Controller
@@ -507,16 +621,11 @@ const filteredStudents = students.filter((student) => {
                 )}
               />
               {errors.gender && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.gender.message}
-                </p>
+                <p className="mt-1 text-sm text-red-600">{errors.gender.message}</p>
               )}
             </div>
             <div>
-              <label
-                htmlFor="classId"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="classId" className="block text-sm font-medium text-gray-700">
                 Class
               </label>
               <Controller
@@ -524,27 +633,26 @@ const filteredStudents = students.filter((student) => {
                 control={control}
                 rules={{ required: "Class is required" }}
                 render={({ field }) => (
-                <select id="classId" {...field} className="...">
-                  <option value="">Select Class</option>
-                  {classes.map((cls) => (
-                    <option key={cls.id} value={cls.id}>
-                      {cls.name}
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    id="classId"
+                    {...field}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Class</option>
+                    {classes.map((cls) => (
+                      <option key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </option>
+                    ))}
+                  </select>
                 )}
               />
               {errors.classId && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.classId.message}
-                </p>
+                <p className="mt-1 text-sm text-red-600">{errors.classId.message}</p>
               )}
             </div>
             <div>
-              <label
-                htmlFor="sectionId"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="sectionId" className="block text-sm font-medium text-gray-700">
                 Section
               </label>
               <Controller
@@ -568,57 +676,91 @@ const filteredStudents = students.filter((student) => {
               />
             </div>
             <div>
-              <label
-                htmlFor="academicSessionId"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="academicSessionId" className="block text-sm font-medium text-gray-700">
                 Academic Session
               </label>
-
               <Controller
                 name="academicSessionId"
                 control={control}
                 rules={{ required: "Academic session is required" }}
                 render={({ field }) => (
-                  <select id="academicSessionId" {...field} className="...">
-                  <option value="">Select Session</option>
-                  {sessions.map((session) => (
-                    <option key={session.id} value={session.id}>
-                      {session.name} ({session.status})
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    id="academicSessionId"
+                    {...field}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Session</option>
+                    {sessions.map((session) => (
+                      <option key={session.id} value={session.id}>
+                        {session.name} ({session.status})
+                      </option>
+                    ))}
+                  </select>
                 )}
               />
               {errors.academicSessionId && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.academicSessionId.message}
-                </p>
+                <p className="mt-1 text-sm text-red-600">{errors.academicSessionId.message}</p>
               )}
             </div>
             <div className="sm:col-span-2">
-              <label
-                htmlFor="address"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="address" className="block text-sm font-medium text-gray-700">
                 Address
               </label>
               <textarea
                 id="address"
                 {...register("address", {
                   required: "Address is required",
-                  minLength: {
-                    value: 5,
-                    message: "Address must be at least 5 characters",
-                  },
+                  minLength: { value: 5, message: "Address must be at least 5 characters" },
                 })}
                 rows={3}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
               />
               {errors.address && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.address.message}
-                </p>
+                <p className="mt-1 text-sm text-red-600">{errors.address.message}</p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="profilePicture" className="block text-sm font-medium text-gray-700">
+                Profile Picture
+              </label>
+              <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                <div className="space-y-1 text-center">
+                  <Image className="mx-auto h-12 w-12 text-gray-400" />
+                  <div className="flex text-sm text-gray-600">
+                    <label
+                      htmlFor="profilePicture"
+                      className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500"
+                    >
+                      <span>Upload image</span>
+                      <input
+                        id="profilePicture"
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg"
+                        {...register("profilePicture", {
+                          validate: (files) => {
+                            if (!files || files.length === 0) return true;
+                            const file = files[0];
+                            const validTypes = ["image/png", "image/jpeg"];
+                            const maxSize = 2 * 1024 * 1024; // 2MB
+                            if (!validTypes.includes(file.type)) {
+                              return "Only PNG or JPG images are allowed";
+                            }
+                            if (file.size > maxSize) {
+                              return "Image must be less than 2MB";
+                            }
+                            return true;
+                          },
+                        })}
+                        className="sr-only"
+                      />
+                    </label>
+                    <p className="pl-1">or drag and drop</p>
+                  </div>
+                  <p className="text-xs text-gray-500">PNG, JPG up to 2MB</p>
+                </div>
+              </div>
+              {errors.profilePicture && (
+                <p className="mt-1 text-sm text-red-600">{errors.profilePicture.message}</p>
               )}
             </div>
           </div>
@@ -627,10 +769,7 @@ const filteredStudents = students.filter((student) => {
         return (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
-              <label
-                htmlFor="studentEmail"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="studentEmail" className="block text-sm font-medium text-gray-700">
                 Email
               </label>
               <input
@@ -646,16 +785,11 @@ const filteredStudents = students.filter((student) => {
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
               />
               {errors.studentEmail && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.studentEmail.message}
-                </p>
+                <p className="mt-1 text-sm text-red-600">{errors.studentEmail.message}</p>
               )}
             </div>
             <div>
-              <label
-                htmlFor="phone"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
                 Phone Number
               </label>
               <input
@@ -663,10 +797,7 @@ const filteredStudents = students.filter((student) => {
                 type="tel"
                 {...register("phone", {
                   required: "Phone number is required",
-                  pattern: {
-                    value: /^\+?[1-9]\d{1,14}$/,
-                    message: "Invalid phone number",
-                  },
+                  pattern: { value: /^\+?[1-9]\d{1,14}$/, message: "Invalid phone number" },
                 })}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
               />
@@ -675,10 +806,7 @@ const filteredStudents = students.filter((student) => {
               )}
             </div>
             <div>
-              <label
-                htmlFor="parentOption"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="parentOption" className="block text-sm font-medium text-gray-700">
                 Parent Option
               </label>
               <Controller
@@ -698,43 +826,37 @@ const filteredStudents = students.filter((student) => {
             </div>
             {parentOption === "existing" && (
               <div>
-                <label
-                  htmlFor="existingParentId"
-                  className="block text-sm font-medium text-gray-700"
-                >
+                <label htmlFor="existingParentId" className="block text-sm font-medium text-gray-700">
                   Select Parent
                 </label>
                 <Controller
                   name="existingParentId"
                   control={control}
-                  rules={{
-                    required: parentOption === "existing" && "Parent is required",
-                  }}
+                  rules={{ required: parentOption === "existing" && "Parent is required" }}
                   render={({ field }) => (
-                <select id="existingParentId" {...field} className="...">
-                  <option value="">Select Parent</option>
-                  {parents.map((parent) => (
-                    <option key={parent.id} value={parent.id}>
-                      {parent.user.name} ({parent.user.email})
-                    </option>
-                  ))}
-                </select>
+                    <select
+                      id="existingParentId"
+                      {...field}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select Parent</option>
+                      {parents.map((parent) => (
+                        <option key={parent.id} value={parent.id}>
+                          {parent.user.name} ({parent.user.email})
+                        </option>
+                      ))}
+                    </select>
                   )}
                 />
                 {errors.existingParentId && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.existingParentId.message}
-                  </p>
+                  <p className="mt-1 text-sm text-red-600">{errors.existingParentId.message}</p>
                 )}
               </div>
             )}
             {parentOption === "new" && (
               <>
                 <div>
-                  <label
-                    htmlFor="parentName"
-                    className="block text-sm font-medium text-gray-700"
-                  >
+                  <label htmlFor="parentName" className="block text-sm font-medium text-gray-700">
                     Guardian's Name
                   </label>
                   <input
@@ -742,58 +864,40 @@ const filteredStudents = students.filter((student) => {
                     type="text"
                     {...register("parentName", {
                       required: parentOption === "new" && "Parent name is required",
-                      minLength: {
-                        value: 2,
-                        message: "Name must be at least 2 characters",
-                      },
+                      minLength: { value: 2, message: "Name must be at least 2 characters" },
                     })}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
                   />
                   {errors.parentName && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.parentName.message}
-                    </p>
+                    <p className="mt-1 text-sm text-red-600">{errors.parentName.message}</p>
                   )}
                 </div>
                 <div>
-                  <label
-                    htmlFor="parentPhone"
-                    className="block text-sm font-medium text-gray-700"
-                  >
+                  <label htmlFor="parentPhone" className="block text-sm font-medium text-gray-700">
                     Guardian's Phone
                   </label>
                   <input
                     id="parentPhone"
                     type="tel"
                     {...register("parentPhone", {
-                      required:
-                        parentOption === "new" && "Parent phone is required",
-                      pattern: {
-                        value: /^\+?[1-9]\d{1,14}$/,
-                        message: "Invalid phone number",
-                      },
+                      required: parentOption === "new" && "Parent phone is required",
+                      pattern: { value: /^\+?[1-9]\d{1,14}$/, message: "Invalid phone number" },
                     })}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
                   />
                   {errors.parentPhone && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.parentPhone.message}
-                    </p>
+                    <p className="mt-1 text-sm text-red-600">{errors.parentPhone.message}</p>
                   )}
                 </div>
                 <div className="sm:col-span-2">
-                  <label
-                    htmlFor="parentEmail"
-                    className="block text-sm font-medium text-gray-700"
-                  >
+                  <label htmlFor="parentEmail" className="block text-sm font-medium text-gray-700">
                     Parent Email
                   </label>
                   <input
                     id="parentEmail"
                     type="email"
                     {...register("parentEmail", {
-                      required:
-                        parentOption === "new" && "Parent email is required",
+                      required: parentOption === "new" && "Parent email is required",
                       pattern: {
                         value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
                         message: "Invalid email address",
@@ -802,18 +906,13 @@ const filteredStudents = students.filter((student) => {
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
                   />
                   {errors.parentEmail && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.parentEmail.message}
-                    </p>
+                    <p className="mt-1 text-sm text-red-600">{errors.parentEmail.message}</p>
                   )}
                 </div>
               </>
             )}
             <div>
-              <label
-                htmlFor="relationship"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="relationship" className="block text-sm font-medium text-gray-700">
                 Relationship
               </label>
               <input
@@ -821,17 +920,12 @@ const filteredStudents = students.filter((student) => {
                 type="text"
                 {...register("relationship", {
                   required: "Relationship is required",
-                  minLength: {
-                    value: 2,
-                    message: "Relationship must be at least 2 characters",
-                  },
+                  minLength: { value: 2, message: "Relationship must be at least 2 characters" },
                 })}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
               />
               {errors.relationship && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.relationship.message}
-                </p>
+                <p className="mt-1 text-sm text-red-600">{errors.relationship.message}</p>
               )}
             </div>
           </div>
@@ -840,10 +934,7 @@ const filteredStudents = students.filter((student) => {
         return (
           <div className="grid grid-cols-1 gap-6">
             <div>
-              <label
-                htmlFor="previousSchool"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="previousSchool" className="block text-sm font-medium text-gray-700">
                 Previous School (if any)
               </label>
               <input
@@ -854,10 +945,7 @@ const filteredStudents = students.filter((student) => {
               />
             </div>
             <div>
-              <label
-                htmlFor="admissionDate"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="admissionDate" className="block text-sm font-medium text-gray-700">
                 Admission Date
               </label>
               <input
@@ -868,18 +956,13 @@ const filteredStudents = students.filter((student) => {
                   validate: (value) => {
                     const admissionDate = new Date(value);
                     const today = new Date();
-                    return (
-                      admissionDate <= today ||
-                      "Admission date cannot be in the future"
-                    );
+                    return admissionDate <= today || "Admission date cannot be in the future";
                   },
                 })}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
               />
               {errors.admissionDate && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.admissionDate.message}
-                </p>
+                <p className="mt-1 text-sm text-red-600">{errors.admissionDate.message}</p>
               )}
             </div>
             <div>
@@ -887,52 +970,33 @@ const filteredStudents = students.filter((student) => {
                 Required Documents
               </label>
               <div className="mt-4 space-y-4">
-                {[
-                  "birthCertificate",
-                  "previousMarksheet",
-                  "addressProof",
-                  "transferCertificate",
-                ].map((doc) => (
-                  <div key={doc} className="flex items-start">
-                    <div className="flex items-center h-5">
-                      <input
-                        id={doc}
-                        type="checkbox"
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
+                {["birthCertificate", "previousMarksheet", "addressProof", "transferCertificate"].map(
+                  (doc) => (
+                    <div key={doc} className="flex items-start">
+                      <div className="flex items-center h-5">
+                        <input
+                          id={doc}
+                          type="checkbox"
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                      </div>
+                      <div className="ml-3 text-sm">
+                        <label htmlFor={doc} className="font-medium text-gray-700">
+                          {doc.replace(/([A-Z])/g, " $1").trim()}
+                        </label>
+                      </div>
                     </div>
-                    <div className="ml-3 text-sm">
-                      <label htmlFor={doc} className="font-medium text-gray-700">
-                        {doc.replace(/([A-Z])/g, " $1").trim()}
-                      </label>
-                    </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             </div>
             <div>
-              <label
-                htmlFor="documents"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="documents" className="block text-sm font-medium text-gray-700">
                 Upload Documents
               </label>
               <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
                 <div className="space-y-1 text-center">
-                  <svg
-                    className="mx-auto h-12 w-12 text-gray-400"
-                    stroke="currentColor"
-                    fill="none"
-                    viewBox="0 0 48 48"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
                   <div className="flex text-sm text-gray-600">
                     <label
                       htmlFor="documents"
@@ -947,37 +1011,29 @@ const filteredStudents = students.filter((student) => {
                         accept=".png,.jpg,.pdf"
                         {...register("documents", {
                           validate: (files) => {
-                            if (!files || files.length === 0) return true;
-                            const validTypes = [
-                              "image/png",
-                              "image/jpeg",
-                              "application/pdf",
-                            ];
-                            const maxSize = 10 * 1024 * 1024; // 10MB
+                            if (!files || files.length === 0) return false; // Require at least one document
+                            const validTypes = ["image/png", "image/jpeg", "application/pdf"];
+                            const maxSize = 5 * 1024 * 1024; // 5MB
                             for (const file of Array.from(files)) {
                               if (!validTypes.includes(file.type)) {
-                                return "Only PNG, JPG, and PDF files are allowed";
+                                return "Only PNG, JPG, or PDF files are allowed";
                               }
                               if (file.size > maxSize) {
-                                return "Each file must be less than 10MB";
+                                return "Each file must be less than 5MB";
                               }
                             }
                             return true;
-                          },
+                          }
                         })}
                       />
                     </label>
                     <p className="pl-1">or drag and drop</p>
                   </div>
-                  <p className="text-xs text-gray-500">
-                    PNG, JPG, PDF up to 10MB each
-                  </p>
+                  <p className="text-xs text-gray-500">PNG, JPG, PDF up to 5MB each</p>
                 </div>
               </div>
               {errors.documents && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.documents.message}
-                </p>
+                <p className="mt-1 text-sm text-red-600">{errors.documents.message}</p>
               )}
             </div>
           </div>
@@ -987,15 +1043,297 @@ const filteredStudents = students.filter((student) => {
     }
   };
 
-  const totalSteps = 3;
+  const renderEditForm = () => {
+    return (
+      <form onSubmit={handleSubmitEdit(onEditSubmit)} className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div>
+          <label htmlFor="editStudentName" className="block text-sm font-medium text-gray-700">
+            Full Name
+          </label>
+          <input
+            id="editStudentName"
+            type="text"
+            {...registerEdit("studentName", {
+              required: "Student name is required",
+              minLength: { value: 2, message: "Name must be at least 2 characters" },
+            })}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+          />
+          {errorsEdit.studentName && (
+            <p className="mt-1 text-sm text-red-600">{errorsEdit.studentName.message}</p>
+          )}
+        </div>
+        <div>
+          <label htmlFor="editStudentEmail" className="block text-sm font-medium text-gray-700">
+            Email
+          </label>
+          <input
+            id="editStudentEmail"
+            type="email"
+            {...registerEdit("studentEmail", {
+              required: "Student email is required",
+              pattern: {
+                value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+                message: "Invalid email address",
+              },
+            })}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+          />
+          {errorsEdit.studentEmail && (
+            <p className="mt-1 text-sm text-red-600">{errorsEdit.studentEmail.message}</p>
+          )}
+        </div>
+        <div>
+          <label htmlFor="editDob" className="block text-sm font-medium text-gray-700">
+            Date of Birth
+          </label>
+          <input
+            id="editDob"
+            type="date"
+            {...registerEdit("dob", {
+              required: "Date of birth is required",
+              validate: (value) => {
+                const dob = new Date(value);
+                const today = new Date();
+                return dob < today || "Date of birth must be in the past";
+              },
+            })}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+          />
+          {errorsEdit.dob && (
+            <p className="mt-1 text-sm text-red-600">{errorsEdit.dob.message}</p>
+          )}
+        </div>
+        <div>
+          <label htmlFor="editGender" className="block text-sm font-medium text-gray-700">
+            Gender
+          </label>
+          <Controller
+            name="gender"
+            control={controlEdit}
+            rules={{ required: "Gender is required" }}
+            render={({ field }) => (
+              <select
+                id="editGender"
+                {...field}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            )}
+          />
+          {errorsEdit.gender && (
+            <p className="mt-1 text-sm text-red-600">{errorsEdit.gender.message}</p>
+          )}
+        </div>
+        <div>
+          <label htmlFor="editClassId" className="block text-sm font-medium text-gray-700">
+            Class
+          </label>
+          <Controller
+            name="classId"
+            control={controlEdit}
+            rules={{ required: "Class is required" }}
+            render={({ field }) => (
+              <select
+                id="editClassId"
+                {...field}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select Class</option>
+                {classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          />
+          {errorsEdit.classId && (
+            <p className="mt-1 text-sm text-red-600">{errorsEdit.classId.message}</p>
+          )}
+        </div>
+        <div>
+          <label htmlFor="editSectionId" className="block text-sm font-medium text-gray-700">
+            Section
+          </label>
+          <Controller
+            name="sectionId"
+            control={controlEdit}
+            render={({ field }) => (
+              <select
+                id="editSectionId"
+                {...field}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+                disabled={!editClassId}
+              >
+                <option value="">Select Section</option>
+                {(sections[parseInt(editClassId)] || []).map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          />
+        </div>
+        <div>
+          <label htmlFor="editAcademicSessionId" className="block text-sm font-medium text-gray-700">
+            Academic Session
+          </label>
+          <Controller
+            name="academicSessionId"
+            control={controlEdit}
+            rules={{ required: "Academic session is required" }}
+            render={({ field }) => (
+              <select
+                id="editAcademicSessionId"
+                {...field}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select Session</option>
+                {sessions.map((session) => (
+                  <option key={session.id} value={session.id}>
+                    {session.name} ({session.status})
+                  </option>
+                ))}
+              </select>
+            )}
+          />
+          {errorsEdit.academicSessionId && (
+            <p className="mt-1 text-sm text-red-600">{errorsEdit.academicSessionId.message}</p>
+          )}
+        </div>
+        <div>
+          <label htmlFor="editAdmissionDate" className="block text-sm font-medium text-gray-700">
+            Admission Date
+          </label>
+          <input
+            id="editAdmissionDate"
+            type="date"
+            {...registerEdit("admissionDate", {
+              required: "Admission date is required",
+              validate: (value) => {
+                const admissionDate = new Date(value);
+                const today = new Date();
+                return admissionDate <= today || "Admission date cannot be in the future";
+              }
+            })}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+          />
+          {errorsEdit.admissionDate && (
+            <p className="mt-1 text-sm text-red-600">{errorsEdit.admissionDate.message}</p>
+          )}
+        </div>
+        <div className="sm:col-span-2">
+          <label htmlFor="editAddress" className="block text-sm font-medium text-gray-700">
+            Address
+          </label>
+          <textarea
+            id="editAddress"
+            {...registerEdit("address", {
+              required: "Address is required",
+              minLength: { value: 5, message: "Address must be at least 5 characters" },
+            })}
+            rows={3}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+          />
+          {errorsEdit.address && (
+            <p className="mt-1 text-sm text-red-600">{errorsEdit.address.message}</p>
+          )}
+        </div>
+        <div>
+          <label htmlFor="editPhone" className="block text-sm font-medium text-gray-700">
+            Phone Number
+          </label>
+          <input
+            id="editPhone"
+            type="tel"
+            {...registerEdit("phone", {
+              required: "Phone number is required",
+              pattern: { value: /^\+?[1-9]\d{1,14}$/, message: "Invalid phone number" },
+            })}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+          />
+          {errorsEdit.phone && (
+            <p className="mt-1 text-sm text-red-600">{errorsEdit.phone.message}</p>
+          )}
+        </div>
+        <div>
+          <label htmlFor="editPreviousSchool" className="block text-sm font-medium text-gray-700">
+            Previous School (if any)
+          </label>
+          <input
+            id="editPreviousSchool"
+            type="text"
+            {...registerEdit("previousSchool")}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+          />
+          </div>
+          <div>
+            <label htmlFor="editProfilePicture" className="block text-sm font-medium text-gray-700">
+              Profile Picture
+            </label>
+            {selectedStudent?.profile_picture && (
+              <div className="mt-2 mb-2">
+                <img
+                  src={selectedStudent.profile_picture}
+                  alt="Current profile picture"
+                  className="h-20 w-20 rounded-full object-cover"
+                />
+              </div>
+            )}
+            <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+              <div className="space-y-2 text-center">
+                <Image className="mx-auto h-12 w-12 text-gray-400" />
+                <div className="flex text-sm text-gray-600">
+                  <label
+                    htmlFor="editProfilePicture"
+                    className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500"
+                  >
+                    <span>Upload new image</span>
+                    <input
+                      id="editProfilePicture"
+                      type="file"
+                      accept="image/png,image/jpeg"
+                      {...registerEdit("profilePicture", {
+                        validate: (files) => {
+                          if (!files || files.length === 0) return true;
+                          const file = files[0];
+                          const validTypes = ["image/png", "image/jpeg"];
+                          const maxSize = 2 * 1024 * 1024; // 2MB
+                          if (!validTypes.includes(file.type)) {
+                            return "Only PNG or JPG images are allowed";
+                          }
+                          if (file.size > maxSize) {
+                            return "Image must be less than 2MB";
+                          }
+                          return true;
+                        }
+                      })}
+                      className="sr-only"
+                    />
+                  </label>
+                  <p className="pl-1">or drag and drop</p>
+                </div>
+                <p className="text-xs text-gray-500">PNG, JPG up to 2MB</p>
+              </div>
+            </div>
+            {errorsEdit.profilePicture && (
+              <p className="mt-1 text-sm text-red-600">{errorsEdit.profilePicture?.message}</p>
+            )}
+          </div>
+        </form>
+      );
+  };
 
   return (
     <div className="space-y-6 p-6">
       <ToastContainer position="top-right" autoClose={3000} />
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Student Management
-        </h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Student Management</h1>
         <Button
           variant="primary"
           icon={<UserPlus size={16} />}
@@ -1010,7 +1348,7 @@ const filteredStudents = students.filter((student) => {
           <button
             className={`${
               activeTab === "active"
-                ? "border-blue-500 text-blue-600"
+                ? "border-blue-600 text-blue-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
             onClick={() => setActiveTab("active")}
@@ -1020,9 +1358,9 @@ const filteredStudents = students.filter((student) => {
           <button
             className={`${
               activeTab === "alumni"
-                ? "border-blue-500 text-blue-600"
+                ? "border-blue-600 text-blue-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+            } whitespace-nowrap py-4 px-8 border-b-2 font-medium text-sm`}
             onClick={() => setActiveTab("alumni")}
           >
             Alumni
@@ -1031,15 +1369,13 @@ const filteredStudents = students.filter((student) => {
       </div>
 
       {showNewApplicationForm && (
-        <Card
-          title={`New Admission Application - Step ${currentStep} of ${totalSteps}`}
-        >
+        <Card title={`New Admission Application - Step ${currentStep} of ${totalSteps}`}>
           <div className="mb-8">
             <div className="relative">
               <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200">
                 <div
                   style={{ width: `${(currentStep / totalSteps) * 100}%` }}
-                  className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-300"
+                  className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-600 transition-all duration-300"
                 />
               </div>
               <div className="flex justify-between">
@@ -1054,7 +1390,7 @@ const filteredStudents = students.filter((student) => {
                           isActive
                             ? "bg-blue-600 text-white"
                             : isCompleted
-                            ? "bg-green-500 text-white"
+                              ? "bg-green-600 text-white"
                             : "bg-gray-200 text-gray-600"
                         }`}
                       >
@@ -1079,60 +1415,54 @@ const filteredStudents = students.filter((student) => {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)}>
-          {renderApplicationForm()}
-          <div className="flex justify-between mt-8">
-            {currentStep > 1 ? (
-              <Button
-                variant="outline"
-                onClick={() => setCurrentStep(currentStep - 1)}
-              >
-                Previous
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowNewApplicationForm(false);
-                  reset();
-                }}
-              >
-                Cancel
-              </Button>
-            )}
-            {currentStep < totalSteps ? (
-              <Button
-                variant="primary"
-                onClick={handleNextStep}
-                disabled={isLoading}
-              >
-                Next
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={isLoading} // Temporarily remove !isValid for debugging
-                onClick={() => {
-                  console.log("Form Errors:", errors); // Log errors to console
-                  console.log("Form Values:", watch()); // Log current form values
-                }}
-              >
-                {isLoading ? "Submitting..." : "Submit Application"}
-              </Button>
-            )}
-          </div>
-        </form>
+            {renderApplicationForm()}
+            <div className="flex justify-between mt-8">
+              {currentStep > 1 ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep(currentStep - 1)}
+                >
+                  Previous
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowNewApplicationForm(false);
+                    reset();
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
+              {currentStep < totalSteps ? (
+                <Button
+                  variant="primary"
+                  onClick={handleNextStep}
+                  disabled={isLoading}
+                >
+                  Next
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  type="submit"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Submitting..." : "Submit Application"}
+                </Button>
+              )}
+            </div>
+          </form>
           {credentials && (
-            <div className="mt-4 p-4 bg-green-50 rounded-md">
+            <div className="mt-4 p-4 bg-green-100 rounded-md">
               <h3 className="text-lg font-medium">Generated Credentials</h3>
               <p>
-                Student: Username: {credentials.student.username}, Password:{" "}
-                {credentials.student.password}
+                Student: Username: {credentials.student.username}, Password: {credentials.student.password}
               </p>
               {credentials.parent && (
                 <p>
-                  Parent: Username: {credentials.parent.username}, Password:{" "}
-                  {credentials.parent.password}
+                  Parent: Username: {credentials.parent.username}, Password: {credentials.parent.password}
                 </p>
               )}
               <Button
@@ -1146,10 +1476,10 @@ const filteredStudents = students.filter((student) => {
                     ${
                       credentials.parent
                         ? `
-                    Parent Credentials:
-                    Username: ${credentials.parent.username}
-                    Password: ${credentials.parent.password}
-                    `
+                          Parent Credentials:
+                          Username: ${credentials.parent.username}
+                          Password: ${credentials.parent.password}
+                        `
                         : ""
                     }
                   `;
@@ -1164,25 +1494,189 @@ const filteredStudents = students.filter((student) => {
         </Card>
       )}
 
+      {showEditModal && (
+        <Modal
+          title="Edit Student"
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            resetEdit();
+          }}
+        >
+          {renderEditForm()}
+          <div className="mt-6 flex justify-end space-x-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEditModal(false);
+                resetEdit();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              type="submit"
+              onClick={handleSubmitEdit(onEditSubmit)}
+              disabled={isLoading}
+            >
+              {isLoading ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {showDocumentModal && selectedStudent && (
+  <Modal
+    title={`${selectedStudent.name}'s Documents`}
+    isOpen={showDocumentModal}
+    onClose={() => {
+      setShowDocumentModal(false);
+      setEditingDocId(null);
+    }}
+  >
+    <div className="space-y-4">
+      <div>
+        <label htmlFor="uploadNewDocs" className="block text-sm font-medium text-gray-700">
+          Upload New Documents
+        </label>
+        <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+          <div className="space-y-1 text-center">
+            <Upload className="mx-auto h-12 w-12 text-gray-400" />
+            <div className="flex text-sm text-gray-600">
+              <label
+                htmlFor="uploadNewDocs"
+                className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500"
+              >
+                <span>Upload files</span>
+                <input
+                  id="uploadNewDocs"
+                  type="file"
+                  multiple
+                  accept=".png,.jpg,.jpeg,.pdf"
+                  className="sr-only"
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      handleUploadDocument(selectedStudent.id, e.target.files);
+                    }
+                  }}
+                />
+              </label>
+              <p className="pl-1">or drag and drop</p>
+            </div>
+            <p className="text-xs text-gray-500">PNG, JPG, JPEG, PDF up to 5MB each</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3 className="text-lg font-medium">Existing Documents</h3>
+        {selectedStudent.documents && selectedStudent.documents.length > 0 ? (
+          <ul className="mt-2 divide-y divide-gray-200">
+            {selectedStudent.documents.map((doc) => (
+              <li key={doc.id} className="py-2 flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  {editingDocId === doc.id ? (
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={editDocName}
+                        onChange={(e) => setEditDocName(e.target.value)}
+                        className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter document name"
+                      />
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleUpdateDocumentName(selectedStudent.id, doc.id, editDocName)}
+                        disabled={!editDocName.trim()}
+                      >
+                        OK
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingDocId(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <a
+                        href={
+                          doc.file.startsWith("http")
+                            ? doc.file
+                            : `${backendUrl}${doc.file}`
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                        onClick={(e) => {
+                          if (!doc.file) {
+                            e.preventDefault();
+                            toast.error("Invalid document URL");
+                          }
+                        }}
+                      >
+                        {doc.description || doc.document_type || doc.file_name || "Not Available"}
+                      </a>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingDocId(doc.id);
+                          setEditDocName(doc.description || doc.document_type || doc.file_name || "");
+                        }}
+                      >
+                        <Edit size={16} />
+                      </Button>
+                    </>
+                  )}
+                  <p className="text-sm text-gray-500">
+                    {format(new Date(doc.uploaded_at), "MMM dd, yyyy")}
+                  </p>
+                </div>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownloadDocument(doc)}
+                    disabled={!doc.file}
+                  >
+                    <Download size={16} />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDeleteDocument(selectedStudent.id, doc.id)}
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-500">No documents uploaded.</p>
+        )}
+      </div>
+    </div>
+  </Modal>
+)}
+
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Users className="h-8 w-8 text-blue-500" />
+              <Users className="h-8 w-8 text-blue-600" />
             </div>
             <div className="ml-5">
               <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
+                <dt className="text-sm font-medium text-gray-700 truncate">
                   Total {activeTab === "active" ? "Active Students" : "Alumni"}
                 </dt>
                 <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                  {
-                    students.filter((s) =>
-                      activeTab === "active"
-                        ? s.status !== "alumni"
-                        : s.status === "alumni"
-                    ).length
-                  }
+                  {students.filter((s) => activeTab === "active" ? s.status !== "alumni" : s.status === "alumni").length}
                 </dd>
               </dl>
             </div>
@@ -1191,21 +1685,15 @@ const filteredStudents = students.filter((student) => {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Check className="h-8 w-8 text-green-500" />
+              <Check className="h-8 w-8 text-blue-600" />
             </div>
             <div className="ml-5">
               <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
+                <dt className="text-sm font-medium text-gray-700 truncate">
                   {activeTab === "active" ? "Active" : "Graduated"}
                 </dt>
                 <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                  {
-                    students.filter((s) =>
-                      activeTab === "active"
-                        ? s.status === "active"
-                        : s.alumni_type === "graduated"
-                    ).length
-                  }
+                  {students.filter((s) => activeTab === "active" ? s.status === "active" : s.alumni_type === "graduated").length}
                 </dd>
               </dl>
             </div>
@@ -1214,21 +1702,15 @@ const filteredStudents = students.filter((student) => {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <X className="h-8 w-8 text-red-500" />
+              <X className="h-8 w-8 text-blue-600" />
             </div>
             <div className="ml-5">
               <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
+                <dt className="text-sm font-medium text-gray-700 truncate">
                   {activeTab === "active" ? "On Leave" : "Transferred"}
                 </dt>
                 <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                  {
-                    students.filter((s) =>
-                      activeTab === "active"
-                        ? s.status === "on_leave"
-                        : s.alumni_type === "transferred"
-                    ).length
-                  }
+                  {students.filter((s) => activeTab === "active" ? s.status === "on_leave" : s.alumni_type === "transferred").length}
                 </dd>
               </dl>
             </div>
@@ -1244,9 +1726,7 @@ const filteredStudents = students.filter((student) => {
           <input
             type="text"
             className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            placeholder={`Search ${
-              activeTab === "active" ? "students" : "alumni"
-            }...`}
+            placeholder={`Search ${activeTab === "active" ? "students" : "alumni"}...`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -1268,7 +1748,6 @@ const filteredStudents = students.filter((student) => {
               </>
             ) : (
               <>
-                <option value="all">All Alumni</option>
                 <option value="graduated">Graduated</option>
                 <option value="transferred">Transferred</option>
               </>
@@ -1279,18 +1758,18 @@ const filteredStudents = students.filter((student) => {
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Filter className="h-5 w-5 text-gray-400" />
           </div>
-            <select
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              value={classFilter}
-              onChange={(e) => setClassFilter(e.target.value)}
-            >
-              <option value="all" key="all">All Classes</option>
-              {classes.map((cls) => (
-                <option key={cls.id} value={cls.name}>
-                  Class {cls.name}
-                </option>
-              ))}
-            </select>
+          <select
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            value={classFilter}
+            onChange={(e) => setClassFilter(e.target.value)}
+          >
+            <option value="all">All Classes</option>
+            {classes.map((cls) => (
+              <option key={cls.id} value={cls.name}>
+                Class {cls.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -1299,269 +1778,171 @@ const filteredStudents = students.filter((student) => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Student
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Contact
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Class
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Session
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  {activeTab === "active"
-                    ? "Admission Date"
-                    : "Graduation/Transfer Date"}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  {activeTab === "active" ? "Admission Date" : "Transferred/Graduation Date"}
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Status
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  {activeTab === "alumni" ? "Type" : "Documents"}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  {activeTab === "alumni" ? "Alumni Type" : "Documents"}
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredStudents.map((student) => (
-                <tr key={student.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
-                        <span className="text-sm font-medium text-gray-700">
-                          {student.user?.name?.charAt(0) || ""}
-                        </span>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {student.user?.name}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {student.user?.email || ""}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      Class {student.class_id.name}
-                      {student.section ? ` - ${student.section.name}` : ""}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {student.academic_session?.name || "N/A"}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {format(new Date(student.admission_date), "MMM dd, yyyy")}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-sm font-medium rounded-md ${
-                        student.status === "active"
-                          ? 'bg-green-100 text-green-800'
-                          : student.status === 'alumni'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}
-                    >
-                      {student.status === 'on_leave' ? 'On Leave' : student.status.charAt(0).toUpperCase() + student.status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {activeTab === "alumni"
-                        ? student.alumni_type
-                          ? student
-                              .alumni_type
-                              .toUpperCase() + student.alumni_type.slice(1)
-                          : ''
-                        : 'N/A'
-                      }
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      {student.status === "active" && activeTab === "active" && (
-                        <>
-                          <button
-                            onClick={() =>
-                              handleStatusChange(student.id, "alumni", "graduated")
-                            }
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            Graduate
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleStatusChange(student.id, "alumni", "transferred")
-                            }
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Leave School
-                          </button>
-                        </>
-                      )}
-                      <button className="text-blue-600 hover:text-blue-900">
-                        <Eye size={16} />
-                      </button>
-                      <button className="text-blue-600 hover:text-blue-900">
-                        <Edit size={16} />
-                      </button>
-                      <button className="text-blue-600 hover:text-blue-900">
-                        <Download size={16} />
-                      </button>
-                    </div>
+              {filteredStudents.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                    No students found.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredStudents.map((student) => (
+                  <tr key={student.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                          {student.profile_picture ? (
+                            <img
+                              src={student.profile_picture}
+                              alt={student.name}
+                              className="h-10 w-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-gray-700">
+                              {student.user?.name?.charAt(0) || student.name?.charAt(0) || ""}
+                            </span>
+                          )}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {student.user?.name || student.name}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {student.user?.email || student.email}
+                      </div>
+                      <div className="text-sm text-gray-500">{student.phone}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-700">
+                        Class {student.class_name || "N/A"}
+                        {student.section?.name ? ` - ${student.section.name}` : ""}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-700">
+                        {student.academic_session?.name || "N/A"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-700">
+                        {format(new Date(student.admission_date), "MMM dd, yyyy")}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 inline-flex text-sm font-medium rounded-md ${
+                          student.status === "active"
+                            ? "bg-green-100 text-green-800"
+                            : student.status === "alumni"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {student.status === "on_leave"
+                          ? "On Leave"
+                          : student.status.charAt(0).toUpperCase() + student.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-700">
+                        {activeTab === "alumni"
+                          ? student.alumni_type
+                            ? student.alumni_type.charAt(0).toUpperCase() + student.alumni_type.slice(1)
+                            : "N/A"
+                          : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewDocuments(student)}
+                            >
+                              View Documents
+                            </Button>
+                          )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        {student.status === "active" && activeTab === "active" && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleStatusChange(student.id, "alumni", "graduated")}
+                            >
+                              Graduate
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleStatusChange(student.id, "alumni", "transferred")}
+                            >
+                              Leave School
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditStudent(student)}
+                        >
+                          <Edit size={16} />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteStudent(student.id)}
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
         {filteredStudents.length === 0 && (
           <div className="text-center py-10">
             <FileText className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="text-sm font-medium text-gray-900">
-              {activeTab === "active" ? "students" : "alumni"} found
+            <h3 className="text-sm font-medium text-gray-700">
+              {activeTab === "active" ? "No students" : "No Alumni"} found
             </h3>
             <p className="mt-1 text-sm text-gray-500">
               Try adjusting your search or filter to find what you're looking for.
             </p>
           </div>
         )}
-      </Card>
-
-      <Card title="Set Admission Fees">
-        <form onSubmit={handleFeeSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Class
-              </label>
-             <select
-  id="feeClassId"
-  value={newFee.classId}
-  onChange={(e) => setNewFee({ ...newFee, classId: e.target.value })}
-  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
->
-  <option value="">Select Class</option>
-  {classes.map((cls) => (
-    <option key={cls.id} value={cls.id}>
-      {cls.name}
-    </option>
-  ))}
-</select>
-            </div>
-            <div>
-              <label
-                htmlFor="feeSectionId"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Section
-              </label>
-             <select
-              id="feeSectionId"
-              value={newFee.sectionId}
-              onChange={(e) => setNewFee({ ...newFee, sectionId: e.target.value })}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
-              disabled={!newFee.classId}
-            >
-              <option value="">Select Section</option>
-              {(sections[parseInt(newFee.classId)] || []).map((section) => (
-                <option key={section.id} value={section.id}>
-                  {section.name}
-                </option>
-              ))}
-            </select>
-            </div>
-            <div>
-              <label
-                htmlFor="feeAmount"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Amount
-              </label>
-              <input
-                id="feeAmount"
-                type="number"
-                value={newFee.amount}
-                onChange={(e) => setNewFee({ ...newFee, amount: e.target.value })}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              variant="success"
-              disabled={
-                !newFee.classId ||
-                !newFee.amount ||
-                parseFloat(newFee.amount) <= 0
-              }
-            >
-              Add Fee
-            </Button>
-          </div>
-        </form>
-        <div className="mt-4">
-  <h3 className="text-lg font-medium">Existing Admission Fees</h3>
-  <table className="min-w-full divide-y divide-gray-200">
-    <thead>
-      <tr>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Section</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-      </tr>
-    </thead>
-    <tbody>
-      {admissionFees.map((fee) => (
-        <tr key={fee.id}>
-          <td className="px-6 py-4">{fee.class_id?.name || "N/A"}</td>
-          <td className="px-6 py-4">{fee.section_name || "All"}</td>
-          <td className="px-6 py-4">{Number(fee.amount).toFixed(2)}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
       </Card>
     </div>
   );

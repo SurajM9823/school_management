@@ -1,8 +1,18 @@
+# core/urls.py
 from django.urls import path
 from .views import MyTokenObtainPairView
 from rest_framework_simplejwt.views import TokenRefreshView
-from core.view.admin.school_setting import ClassView, SchoolSettingsView, LocaleSettingsView, AcademicSessionView, SectionView, TermView, HolidayView, GradingSettingsView, AttendanceSettingsView, FeeSettingsView, NotificationTemplateDetailView, NotificationTemplateListView, NotificationSettingsView, RolePermissionsView, StaffRoleView, LeaveTypeView, DepartmentView, BulkLeaveAssignmentView, SubjectView, GradingScaleView, PromotionRulesView, ClassCapacityView, CampusView, BuildingView, RoomView, ResourceView, TestSMTPView, FeeTypeView
-from core.view.admin.admissions import ParentView, StudentView, StudentParentView, AdmissionFeeView, StudentFeeView
+from core.view.admin.school_setting import (
+    ClassView, SchoolSettingsView, LocaleSettingsView, AcademicSessionView, SectionView,
+    TermView, HolidayView, GradingSettingsView, AttendanceSettingsView, FeeSettingsView,
+    NotificationTemplateDetailView, NotificationTemplateListView, NotificationSettingsView,
+    RolePermissionsView, StaffRoleView, LeaveTypeView, DepartmentView, BulkLeaveAssignmentView,
+    SubjectView, GradingScaleView, PromotionRulesView, ClassCapacityView, CampusView,
+    BuildingView, RoomView, ResourceView, TestSMTPView, FeeTypeView
+)
+from core.view.admin.admissions import (
+    ParentView, StudentView, StudentParentView, AdmissionFeeView, StudentFeeView, StudentDocumentView
+)
 
 urlpatterns = [
     # Authentication URLs
@@ -13,7 +23,7 @@ urlpatterns = [
     path('school/settings/', SchoolSettingsView.as_view(), name='school-settings'),
     path('school/settings/locale/', LocaleSettingsView.as_view(), name='locale-settings'),
     path('school/settings/sessions/', AcademicSessionView.as_view(), name='academic-session'),
-    path('school/settings/sessions/<int:session_id>/', AcademicSessionView.as_view(), name='academic-session-detail'),  # New route for PUT/DELETE
+    path('school/settings/sessions/<int:session_id>/', AcademicSessionView.as_view(), name='academic-session-detail'),
     path('school/settings/sessions/<int:session_id>/terms/', TermView.as_view(), name='term-list'),
     path('school/settings/sessions/<int:session_id>/terms/<int:term_id>/', TermView.as_view(), name='term-detail'),
     path('school/settings/sessions/<int:session_id>/holidays/', HolidayView.as_view(), name='holiday-list'),
@@ -21,8 +31,8 @@ urlpatterns = [
     path('school/settings/grading-settings/', GradingSettingsView.as_view(), name='grading-settings'),
     path('school/settings/attendance-settings/', AttendanceSettingsView.as_view(), name='attendance-settings'),
     path('school/settings/fee-settings/', FeeSettingsView.as_view(), name='fee-settings'),
-    path('school/settings/fee-types/', FeeTypeView.as_view(), name='fee-types'),  # Add this line
-    path('school/settings/fee-types/<int:fee_type_id>/', FeeTypeView.as_view(), name='fee-type-detail'),  # Optional for PUT/DELETE
+    path('school/settings/fee-types/', FeeTypeView.as_view(), name='fee-types'),
+    path('school/settings/fee-types/<int:fee_type_id>/', FeeTypeView.as_view(), name='fee-type-detail'),
     path('school/settings/notification-settings/', NotificationSettingsView.as_view(), name='notification-settings'),
     path('school/settings/notifications/templates/', NotificationTemplateListView.as_view(), name='notification-template-list'),
     path('school/settings/notifications/templates/<str:template_id>/', NotificationTemplateDetailView.as_view(), name='notification-template-detail'),
@@ -47,7 +57,6 @@ urlpatterns = [
     path('school/settings/promotion-rules/', PromotionRulesView.as_view(), name='promotion-rules'),
     path('school/settings/class-capacity/', ClassCapacityView.as_view(), name='class-capacity'),
     path('school/settings/campuses/', CampusView.as_view(), name='campus-list'),
-    path('school/settings/campuses/', CampusView.as_view(), name='campus-list'),
     path('school/settings/campuses/<int:campus_id>/', CampusView.as_view(), name='campus-detail'),
     path('school/settings/campuses/<int:campus_id>/buildings/', BuildingView.as_view(), name='building-list'),
     path('school/settings/campuses/<int:campus_id>/buildings/<int:building_id>/', BuildingView.as_view(), name='building-detail'),
@@ -56,12 +65,15 @@ urlpatterns = [
     path('school/settings/resources/', ResourceView.as_view(), name='resource-list'),
     path('school/settings/resources/<int:resource_id>/', ResourceView.as_view(), name='resource-detail'),
 
-    #Admin Admission URLs
-     path('parents/', ParentView.as_view(), name='parent-list'),
-    path('students/', StudentView.as_view(), name='student-list'),
-    path('students/<int:student_id>/',StudentView.as_view(), name='student-detail'),
-    path('students/<int:student_id>/parents/',StudentParentView.as_view(), name='student-parent-list'),
-    path('admission-fees/', AdmissionFeeView.as_view(), name='admission-fee-list'),
-    path('admission-fees/<int:fee_id>/', AdmissionFeeView.as_view(), name='admission-fee-detail'),
+    # Admin Admission URLs
+    path('parents/', ParentView.as_view(), name='parent-list-create'),
+    path('parents/<int:parent_id>/', ParentView.as_view(), name='parent-update'),
+    path('students/', StudentView.as_view(), name='student-list-create'),
+    path('students/<int:student_id>/', StudentView.as_view(), name='student-detail-update'),
+    path('students/<int:student_id>/parents/', StudentParentView.as_view(), name='student-parent-list-create'),
+    path('admission-fees/', AdmissionFeeView.as_view(), name='admission-fee-list-create'),
+    path('admission-fees/<int:fee_id>/', AdmissionFeeView.as_view(), name='admission-fee-update'),
     path('students/<int:student_id>/fees/', StudentFeeView.as_view(), name='student-fee-list'),
+    path('students/<int:student_id>/documents/', StudentDocumentView.as_view(), name='student-document-list-create'),
+    path('students/<int:student_id>/documents/<int:document_id>/', StudentDocumentView.as_view(), name='student-document-update'),
 ]
