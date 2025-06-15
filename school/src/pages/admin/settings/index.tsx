@@ -49,7 +49,7 @@ const SidebarLink: React.FC<SidebarLinkProps> = ({ to, icon, label, current, onC
 );
 
 const Settings: React.FC = () => {
-  const location = useOliverLocation();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
 
   const tabs = [

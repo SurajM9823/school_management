@@ -1,237 +1,220 @@
-# core/serial/admission_serial.py
 from rest_framework import serializers
+from core.serializers import UserSerializer
 from core.models import AcademicSession, Parent, Student, StudentParent, AdmissionFee, StudentFee, Class, Section, User, School, StudentDocument, StudentDocumentType
 from django.core.files.storage import default_storage
 import logging
 from django.conf import settings
+from django.db import transaction
+import string
+import random
 
 logger = logging.getLogger(__name__)
 
 class ParentSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(source='user.email')
-    name = serializers.CharField(source='user.name')
-    username = serializers.CharField(write_only=True, required=False)
-    password = serializers.CharField(write_only=True, required=False)
+    email = serializers.EmailField(write_only=True, required=True)
+    name = serializers.CharField(write_only=True, required=True)
+    phone = serializers.CharField(required=False, allow_blank=True)
+    address = serializers.CharField(required=False, allow_blank=True)
+    user = UserSerializer(read_only=True)
 
     class Meta:
         model = Parent
-        fields = ['id', 'email', 'name', 'phone', 'address', 'username', 'password']
-        extra_kwargs = {
-            'username': {'write_only': True},
-            'password': {'write_only': True},
-        }
+        fields = ['id', 'user', 'email', 'name', 'phone', 'address']
+        read_only_fields = ['id', 'user']
 
-    def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("This email is already in use.")
-        return value
+    def validate(self, data):
+        logger.debug(f"ParentSerializer validate data: {data}")
+        if not data.get('email') or not data.get('name'):
+            raise serializers.ValidationError("Email and name are required.")
+        return data
 
     def create(self, validated_data):
-        user_data = validated_data.pop('user', {})
-        email = user_data.get('email') or validated_data.pop('email', None)
-        name = user_data.get('name') or validated_data.pop('name', None)
-        username = validated_data.pop('username', None)
-        password = validated_data.pop('password', None)
+        email = validated_data.pop('email')
+        name = validated_data.pop('name')
+        phone = validated_data.get('phone', '')
+        address = validated_data.get('address', '')
+        request = self.context.get('request')
 
-        if not email or not name:
-            raise serializers.ValidationError("Email and name are required.")
+        try:
+            if not name or not name.strip():
+                raise serializers.ValidationError("Name cannot be empty.")
+            logger.debug(f"Creating parent with email: {email}, name: {name}")
 
-        if not username or not password:
-            username, generated_password = Parent.generate_credentials()
-            password = generated_password
-        else:
-            generated_password = password
+            # Generate credentials
+            username, password = Parent.generate_credentials()
+            logger.debug(f"Generated credentials: username={username}, password=***")
 
-        school = self.context['request'].user.school
-        user = User.objects.create_user(
-            email=email,
-            name=name,
-            role='parent',
-            password=password,
-            school=school
-        )
-        user.username = username
-        user.save()
+            # Create user
+            if User.objects.filter(email=email).exists():
+                raise serializers.ValidationError(f"User with email {email} already exists.")
+            user = User.objects.create_user(
+                email=email,
+                name=name,
+                role='parent',
+                school=request.user.school,
+                password=password
+            )
 
-        parent = Parent.objects.create(
-            user=user,
-            school=school,
-            phone=validated_data.get('phone'),
-            address=validated_data.get('address')
-        )
-        self.context['generated_password'] = generated_password
-        return parent
+            parent = Parent.objects.create(
+                user=user,
+                school=request.user.school,
+                phone=phone,
+                address=address
+            )
 
-    def update(self, instance, validated_data):
-        user_data = validated_data.pop('user', {})
-        email = user_data.get('email')
-        name = user_data.get('name')
-
-        if email:
-            instance.user.email = email
-        if name:
-            instance.user.name = name
-        instance.user.save()
-
-        instance.phone = validated_data.get('phone', instance.phone)
-        instance.address = validated_data.get('address', instance.address)
-        instance.save()
-        return instance
-
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        ret['email'] = instance.user.email
-        ret['name'] = instance.user.name
-        return ret
+            self.context['generated_password'] = password
+            return parent
+        except serializers.ValidationError as e:
+            logger.error(f"Parent creation validation error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Parent creation error: {str(e)}")
+            raise serializers.ValidationError(f"Failed to create parent: {str(e)}")
 
 class StudentDocumentSerializer(serializers.ModelSerializer):
     document_type_id = serializers.PrimaryKeyRelatedField(
-        queryset=StudentDocumentType.objects.all(),
-        source='document_type',
-        required=False
+        queryset=StudentDocumentType.objects.all(), required=False, allow_null=True
     )
-    document_type_name = serializers.CharField(source='document_type.name', read_only=True)
-    file = serializers.FileField(required=False)
-    file_url = serializers.SerializerMethodField()
+    file = serializers.FileField(required=True)
+    description = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     class Meta:
         model = StudentDocument
-        fields = ['id', 'document_type_id', 'document_type_name', 'file', 'file_url', 'description', 'uploaded_at']
+        fields = ['id', 'student', 'document_type_id', 'session', 'file', 'description', 'uploaded_at']
 
-    def get_file_url(self, obj):
-        if obj.file:
-            return f"{settings.MEDIA_URL}{obj.file.name}"
-        return None
+    def validate(self, data):
+        logger.debug(f"StudentDocumentSerializer validate data: {data}")
+        if not data.get('file'):
+            raise serializers.ValidationError("File is required.")
+        return data
+
+    def create(self, validated_data):
+        student = validated_data.pop('student', None)
+        if not student:
+            raise serializers.ValidationError("Student is required")
+        return StudentDocument.objects.create(student=student, **validated_data)
 
 class StudentSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(source='user.email')
-    name = serializers.CharField(source='user.name')
-    class_id = serializers.PrimaryKeyRelatedField(
-        queryset=Class.objects.all(),
-        required=False,
-        allow_null=True
-    )
-    class_name = serializers.CharField(source='class_id.name', read_only=True)
-    section_id = serializers.PrimaryKeyRelatedField(
-        queryset=Section.objects.all(),
-        source='section',
-        required=False,
-        allow_null=True
-    )
-    section_name = serializers.CharField(source='section.name', read_only=True, allow_null=True)
-    academic_session_id = serializers.PrimaryKeyRelatedField(
-        queryset=AcademicSession.objects.all(),
-        source='academic_session',
-        required=False
-    )
-    session_name = serializers.CharField(source='academic_session.name', read_only=True)
-    username = serializers.CharField(write_only=True, required=False)
-    password = serializers.CharField(write_only=True, required=False)
+       # For input
+    email = serializers.EmailField(write_only=True, required=True)
+    name = serializers.CharField(write_only=True, required=True)
+    # For output
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    user_name = serializers.CharField(source='user.name', read_only=True)
+        # Flat field
+    school_id = serializers.UUIDField(required=True)
+    class_id = serializers.PrimaryKeyRelatedField(queryset=Class.objects.all(), required=True)
+    section_id = serializers.PrimaryKeyRelatedField(queryset=Section.objects.all(), required=False, allow_null=True)
+    academic_session_id = serializers.PrimaryKeyRelatedField(queryset=AcademicSession.objects.all(), required=True)
+    admission_date = serializers.DateField(required=True)
+    dob = serializers.DateField(required=False, allow_null=True)
+    gender = serializers.ChoiceField(choices=Student.GENDER_CHOICES, required=False, allow_null=True)
+    address = serializers.CharField(required=False, allow_null=True)
+    phone = serializers.CharField(required=False, allow_null=True)
+    previous_school = serializers.CharField(required=False, allow_null=True)
     profile_image = serializers.ImageField(required=False, allow_null=True)
-    profile_image_url = serializers.SerializerMethodField()
-    documents = StudentDocumentSerializer(many=True, read_only=True)
+    class_name = serializers.CharField(source='class_id.name', read_only=True)
+    section_name = serializers.CharField(source='section.name', read_only=True, allow_null=True)
+    academic_session_name = serializers.CharField(source='academic_session.name', read_only=True)
 
     class Meta:
         model = Student
         fields = [
-            'id', 'email', 'name', 'class_id', 'class_name', 'section_id', 'section_name',
-            'academic_session_id', 'session_name', 'status', 'admission_date', 'alumni_type',
-            'username', 'password', 'profile_image', 'profile_image_url', 'documents',
-            'created_at', 'updated_at'
+            'id', 'email', 'name', 'user_email', 'user_name', 'school_id', 'class_id', 'section_id', 'academic_session_id',
+            'admission_number', 'admission_date', 'dob', 'gender', 'address', 'phone',
+            'previous_school', 'profile_image', 'status', 'alumni_type', 'class_name',
+            'section_name', 'academic_session_name', 'created_at', 'updated_at'
         ]
-        extra_kwargs = {
-            'username': {'write_only': True},
-            'password': {'write_only': True},
-        }
 
-    def get_profile_image_url(self, obj):
-        if obj.profile_image:
-            return f"{settings.MEDIA_URL}{obj.profile_image.name}"
-        return None
-
-    def validate_email(self, value):
-        if User.objects.filter(email=value).exclude(id=self.instance.user.id if self.instance else None).exists():
-            raise serializers.ValidationError("This email is already in use.")
-        return value
+    def validate(self, data):
+        logger.debug(f"StudentSerializer validate data: {data}")
+        if not data.get('email') or not data.get('name'):
+            raise serializers.ValidationError("Email and name are required.")
+        return data
 
     def create(self, validated_data):
-        user_data = validated_data.pop('user', {})
-        email = user_data.get('email') or validated_data.pop('email', None)
-        name = user_data.get('name') or validated_data.pop('name', None)
-        academic_session = validated_data.pop('academic_session', None)
-        username = validated_data.pop('username', None)
-        password = validated_data.pop('password', None)
-        profile_image = validated_data.pop('profile_image', None)
+        email = validated_data.pop('email')
+        name = validated_data.pop('name')
+        class_id = validated_data.pop('class_id')
+        section_id = validated_data.pop('section_id', None)
+        academic_session_id = validated_data.pop('academic_session_id')
+        school_id = validated_data.pop('school_id', None)
 
-        if not email or not name:
-            raise serializers.ValidationError("Email and name are required.")
+        request = self.context.get('request')
+        school = request.user.school if request and request.user else None
+        if not school:
+            raise serializers.ValidationError("No school associated with user.")
+        if school_id and school.school_id != school_id:
+            raise serializers.ValidationError("Invalid school ID.")
 
-        if not username or not password:
-            username, generated_password = Student.generate_credentials()
-            password = generated_password
-        else:
-            generated_password = password
+        with transaction.atomic():
+            # Generate credentials
+            username, password = Student.generate_credentials()
+            logger.debug(f"Generated credentials: username={username}, password=***")
 
-        school = self.context['request'].user.school
-        user = User.objects.create_user(
-            email=email,
-            name=name,
-            role='student',
-            password=password,
-            school=school
-        )
-        user.username = username
-        user.save()
-
-        if not academic_session:
+            # Create user
             try:
-                academic_session = AcademicSession.objects.get(status='active', school=school)
-            except AcademicSession.DoesNotExist:
-                raise serializers.ValidationError("No active academic session found")
+                if User.objects.filter(email=email).exists():
+                    raise serializers.ValidationError(f"User with email {email} already exists.")
+                user = User.objects.create_user(
+                    email=email,
+                    name=name,
+                    role='student',
+                    school=school,
+                    password=password
+                )
+            except Exception as e:
+                logger.error(f"User creation error: {str(e)}")
+                raise serializers.ValidationError(f"Failed to create user: {str(e)}")
 
-        student = Student.objects.create(
-            user=user,
-            school=school,
-            class_id=validated_data.get('class_id'),
-            section=validated_data.get('section'),
-            status=validated_data.get('status', 'active'),
-            admission_date=validated_data.get('admission_date'),
-            academic_session=academic_session,
-            alumni_type=validated_data.get('alumni_type', None),
-            profile_image=profile_image
-        )
-        self.context['generated_password'] = generated_password
-        return student
+            # Remove redundant school argument
+            student = Student.objects.create(
+                user=user,
+                class_id=class_id,
+                school=school,
+                section=section_id,
+                academic_session=academic_session_id,
+                **validated_data
+            )
+            return {
+                'student': student,
+                'username': email,
+                'password': password
+            }
 
     def update(self, instance, validated_data):
-        user_data = validated_data.pop('user', {})
-        email = user_data.get('email')
-        name = user_data.get('name')
+        email = validated_data.pop('email', None)
+        name = validated_data.pop('name', None)
+        class_id = validated_data.pop('class_id', None)
+        section_id = validated_data.pop('section_id', None)
+        academic_session_id = validated_data.pop('academic_session_id', None)
+        school_id = validated_data.pop('school_id', None)
 
-        if email:
-            instance.user.email = email
-        if name:
-            instance.user.name = name
-        instance.user.save()
+        with transaction.atomic():
+            if email or name:
+                user = instance.user
+                if email:
+                    user.email = email
+                if name:
+                    user.name = name
+                user.save()
 
-        instance.class_id = validated_data.get('class_id', instance.class_id)
-        instance.section = validated_data.get('section', instance.section)
-        instance.academic_session = validated_data.get('academic_session', instance.academic_session)
-        instance.status = validated_data.get('status', instance.status)
-        instance.admission_date = validated_data.get('admission_date', instance.admission_date)
-        instance.alumni_type = validated_data.get('alumni_type', instance.alumni_type)
-        if 'profile_image' in validated_data:
-            if instance.profile_image:
-                default_storage.delete(instance.profile_image.path)
-            instance.profile_image = validated_data.get('profile_image')
-        instance.save()
-        return instance
+            if school_id:
+                try:
+                    school = School.objects.get(school_id=school_id)
+                    instance.school = school
+                except School.DoesNotExist:
+                    raise serializers.ValidationError("Invalid school ID")
 
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        ret['email'] = instance.user.email
-        ret['name'] = instance.user.name
-        return ret
+            instance.class_id = class_id if class_id is not None else instance.class_id
+            instance.section = section_id if section_id is not None else instance.section
+            instance.academic_session = academic_session_id if academic_session_id is not None else instance.academic_session
+
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+
+            instance.save()
+            return instance
 
 class StudentParentSerializer(serializers.ModelSerializer):
     parent_name = serializers.CharField(source='parent.user.name', read_only=True)
@@ -249,10 +232,52 @@ class AdmissionFeeSerializer(serializers.ModelSerializer):
         model = AdmissionFee
         fields = ['id', 'class_id', 'class_name', 'section', 'section_name', 'amount', 'is_active']
 
+# core/serializers/admission_serial.py, around line 235
 class StudentFeeSerializer(serializers.ModelSerializer):
+    student = serializers.PrimaryKeyRelatedField(queryset=Student.objects.all(), required=True)
+    admission_fee = serializers.PrimaryKeyRelatedField(queryset=AdmissionFee.objects.all(), required=True)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
+    due_date = serializers.DateField(required=True)
+    status = serializers.ChoiceField(
+        choices=[('pending', 'Pending'), ('paid', 'Paid'), ('waived', 'Waived')],
+        required=False,
+        allow_null=True
+    )
     student_name = serializers.CharField(source='student.user.name', read_only=True)
     class_name = serializers.CharField(source='student.class_id.name', read_only=True)
 
     class Meta:
         model = StudentFee
         fields = ['id', 'student', 'student_name', 'class_name', 'admission_fee', 'amount', 'status', 'due_date']
+
+    def validate(self, data):
+        logger.debug(f"StudentFeeSerializer validate data: {data}")
+        if not data.get('student'):
+            raise serializers.ValidationError("Student is required.")
+        if not data.get('admission_fee'):
+            raise serializers.ValidationError("Admission fee is required.")
+        if not data.get('amount') or data.get('amount') <= 0:
+            raise serializers.ValidationError("Amount must be greater than zero.")
+        if not data.get('due_date'):
+            raise serializers.ValidationError("Due date is required.")
+        return data
+
+    def create(self, validated_data):
+        try:
+            student_fee = StudentFee.objects.create(**validated_data)
+            logger.debug(f"Created StudentFee: {student_fee.id}")
+            return student_fee
+        except Exception as e:
+            logger.error(f"StudentFee creation error: {str(e)}")
+            raise serializers.ValidationError(f"Failed to create student fee: {str(e)}")
+
+    def update(self, instance, validated_data):
+        try:
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
+            logger.debug(f"Updated StudentFee: {instance.id}")
+            return instance
+        except Exception as e:
+            logger.error(f"StudentFee update error: {str(e)}")
+            raise serializers.ValidationError(f"Failed to update student fee: {str(e)}")

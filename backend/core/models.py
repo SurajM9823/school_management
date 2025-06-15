@@ -1,3 +1,4 @@
+from datetime import date
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 import uuid
@@ -10,17 +11,17 @@ import string
 
 
 class UserManager(BaseUserManager):
-    def create_user(self, email, name, role, password=None):
+    def create_user(self, email, name, role, school=None, password=None):
         if not email:
             raise ValueError("Users must have an email address")
         email = self.normalize_email(email)
-        user = self.model(email=email, name=name, role=role)
+        user = self.model(email=email, name=name, role=role, school=school)
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, name, role='admin', password=None):
-        user = self.create_user(email, name, role, password)
+    def create_superuser(self, email, name, role='admin', school=None, password=None):
+        user = self.create_user(email, name, role, school, password)
         user.is_staff = True
         user.is_superuser = True
         user.save(using=self._db)
@@ -509,15 +510,26 @@ class Student(models.Model):
         ('graduated', 'Graduated'),
         ('transferred', 'Transferred'),
     ]
+    GENDER_CHOICES = [
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+    ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_profile')
-    academic_session = models.ForeignKey(AcademicSession, on_delete=models.SET_NULL, null=True, 
-    related_name='students')
+    academic_session = models.ForeignKey(AcademicSession, on_delete=models.SET_NULL, null=True, related_name='students')
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='students')
     class_id = models.ForeignKey(Class, on_delete=models.SET_NULL, null=True, related_name='students')
     section = models.ForeignKey(Section, on_delete=models.SET_NULL, null=True, related_name='students')
+    admission_number = models.CharField(max_length=50, unique=True, null=True, blank=True)
+  # Auto-generated admission number
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     admission_date = models.DateField()
+    dob = models.DateField(null=True, blank=True)  # Date of birth
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, null=True, blank=True)
+    address = models.TextField(blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    previous_school = models.CharField(max_length=255, blank=True, null=True)
     profile_image = models.ImageField(upload_to='student_profiles/', blank=True, null=True)
     alumni_type = models.CharField(max_length=20, choices=ALUMNI_TYPE_CHOICES, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -530,9 +542,22 @@ class Student(models.Model):
     def __str__(self):
         return f"{self.user.name} ({self.user.email})"
 
+    def save(self, *args, **kwargs):
+        if not self.admission_number:
+            # Generate admission number (e.g., YYYYMMDD-XXX)
+            today = date.today()  # Corrected: Call the method with ()
+            prefix = today.strftime('%Y%m%d')
+            last_student = Student.objects.filter(admission_number__startswith=prefix).order_by('-admission_number').first()
+            if last_student:
+                last_num = int(last_student.admission_number.split('-')[-1])
+                new_num = f"{prefix}-{last_num + 1:03d}"
+            else:
+                new_num = f"{prefix}-001"
+            self.admission_number = new_num
+        super().save(*args, **kwargs)
+
     @staticmethod
     def generate_credentials():
-        """Generate random 6-character username and password."""
         chars = string.ascii_letters + string.digits
         username = ''.join(random.choice(chars) for _ in range(6))
         password = ''.join(random.choice(chars) for _ in range(6))

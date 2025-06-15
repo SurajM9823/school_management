@@ -18,23 +18,25 @@ const backendUrl = import.meta.env.VITE_REACT_APP_BACKEND_URL || "http://localho
 
 interface Student {
   id: number;
-  user?: { name: string; email: string };
   email: string;
   name: string;
+  admission_number: string;
   class_id: number;
   class_name: string;
-  section?: { id: number; name: string } | null;
+  section_id?: number | null;
+  section_name?: string | null;
   status: "active" | "on_leave" | "alumni";
   admission_date: string;
-  alumni_type?: "graduated" | "transferred";
-  academic_session?: { id: number; name: string };
-  dob: string;
-  gender: "male" | "female" | "other";
-  address: string;
-  phone: string;
-  profile_picture?: string;
+  alumni_type?: "graduated" | "transferred" | null;
+  academic_session_id?: number;
+  academic_session_name?: string;
+  dob?: string;
+  gender?: "male" | "female" | "other";
+  address?: string;
+  phone?: string;
+  profile_image?: string;
+  previous_school?: string;
   documents?: Document[];
-  previousSchool?: string;
 }
 
 interface Document {
@@ -42,8 +44,9 @@ interface Document {
   file: string;
   file_name: string;
   document_type: string;
-  uploaded_at: string;
+  document_type_id?: number;
   description?: string;
+  uploaded_at: string;
 }
 
 interface Class {
@@ -58,7 +61,8 @@ interface Section {
 
 interface Parent {
   id: number;
-  user: { name: string; email: string };
+  name: string;
+  email: string;
   phone: string;
 }
 
@@ -93,18 +97,18 @@ interface NewApplicationForm {
 }
 
 interface EditStudentForm {
-  studentName: string;
-  studentEmail: string;
-  classId: string;
-  sectionId: string;
-  admissionDate: string;
-  academicSessionId: string;
-  dob: string;
-  gender: "male" | "female" | "other";
-  address: string;
-  phone: string;
-  previousSchool: string;
-  profilePicture: FileList | null;
+  studentName?: string;
+  studentEmail?: string;
+  classId?: string;
+  sectionId?: string;
+  admissionDate?: string;
+  academicSessionId?: string;
+  dob?: string;
+  gender?: "male" | "female" | "other";
+  address?: string;
+  phone?: string;
+  previousSchool?: string;
+  profilePicture?: FileList | null;
 }
 
 const Admissions: React.FC = () => {
@@ -116,17 +120,21 @@ const Admissions: React.FC = () => {
   const [sections, setSections] = useState<{ [key: number]: Section[] }>({});
   const [parents, setParents] = useState<Parent[]>([]);
   const [sessions, setSessions] = useState<AcademicSession[]>([]);
+  const [schoolId, setSchoolId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [classFilter, setClassFilter] = useState("all");
   const [activeTab, setActiveTab] = useState<"active" | "alumni">("active");
   const [showNewApplicationForm, setShowNewApplicationForm] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [editingDocId, setEditingDocId] = useState<number | null>(null);
   const [editDocName, setEditDocName] = useState<string>("");
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [editProfilePicture, setEditProfilePicture] = useState<FileList | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [credentials, setCredentials] = useState<{
     student: { username: string; password: string };
@@ -182,6 +190,16 @@ const Admissions: React.FC = () => {
   const selectedClassId = watch("classId");
   const parentOption = watch("parentOption");
   const editClassId = watchEdit("classId");
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+      return () => URL.revokeObjectURL(previewUrl);
+    } else {
+      setImagePreview(null);
+    }
+  };
 
   if (!user || user.role !== "admin") {
     return (
@@ -200,22 +218,33 @@ const Admissions: React.FC = () => {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [studentsRes, classesRes, parentsRes, sessionsRes] = await Promise.all([
-          api.get("/students/"),
-          api.get("/school/settings/classes/"),
-          api.get("/parents/"),
-          api.get("/school/settings/sessions/"),
+        const [schoolRes, studentsRes, classesRes, parentsRes, sessionsRes] = await Promise.all([
+          api.get('/school/settings/'),
+          api.get('/students/'),
+          api.get('/school/settings/classes/'),
+          api.get('/parents/'),
+          api.get('/school/settings/sessions/'),
         ]);
+        console.log('School Settings Response:', schoolRes.data);
+        if (schoolRes.data?.error) {
+          toast.error(schoolRes.data.error || 'Failed to load school settings');
+          setSchoolId(null);
+        } else {
+          setSchoolId(schoolRes.data?.school_id || null);
+        }
         setStudents(studentsRes.data);
         setClasses(classesRes.data);
         setParents(parentsRes.data);
         setSessions(sessionsRes.data);
-        const activeSession = sessionsRes.data.find((s: AcademicSession) => s.status === "active");
+        const activeSession = sessionsRes.data.find((s: AcademicSession) => s.status === 'active');
         if (activeSession) {
-          setValue("academicSessionId", activeSession.id.toString());
+          setValue('academicSessionId', activeSession.id.toString());
+        } else {
+          toast.error('No active academic session found. Please select one manually.');
         }
-      } catch (err) {
-        toast.error("Failed to load initial data");
+      } catch (err: any) {
+        console.error('Load Initial Data Error:', err.response?.data || err.message);
+        toast.error(err.response?.data?.detail || 'Failed to load initial data');
       }
     };
     loadInitialData();
@@ -276,21 +305,27 @@ const Admissions: React.FC = () => {
     }
   };
 
-  const handleEditStudent = (student: Student) => {
-    setSelectedStudent(student);
-    setValueEdit("studentName", student.name);
-    setValueEdit("studentEmail", student.email);
-    setValueEdit("classId", student.class_id.toString());
-    setValueEdit("sectionId", student.section?.id.toString() || "");
-    setValueEdit("admissionDate", student.admission_date);
-    setValueEdit("academicSessionId", student.academic_session?.id.toString() || "");
-    setValueEdit("dob", student.dob);
-    setValueEdit("gender", student.gender);
-    setValueEdit("address", student.address);
-    setValueEdit("phone", student.phone);
-    setValueEdit("previousSchool", student.previousSchool || "");
-    setShowEditModal(true);
-  };
+const handleEditStudent = async (student: Student) => {
+  setSelectedStudent(student);
+  setValueEdit("studentName", student.name || "");
+  setValueEdit("studentEmail", student.email || "");
+  setValueEdit("classId", student.class_id?.toString() || "");
+  setValueEdit("sectionId", student.section_id?.toString() || "");
+  setValueEdit("admissionDate", student.admission_date || "");
+  setValueEdit("academicSessionId", student.academic_session_id?.toString() || "");
+  setValueEdit("dob", student.dob || "");
+  setValueEdit("gender", student.gender || "male");
+  setValueEdit("address", student.address || "");
+  setValueEdit("phone", student.phone || "");
+  setValueEdit("previousSchool", student.previous_school || "");
+  setValueEdit("profilePicture", null);
+  setEditProfilePicture(null);
+  setImagePreview(student.profile_image ? `${backendUrl}${student.profile_image}` : null);
+  if (student.class_id) {
+    await fetchSections(student.class_id);
+  }
+  setShowEditModal(true);
+};
 
   const handleUpdateDocumentName = async (studentId: number, docId: number, newName: string) => {
   if (!newName.trim()) {
@@ -406,7 +441,28 @@ const Admissions: React.FC = () => {
     return await trigger(fields);
   };
 
-  const handleNextStep = async () => {
+  const validateAllSteps = async () => {
+    const fields: (keyof NewApplicationForm)[] = [
+      "studentName",
+      "studentEmail",
+      "classId",
+      "academicSessionId",
+      "admissionDate",
+      "dob",
+      "gender",
+      "address",
+      "phone",
+      "relationship",
+    ];
+    if (parentOption === "new") {
+      fields.push("parentName", "parentEmail", "parentPhone");
+    } else {
+      fields.push("existingParentId");
+    }
+    return await trigger(fields);
+  };
+  const handleNextStep = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault(); // Explicitly prevent any default behavior
     const isValid = await validateStep(currentStep);
     if (isValid) {
       setCurrentStep((prev) => prev + 1);
@@ -416,108 +472,160 @@ const Admissions: React.FC = () => {
   };
 
   const onSubmit = async (data: NewApplicationForm) => {
+    if (currentStep !== totalSteps) {
+      console.warn("Submission attempted before final step:", { currentStep, data });
+      toast.error("Please complete all steps before submitting");
+      return;
+    }
+
+    if (!schoolId) {
+      toast.error("School ID not found");
+      return;
+    }
+
+    // Validate required fields
+    const requiredFields = [
+      { key: 'studentEmail', label: 'Student Email' },
+      { key: 'studentName', label: 'Student Name' },
+      { key: 'classId', label: 'Class ID' },
+      { key: 'academicSessionId', label: 'Academic Session ID' },
+      { key: 'admissionDate', label: 'Admission Date' },
+      { key: 'dob', label: 'Date of Birth' },
+      { key: 'gender', label: 'Gender' },
+      { key: 'address', label: 'Address' },
+      { key: 'phone', label: 'Phone' },
+      { key: 'relationship', label: 'Relationship' },
+    ];
+
+    for (const field of requiredFields) {
+      if (!data[field.key as keyof NewApplicationForm]) {
+        toast.error(`${field.label} is required`);
+        return;
+      }
+    }
+
+    if (data.parentOption === 'new' && (!data.parentEmail || !data.parentName || !data.parentPhone)) {
+      toast.error("Required parent fields are missing");
+      return;
+    }
+    if (data.parentOption === 'existing' && !data.existingParentId) {
+      toast.error("Existing parent ID is required");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const studentData = {
-        email: data.studentEmail.trim(),
-        name: data.studentName.trim(),
-        class_id: parseInt(data.classId),
-        section: data.sectionId ? parseInt(data.sectionId) : null,
-        admission_date: data.admissionDate,
-        academic_session_id: parseInt(data.academicSessionId),
-        status: "active",
-        dob: data.dob,
-        gender: data.gender,
-        address: data.address,
-        phone: data.phone,
-        previousSchool: data.previousSchool,
-      };
       const formData = new FormData();
-      Object.entries(studentData).forEach(([key, value]) => {
-        formData.append(key, value as string);
-      });
+      // Student data
+      formData.append('email', data.studentEmail.trim());
+      formData.append('name', data.studentName.trim());
+      formData.append('school_id', schoolId);
+      formData.append('class_id', data.classId);
+      if (data.sectionId) formData.append('section_id', data.sectionId);
+      formData.append('admission_date', data.admissionDate);
+      formData.append('academic_session_id', data.academicSessionId);
+      formData.append('status', 'active');
+      if (data.dob) formData.append('dob', data.dob);
+      if (data.gender) formData.append('gender', data.gender);
+      if (data.address) formData.append('address', data.address.trim());
+      if (data.phone) formData.append('phone', data.phone.trim());
+      if (data.previousSchool) formData.append('previous_school', data.previousSchool.trim());
       if (data.profilePicture && data.profilePicture[0]) {
-        formData.append("profile_picture", data.profilePicture[0]);
+        formData.append('profile_image', data.profilePicture[0]);
       }
-      const studentResponse = await api.post("/students/", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      const student = studentResponse.data.student;
 
-      let parentId: number | undefined;
-      let parentCredentials: { username: string; password: string } | undefined;
-      if (data.parentOption === "new") {
-        const parentData = {
-          email: data.parentEmail.trim(),
-          name: data.parentName.trim(),
-          phone: data.parentPhone.trim(),
-          address: data.address.trim(),
-        };
-        const parentResponse = await api.post("/parents/", parentData);
-        parentId = parentResponse.data.parent.id;
-        parentCredentials = {
-          username: parentResponse.data.username,
-          password: parentResponse.data.password,
-        };
+      // Parent data
+      formData.append('parent_option', data.parentOption);
+      if (data.parentOption === 'new') {
+        formData.append('parent_email', data.parentEmail.trim());
+        formData.append('parent_name', data.parentName.trim());
+        formData.append('parent_phone', data.parentPhone.trim());
+        formData.append('parent_address', data.address.trim());
+        formData.append('relationship', data.relationship);
       } else {
-        parentId = parseInt(data.existingParentId);
+        formData.append('parent_id', data.existingParentId);
+        formData.append('relationship', data.relationship);
       }
 
-      if (parentId) {
-        const studentParentData = {
-          parent: parentId,
-          relationship: data.relationship,
-        };
-        await api.post(`/students/${student.id}/parents/`, studentParentData);
-      }
-
+      // Documents
       if (data.documents) {
-        const docFormData = new FormData();
-        Array.from(data.documents).forEach((file) => docFormData.append("documents", file));
-        await api.post(`/students/${student.id}/documents/`, docFormData, {
-          headers: { "Content-Type": "multipart/form-data" },
+        Array.from(data.documents).forEach((file) => {
+          formData.append('documents', file);
         });
       }
 
-      const studentsRes = await api.get("/students/");
-      setStudents(studentsRes.data);
+      console.log('FormData being sent:', Object.fromEntries(formData.entries()));
 
+      const response = await api.post('/admissions/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      const studentsRes = await api.get('/students/');
+      setStudents(studentsRes.data);
       setCredentials({
-        student: {
-          username: studentResponse.data.username,
-          password: studentResponse.data.password,
-        },
-        parent: parentCredentials,
+        student: response.data.student_credentials,
+        parent: response.data.parent_credentials,
       });
       reset();
       setShowNewApplicationForm(false);
-      toast.success("Application submitted successfully!");
+      setImagePreview(null);
+      toast.success('Application submitted successfully!');
     } catch (error: any) {
-      toast.error("Failed to submit application: " + (error.response?.data?.detail || error.message));
+      console.error('Submission error:', error.response?.data || error.message);
+      const errorData = error.response?.data || { error: 'An unexpected error occurred' };
+      
+      // Handle different error formats
+      if (typeof errorData === 'string') {
+        toast.error(errorData);
+      } else if (errorData.student_errors) {
+        Object.entries(errorData.student_errors).forEach(([key, value]) => {
+          const message = Array.isArray(value) ? value.join(', ') : value;
+          toast.error(`Student ${key}: ${message}`);
+        });
+      } else if (errorData.parent_errors) {
+        Object.entries(errorData.parent_errors).forEach(([key, value]) => {
+          const message = Array.isArray(value) ? value.join(', ') : value;
+          toast.error(`Parent ${key}: ${message}`);
+        });
+      } else if (errorData.document_errors) {
+        Object.entries(errorData.document_errors).forEach(([key, value]) => {
+          const message = Array.isArray(value) ? value.join(', ') : value;
+          toast.error(`Document ${key}: ${message}`);
+        });
+      } else {
+        Object.entries(errorData).forEach(([key, value]) => {
+          const message = Array.isArray(value) ? value.join(', ') : String(value);
+          toast.error(`${key}: ${message}`);
+        });
+      }
     } finally {
       setIsLoading(false);
     }
-  };
-
+    };  
   const onEditSubmit = async (data: EditStudentForm) => {
-    if (!selectedStudent) return;
+    if (!selectedStudent || !schoolId) {
+      toast.error("Invalid student or school ID");
+      return;
+    }
     setIsLoading(true);
     try {
       const formData = new FormData();
-      formData.append("email", data.studentEmail.trim());
-      formData.append("name", data.studentName.trim());
-      formData.append("class_id", data.classId);
-      formData.append("section", data.sectionId || "");
-      formData.append("admission_date", data.admissionDate);
-      formData.append("academic_session_id", data.academicSessionId);
-      formData.append("dob", data.dob);
-      formData.append("gender", data.gender);
-      formData.append("address", data.address);
-      formData.append("phone", data.phone);
-      formData.append("previousSchool", data.previousSchool);
+      if (data.studentEmail) formData.append("email", data.studentEmail.trim());
+      if (data.studentName) formData.append("name", data.studentName.trim());
+      if (data.classId) formData.append("class_id", data.classId);
+      if (data.sectionId) formData.append("section_id", data.sectionId);
+      if (data.admissionDate) formData.append("admission_date", data.admissionDate);
+      if (data.academicSessionId) formData.append("academic_session_id", data.academicSessionId);
+      if (data.dob) formData.append("dob", data.dob);
+      if (data.gender) formData.append("gender", data.gender);
+      if (data.address) formData.append("address", data.address.trim());
+      if (data.phone) formData.append("phone", data.phone.trim());
+      if (data.previousSchool) formData.append("previous_school", data.previousSchool.trim());
       if (data.profilePicture && data.profilePicture[0]) {
-        formData.append("profile_picture", data.profilePicture[0]);
+        formData.append("profile_image", data.profilePicture[0]);
       }
+      formData.append("school_id", schoolId);
+
       const response = await api.put(`/students/${selectedStudent.id}/`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -528,6 +636,8 @@ const Admissions: React.FC = () => {
       );
       setShowEditModal(false);
       resetEdit();
+      setImagePreview(null);
+      setEditProfilePicture(null);
       toast.success("Student updated successfully!");
     } catch (error: any) {
       toast.error("Failed to update student: " + (error.response?.data?.detail || error.message));
@@ -538,10 +648,9 @@ const Admissions: React.FC = () => {
 
   const filteredStudents = students.filter((student) => {
     const matchesSearch =
-      student.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      student.admission_number?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === "all" ||
       (activeTab === "active"
@@ -556,6 +665,11 @@ const Admissions: React.FC = () => {
 
     return matchesSearch && matchesStatus && matchesClass && matchesCategory;
   });
+
+  const handleViewDetails = (student: Student) => {
+    setSelectedStudent(student);
+    setShowDetailsModal(true);
+  };
 
   const renderApplicationForm = () => {
     switch (currentStep) {
@@ -842,7 +956,7 @@ const Admissions: React.FC = () => {
                       <option value="">Select Parent</option>
                       {parents.map((parent) => (
                         <option key={parent.id} value={parent.id}>
-                          {parent.user.name} ({parent.user.email})
+                          {parent.name} ({parent.email})
                         </option>
                       ))}
                     </select>
@@ -1011,7 +1125,7 @@ const Admissions: React.FC = () => {
                         accept=".png,.jpg,.pdf"
                         {...register("documents", {
                           validate: (files) => {
-                            if (!files || files.length === 0) return false; // Require at least one document
+                            if (!files || files.length === 0) return true; // Allow no files
                             const validTypes = ["image/png", "image/jpeg", "application/pdf"];
                             const maxSize = 5 * 1024 * 1024; // 5MB
                             for (const file of Array.from(files)) {
@@ -1023,7 +1137,7 @@ const Admissions: React.FC = () => {
                               }
                             }
                             return true;
-                          }
+                          },
                         })}
                       />
                     </label>
@@ -1043,249 +1157,334 @@ const Admissions: React.FC = () => {
     }
   };
 
-  const renderEditForm = () => {
-    return (
-      <form onSubmit={handleSubmitEdit(onEditSubmit)} className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div>
-          <label htmlFor="editStudentName" className="block text-sm font-medium text-gray-700">
-            Full Name
-          </label>
-          <input
-            id="editStudentName"
-            type="text"
-            {...registerEdit("studentName", {
-              required: "Student name is required",
-              minLength: { value: 2, message: "Name must be at least 2 characters" },
-            })}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
-          />
-          {errorsEdit.studentName && (
-            <p className="mt-1 text-sm text-red-600">{errorsEdit.studentName.message}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="editStudentEmail" className="block text-sm font-medium text-gray-700">
-            Email
-          </label>
-          <input
-            id="editStudentEmail"
-            type="email"
-            {...registerEdit("studentEmail", {
-              required: "Student email is required",
-              pattern: {
-                value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-                message: "Invalid email address",
-              },
-            })}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
-          />
-          {errorsEdit.studentEmail && (
-            <p className="mt-1 text-sm text-red-600">{errorsEdit.studentEmail.message}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="editDob" className="block text-sm font-medium text-gray-700">
-            Date of Birth
-          </label>
-          <input
-            id="editDob"
-            type="date"
-            {...registerEdit("dob", {
-              required: "Date of birth is required",
-              validate: (value) => {
-                const dob = new Date(value);
-                const today = new Date();
-                return dob < today || "Date of birth must be in the past";
-              },
-            })}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
-          />
-          {errorsEdit.dob && (
-            <p className="mt-1 text-sm text-red-600">{errorsEdit.dob.message}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="editGender" className="block text-sm font-medium text-gray-700">
-            Gender
-          </label>
-          <Controller
-            name="gender"
-            control={controlEdit}
-            rules={{ required: "Gender is required" }}
-            render={({ field }) => (
-              <select
-                id="editGender"
-                {...field}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
-            )}
-          />
-          {errorsEdit.gender && (
-            <p className="mt-1 text-sm text-red-600">{errorsEdit.gender.message}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="editClassId" className="block text-sm font-medium text-gray-700">
-            Class
-          </label>
-          <Controller
-            name="classId"
-            control={controlEdit}
-            rules={{ required: "Class is required" }}
-            render={({ field }) => (
-              <select
-                id="editClassId"
-                {...field}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Select Class</option>
-                {classes.map((cls) => (
-                  <option key={cls.id} value={cls.id}>
-                    {cls.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          />
-          {errorsEdit.classId && (
-            <p className="mt-1 text-sm text-red-600">{errorsEdit.classId.message}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="editSectionId" className="block text-sm font-medium text-gray-700">
-            Section
-          </label>
-          <Controller
-            name="sectionId"
-            control={controlEdit}
-            render={({ field }) => (
-              <select
-                id="editSectionId"
-                {...field}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
-                disabled={!editClassId}
-              >
-                <option value="">Select Section</option>
-                {(sections[parseInt(editClassId)] || []).map((section) => (
-                  <option key={section.id} value={section.id}>
-                    {section.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          />
-        </div>
-        <div>
-          <label htmlFor="editAcademicSessionId" className="block text-sm font-medium text-gray-700">
-            Academic Session
-          </label>
-          <Controller
-            name="academicSessionId"
-            control={controlEdit}
-            rules={{ required: "Academic session is required" }}
-            render={({ field }) => (
-              <select
-                id="editAcademicSessionId"
-                {...field}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Select Session</option>
-                {sessions.map((session) => (
-                  <option key={session.id} value={session.id}>
-                    {session.name} ({session.status})
-                  </option>
-                ))}
-              </select>
-            )}
-          />
-          {errorsEdit.academicSessionId && (
-            <p className="mt-1 text-sm text-red-600">{errorsEdit.academicSessionId.message}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="editAdmissionDate" className="block text-sm font-medium text-gray-700">
-            Admission Date
-          </label>
-          <input
-            id="editAdmissionDate"
-            type="date"
-            {...registerEdit("admissionDate", {
-              required: "Admission date is required",
-              validate: (value) => {
-                const admissionDate = new Date(value);
-                const today = new Date();
-                return admissionDate <= today || "Admission date cannot be in the future";
-              }
-            })}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
-          />
-          {errorsEdit.admissionDate && (
-            <p className="mt-1 text-sm text-red-600">{errorsEdit.admissionDate.message}</p>
-          )}
-        </div>
-        <div className="sm:col-span-2">
-          <label htmlFor="editAddress" className="block text-sm font-medium text-gray-700">
-            Address
-          </label>
-          <textarea
-            id="editAddress"
-            {...registerEdit("address", {
-              required: "Address is required",
-              minLength: { value: 5, message: "Address must be at least 5 characters" },
-            })}
-            rows={3}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
-          />
-          {errorsEdit.address && (
-            <p className="mt-1 text-sm text-red-600">{errorsEdit.address.message}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="editPhone" className="block text-sm font-medium text-gray-700">
-            Phone Number
-          </label>
-          <input
-            id="editPhone"
-            type="tel"
-            {...registerEdit("phone", {
-              required: "Phone number is required",
-              pattern: { value: /^\+?[1-9]\d{1,14}$/, message: "Invalid phone number" },
-            })}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
-          />
-          {errorsEdit.phone && (
-            <p className="mt-1 text-sm text-red-600">{errorsEdit.phone.message}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="editPreviousSchool" className="block text-sm font-medium text-gray-700">
-            Previous School (if any)
-          </label>
-          <input
-            id="editPreviousSchool"
-            type="text"
-            {...registerEdit("previousSchool")}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
-          />
-          </div>
-          <div>
-            <label htmlFor="editProfilePicture" className="block text-sm font-medium text-gray-700">
-              Profile Picture
-            </label>
-            {selectedStudent?.profile_picture && (
-              <div className="mt-2 mb-2">
+  const renderDetailsModal = () => {
+      if (!selectedStudent) return null;
+      return (
+        <Modal
+          title={`${selectedStudent.name}'s Details`}
+          isOpen={showDetailsModal}
+          onClose={() => {
+            setShowDetailsModal(false);
+            setSelectedStudent(null);
+          }}
+        >
+          <div className="space-y-4">
+            <div className="flex items-center space-x-4">
+              {selectedStudent.profile_image ? (
                 <img
-                  src={selectedStudent.profile_picture}
-                  alt="Current profile picture"
+                  src={`${backendUrl}${selectedStudent.profile_image}`}
+                  alt={selectedStudent.name}
                   className="h-20 w-20 rounded-full object-cover"
                 />
+              ) : (
+                <div className="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center">
+                  <span className="text-gray-500">{selectedStudent.name?.charAt(0) || "N/A"}</span>
+                </div>
+              )}
+              <div>
+                <h3 className="text-lg font-medium">{selectedStudent.name || "N/A"}</h3>
+                <p className="text-sm text-gray-500">{selectedStudent.email || "N/A"}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Admission Number</label>
+                <p className="mt-1 text-sm text-gray-900">{selectedStudent.admission_number || "N/A"}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Admission Date</label>
+                <p className="mt-1 text-sm text-gray-900">
+                  {selectedStudent.admission_date
+                    ? format(new Date(selectedStudent.admission_date), "MMM dd, yyyy")
+                    : "N/A"}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
+                <p className="mt-1 text-sm text-gray-900">
+                  {selectedStudent.dob ? format(new Date(selectedStudent.dob), "MMM dd, yyyy") : "N/A"}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Gender</label>
+                <p className="mt-1 text-sm text-gray-900">{selectedStudent.gender || "N/A"}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Class</label>
+                <p className="mt-1 text-sm text-gray-900">{selectedStudent.class_name || "N/A"}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Section</label>
+                <p className="mt-1 text-sm text-gray-900">{selectedStudent.section_name || "N/A"}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Phone</label>
+                <p className="mt-1 text-sm text-gray-900">{selectedStudent.phone || "N/A"}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Address</label>
+                <p className="mt-1 text-sm text-gray-900">{selectedStudent.address || "N/A"}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Previous School</label>
+                <p className="mt-1 text-sm text-gray-900">{selectedStudent.previous_school || "N/A"}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Academic Session</label>
+                <p className="mt-1 text-sm text-gray-900">{selectedStudent.academic_session_name || "N/A"}</p>
+              </div>
+            </div>
+            <div className="mt-6">
+              <Button variant="primary" onClick={() => handleViewDocuments(selectedStudent)}>
+                View Documents
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      );
+    };
+const renderEditForm = () => {
+  return (
+    <form onSubmit={handleSubmitEdit(onEditSubmit)} className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div>
+        <label htmlFor="editStudentName" className="block text-sm font-medium text-gray-700">
+          Full Name
+        </label>
+        <input
+          id="editStudentName"
+          type="text"
+          {...registerEdit("studentName", {
+            minLength: { value: 2, message: "Name must be at least 2 characters" },
+          })}
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+        />
+        {errorsEdit.studentName && (
+          <p className="mt-1 text-sm text-red-600">{errorsEdit.studentName.message}</p>
+        )}
+      </div>
+      <div>
+        <label htmlFor="editStudentEmail" className="block text-sm font-medium text-gray-700">
+          Email
+        </label>
+        <input
+          id="editStudentEmail"
+          type="email"
+          {...registerEdit("studentEmail", {
+            pattern: {
+              value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+              message: "Invalid email address",
+            },
+          })}
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+        />
+        {errorsEdit.studentEmail && (
+          <p className="mt-1 text-sm text-red-600">{errorsEdit.studentEmail.message}</p>
+        )}
+      </div>
+      <div>
+        <label htmlFor="editDob" className="block text-sm font-medium text-gray-700">
+          Date of Birth
+        </label>
+        <input
+          id="editDob"
+          type="date"
+          {...registerEdit("dob", {
+            validate: (value) => {
+              if (!value) return true; // Allow empty
+              const dob = new Date(value);
+              const today = new Date();
+              return dob < today || "Date of birth must be in the past";
+            },
+          })}
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+        />
+        {errorsEdit.dob && (
+          <p className="mt-1 text-sm text-red-600">{errorsEdit.dob.message}</p>
+        )}
+      </div>
+      <div>
+        <label htmlFor="editGender" className="block text-sm font-medium text-gray-700">
+          Gender
+        </label>
+        <Controller
+          name="gender"
+          control={controlEdit}
+          render={({ field }) => (
+            <select
+              id="editGender"
+              {...field}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          )}
+        />
+        {errorsEdit.gender && (
+          <p className="mt-1 text-sm text-red-600">{errorsEdit.gender.message}</p>
+        )}
+      </div>
+      <div>
+        <label htmlFor="editClassId" className="block text-sm font-medium text-gray-700">
+          Class
+        </label>
+        <Controller
+          name="classId"
+          control={controlEdit}
+          render={({ field }) => (
+            <select
+              id="editClassId"
+              {...field}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select Class</option>
+              {classes.map((cls) => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name}
+                </option>
+              ))}
+            </select>
+          )}
+        />
+        {errorsEdit.classId && (
+          <p className="mt-1 text-sm text-red-600">{errorsEdit.classId.message}</p>
+        )}
+      </div>
+      <div>
+        <label htmlFor="editSectionId" className="block text-sm font-medium text-gray-700">
+          Section
+        </label>
+        <Controller
+          name="sectionId"
+          control={controlEdit}
+          render={({ field }) => (
+            <select
+              id="editSectionId"
+              {...field}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+              disabled={!editClassId}
+            >
+              <option value="">Select Section</option>
+              {(sections[parseInt(editClassId)] || []).map((section) => (
+                <option key={section.id} value={section.id}>
+                  {section.name}
+                </option>
+              ))}
+            </select>
+          )}
+        />
+      </div>
+      <div>
+        <label htmlFor="editAcademicSessionId" className="block text-sm font-medium text-gray-700">
+          Academic Session
+        </label>
+        <Controller
+          name="academicSessionId"
+          control={controlEdit}
+          render={({ field }) => (
+            <select
+              id="editAcademicSessionId"
+              {...field}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select Session</option>
+              {sessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  {session.name} ({session.status})
+                </option>
+              ))}
+            </select>
+          )}
+        />
+        {errorsEdit.academicSessionId && (
+          <p className="mt-1 text-sm text-red-600">{errorsEdit.academicSessionId.message}</p>
+        )}
+      </div>
+      <div>
+        <label htmlFor="editAdmissionDate" className="block text-sm font-medium text-gray-700">
+          Admission Date
+        </label>
+        <input
+          id="editAdmissionDate"
+          type="date"
+          {...registerEdit("admissionDate", {
+            validate: (value) => {
+              if (!value) return true; // Allow empty
+              const admissionDate = new Date(value);
+              const today = new Date();
+              return admissionDate <= today || "Admission date cannot be in the future";
+            },
+          })}
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+        />
+        {errorsEdit.admissionDate && (
+          <p className="mt-1 text-sm text-red-600">{errorsEdit.admissionDate.message}</p>
+        )}
+      </div>
+      <div className="sm:col-span-2">
+        <label htmlFor="editAddress" className="block text-sm font-medium text-gray-700">
+          Address
+        </label>
+        <textarea
+          id="editAddress"
+          {...registerEdit("address", {
+            minLength: { value: 5, message: "Address must be at least 5 characters" },
+          })}
+          rows={3}
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+        />
+        {errorsEdit.address && (
+          <p className="mt-1 text-sm text-red-600">{errorsEdit.address.message}</p>
+        )}
+      </div>
+      <div>
+        <label htmlFor="editPhone" className="block text-sm font-medium text-gray-700">
+          Phone Number
+        </label>
+        <input
+          id="editPhone"
+          type="tel"
+          {...registerEdit("phone", {
+            pattern: { value: /^\+?[1-9]\d{1,14}$/, message: "Invalid phone number" },
+          })}
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+        />
+        {errorsEdit.phone && (
+          <p className="mt-1 text-sm text-red-600">{errorsEdit.phone.message}</p>
+        )}
+      </div>
+      <div>
+        <label htmlFor="editPreviousSchool" className="block text-sm font-medium text-gray-700">
+          Previous School (if any)
+        </label>
+        <input
+          id="editPreviousSchool"
+          type="text"
+          {...registerEdit("previousSchool")}
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+      <div className="sm:col-span-2">
+        <label htmlFor="editProfilePicture" className="block text-sm font-medium text-gray-700">
+          Profile Picture
+        </label>
+        <div className="mt-2 flex items-center space-x-4">
+          <div className="flex-shrink-0">
+            {imagePreview ? (
+              <img
+                src={imagePreview}
+                alt="Profile picture preview"
+                className="h-20 w-20 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center">
+                <span className="text-gray-500">No Image</span>
               </div>
             )}
-            <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+          </div>
+          <div className="flex-1">
+            <div className="flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
               <div className="space-y-2 text-center">
                 <Image className="mx-auto h-12 w-12 text-gray-400" />
                 <div className="flex text-sm text-gray-600">
@@ -1311,8 +1510,13 @@ const Admissions: React.FC = () => {
                             return "Image must be less than 2MB";
                           }
                           return true;
-                        }
+                        },
                       })}
+                      onChange={(e) => {
+                        registerEdit("profilePicture").onChange(e);
+                        handleImageChange(e);
+                        setEditProfilePicture(e.target.files);
+                      }}
                       className="sr-only"
                     />
                   </label>
@@ -1325,9 +1529,30 @@ const Admissions: React.FC = () => {
               <p className="mt-1 text-sm text-red-600">{errorsEdit.profilePicture?.message}</p>
             )}
           </div>
-        </form>
-      );
-  };
+        </div>
+      </div>
+      <div className="sm:col-span-2 flex justify-end space-x-4">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setShowEditModal(false);
+            resetEdit();
+            setImagePreview(null);
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          type="submit"
+          disabled={isLoading}
+        >
+          {isLoading ? "Saving..." : "Save Changes"}
+        </Button>
+      </div>
+    </form>
+  );
+};
 
   return (
     <div className="space-y-6 p-6">
@@ -1390,7 +1615,7 @@ const Admissions: React.FC = () => {
                           isActive
                             ? "bg-blue-600 text-white"
                             : isCompleted
-                              ? "bg-green-600 text-white"
+                            ? "bg-green-600 text-white"
                             : "bg-gray-200 text-gray-600"
                         }`}
                       >
@@ -1414,12 +1639,30 @@ const Admissions: React.FC = () => {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault(); // Prevent default form submission
+              handleSubmit(async (data) => {
+                const isValid = await validateAllSteps();
+                if (!isValid) {
+                  toast.error("Please fill all required fields before submitting");
+                  return;
+                }
+                await onSubmit(data);
+              })(e);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && currentStep !== totalSteps) {
+                e.preventDefault(); // Prevent Enter key from submitting the form
+              }
+            }}
+          >
             {renderApplicationForm()}
             <div className="flex justify-between mt-8">
               {currentStep > 1 ? (
                 <Button
                   variant="outline"
+                  type="button"
                   onClick={() => setCurrentStep(currentStep - 1)}
                 >
                   Previous
@@ -1427,6 +1670,7 @@ const Admissions: React.FC = () => {
               ) : (
                 <Button
                   variant="outline"
+                  type="button"
                   onClick={() => {
                     setShowNewApplicationForm(false);
                     reset();
@@ -1438,6 +1682,7 @@ const Admissions: React.FC = () => {
               {currentStep < totalSteps ? (
                 <Button
                   variant="primary"
+                  type="button"
                   onClick={handleNextStep}
                   disabled={isLoading}
                 >
@@ -1526,143 +1771,134 @@ const Admissions: React.FC = () => {
         </Modal>
       )}
 
-      {showDocumentModal && selectedStudent && (
-  <Modal
-    title={`${selectedStudent.name}'s Documents`}
-    isOpen={showDocumentModal}
-    onClose={() => {
-      setShowDocumentModal(false);
-      setEditingDocId(null);
-    }}
-  >
-    <div className="space-y-4">
-      <div>
-        <label htmlFor="uploadNewDocs" className="block text-sm font-medium text-gray-700">
-          Upload New Documents
-        </label>
-        <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-          <div className="space-y-1 text-center">
-            <Upload className="mx-auto h-12 w-12 text-gray-400" />
-            <div className="flex text-sm text-gray-600">
-              <label
-                htmlFor="uploadNewDocs"
-                className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500"
-              >
-                <span>Upload files</span>
-                <input
-                  id="uploadNewDocs"
-                  type="file"
-                  multiple
-                  accept=".png,.jpg,.jpeg,.pdf"
-                  className="sr-only"
-                  onChange={(e) => {
-                    if (e.target.files) {
-                      handleUploadDocument(selectedStudent.id, e.target.files);
-                    }
-                  }}
-                />
+    {showDocumentModal && selectedStudent && (
+        <Modal
+          title={`${selectedStudent.name}'s Documents`}
+          isOpen={showDocumentModal}
+          onClose={() => {
+            setShowDocumentModal(false);
+            setEditingDocId(null);
+            setEditDocName("");
+            setSelectedStudent(null);
+          }}
+        >
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="uploadNewDocs" className="block text-sm font-medium text-gray-700">
+                Upload New Documents
               </label>
-              <p className="pl-1">or drag and drop</p>
-            </div>
-            <p className="text-xs text-gray-500">PNG, JPG, JPEG, PDF up to 5MB each</p>
-          </div>
-        </div>
-      </div>
-      <div>
-        <h3 className="text-lg font-medium">Existing Documents</h3>
-        {selectedStudent.documents && selectedStudent.documents.length > 0 ? (
-          <ul className="mt-2 divide-y divide-gray-200">
-            {selectedStudent.documents.map((doc) => (
-              <li key={doc.id} className="py-2 flex justify-between items-center">
-                <div className="flex items-center space-x-2">
-                  {editingDocId === doc.id ? (
-                    <div className="flex items-center space-x-2">
+              <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                <div className="space-y-1 text-center">
+                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                  <div className="flex text-sm text-gray-600">
+                    <label
+                      htmlFor="uploadNewDocs"
+                      className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500"
+                    >
+                      <span>Upload files</span>
                       <input
-                        type="text"
-                        value={editDocName}
-                        onChange={(e) => setEditDocName(e.target.value)}
-                        className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter document name"
-                      />
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => handleUpdateDocumentName(selectedStudent.id, doc.id, editDocName)}
-                        disabled={!editDocName.trim()}
-                      >
-                        OK
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditingDocId(null)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      <a
-                        href={
-                          doc.file.startsWith("http")
-                            ? doc.file
-                            : `${backendUrl}${doc.file}`
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                        onClick={(e) => {
-                          if (!doc.file) {
-                            e.preventDefault();
-                            toast.error("Invalid document URL");
+                        id="uploadNewDocs"
+                        type="file"
+                        multiple
+                        accept=".png,.jpg,.jpeg,.pdf"
+                        className="sr-only"
+                        onChange={(e) => {
+                          if (e.target.files) {
+                            handleUploadDocument(selectedStudent.id, e.target.files);
                           }
                         }}
-                      >
-                        {doc.description || doc.document_type || doc.file_name || "Not Available"}
-                      </a>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditingDocId(doc.id);
-                          setEditDocName(doc.description || doc.document_type || doc.file_name || "");
-                        }}
-                      >
-                        <Edit size={16} />
-                      </Button>
-                    </>
-                  )}
-                  <p className="text-sm text-gray-500">
-                    {format(new Date(doc.uploaded_at), "MMM dd, yyyy")}
-                  </p>
+                      />
+                    </label>
+                    <p className="pl-1">or drag and drop</p>
+                  </div>
+                  <p className="text-xs text-gray-500">PNG, JPG, JPEG, PDF up to 5MB each</p>
                 </div>
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDownloadDocument(doc)}
-                    disabled={!doc.file}
-                  >
-                    <Download size={16} />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteDocument(selectedStudent.id, doc.id)}
-                  >
-                    <Trash2 size={16} />
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-gray-500">No documents uploaded.</p>
-        )}
-      </div>
-    </div>
-  </Modal>
-)}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-lg font-medium">Existing Documents</h3>
+              {selectedStudent.documents && selectedStudent.documents.length > 0 ? (
+                <ul className="mt-2 divide-y divide-gray-200">
+                  {selectedStudent.documents.map((doc) => (
+                    <li key={doc.id} className="py-2 flex justify-between items-center">
+                      <div className="flex items-center space-x-2">
+                        {editingDocId === doc.id ? (
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="text"
+                              value={editDocName}
+                              onChange={(e) => setEditDocName(e.target.value)}
+                              className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Enter document name"
+                            />
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => handleUpdateDocumentName(selectedStudent.id, doc.id, editDocName)}
+                              disabled={!editDocName.trim()}
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingDocId(null);
+                                setEditDocName("");
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="text-sm text-gray-900">
+                              {doc.description || doc.document_type || doc.file_name || "Unnamed Document"}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingDocId(doc.id);
+                                setEditDocName(doc.description || doc.document_type || doc.file_name || "");
+                              }}
+                            >
+                              <Edit size={16} />
+                            </Button>
+                          </>
+                        )}
+                        <p className="text-sm text-gray-500">
+                          {format(new Date(doc.uploaded_at), "MMM dd, yyyy")}
+                        </p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadDocument(doc)}
+                          disabled={!doc.file}
+                        >
+                          <Download size={16} />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteDocument(selectedStudent.id, doc.id)}
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-gray-500">No documents uploaded.</p>
+              )}
+            </div>
+          </div>
+        </Modal>
+    )}
+    {renderDetailsModal()}
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <div className="bg-white rounded-lg shadow-sm p-6">
@@ -1817,40 +2053,40 @@ const Admissions: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
-                          {student.profile_picture ? (
+                          {student.profile_image ? (
                             <img
-                              src={student.profile_picture}
+                              src={`${backendUrl}${student.profile_image}`}
                               alt={student.name}
                               className="h-10 w-10 rounded-full object-cover"
                             />
                           ) : (
                             <span className="text-sm font-medium text-gray-700">
-                              {student.user?.name?.charAt(0) || student.name?.charAt(0) || ""}
+                              {student.name?.charAt(0) || ""}
                             </span>
                           )}
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {student.user?.name || student.name}
+                            {student.name}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {student.user?.email || student.email}
+                        {student.email}
                       </div>
                       <div className="text-sm text-gray-500">{student.phone}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-700">
                         Class {student.class_name || "N/A"}
-                        {student.section?.name ? ` - ${student.section.name}` : ""}
+                        {student.section_name ? ` - ${student.section_name}` : ""}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-700">
-                        {student.academic_session?.name || "N/A"}
+                        {student.academic_session_name || "N/A"}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -1949,3 +2185,5 @@ const Admissions: React.FC = () => {
 };
 
 export default Admissions;
+
+

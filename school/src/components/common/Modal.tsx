@@ -11,12 +11,15 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 left-0 z-50 flex items-center justify-center w-screen h-screen bg-gray-900 bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
+      <div
+        className="bg-white rounded-lg shadow-lg w-full max-w-2xl mx-4 p-6 relative flex flex-col"
+        style={{ maxHeight: '90vh' }}
+      >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-0 right-4 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           aria-label="Close modal"
         >
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -30,7 +33,9 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
         )}
 
         {/* Content */}
-        <div className="modal-body">{children}</div>
+        <div className="overflow-y-auto" style={{ maxHeight: '65vh' }}>
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -19,9 +19,12 @@ class SchoolSettingsView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
     def get(self, request):
+        logger.info(f"Fetching school settings for user: {request.user}")
         school = School.objects.first()
         if not school:
+            logger.warning("No school found in database")
             return Response({"error": "School not configured"}, status=status.HTTP_404_NOT_FOUND)
+        logger.info(f"Found school: {school.name}, ID: {school.school_id}")
         serializer = SchoolSerializer(school)
         return Response(serializer.data)
 

@@ -4,13 +4,39 @@ from django.contrib.auth.models import Group, Permission
 import logging
 
 logger = logging.getLogger(__name__)
-
-
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'name', 'email', 'role', 'avatar']
+        fields = ['email', 'name', 'role', 'avatar', 'is_active', 'school']
+        read_only_fields = ['is_active', 'avatar']
 
+    def validate(self, data):
+        logger.debug(f"UserSerializer validate data: {data}")
+        if not data.get('email') or not data.get('name') or not data.get('role'):
+            raise serializers.ValidationError("Email, name, and role are required.")
+        if User.objects.filter(email=data.get('email')).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return data
+
+    def create(self, validated_data):
+        email = validated_data.pop('email')
+        name = validated_data.pop('name')
+        role = validated_data.pop('role')
+        school = validated_data.get('school')
+        password = validated_data.get('password')  # Expect password from context or validated_data
+        try:
+            user = User.objects.create_user(
+                email=email,
+                name=name,
+                role=role,
+                school=school,
+                password=password
+            )
+            return user
+        except Exception as e:
+            logger.error(f"User creation error: {str(e)}")
+            raise serializers.ValidationError(f"Failed to create user: {str(e)}")
+        
 
 class SchoolSerializer(serializers.ModelSerializer):
     logo = serializers.ImageField(required=False, allow_null=True)
