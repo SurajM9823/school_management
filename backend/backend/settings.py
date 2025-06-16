@@ -6,8 +6,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security settings
 SECRET_KEY = 't5q#!%w5^gu831pg7++@ro3uk5m(2&jr*@nd)cz@56pcopdm5^'
 DEBUG = True
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
-CORS_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173']
+ALLOWED_HOSTS = ['sms.nirc.com.np', '127.0.0.1', 'localhost']
+CORS_ALLOWED_ORIGINS = ["https://sms.nirc.com.np",]
+CSRF_TRUSTED_ORIGINS = ['https://sms.nirc.com.np']
 
 # Application definition
 INSTALLED_APPS = [
@@ -59,7 +60,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'school_db',
         'USER': 'root',
-        'PASSWORD': 'root',
+        'PASSWORD': 'SchoolSMS@74',
         'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
@@ -119,3 +120,16 @@ SIMPLE_JWT = {
 }
 
 AUTH_USER_MODEL = 'core.User'
+# Security headers and cookie settings
+SECURE_SSL_REDIRECT = False
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+X_FRAME_OPTIONS = "DENY"
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# HSTS (HTTPS Strict Transport Security)
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
