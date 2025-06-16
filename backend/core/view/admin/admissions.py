@@ -108,11 +108,15 @@ class StudentView(ModelViewSet):
             logger.error(f"Create student error: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    # In StudentView, modify perform_update
     def perform_update(self, serializer):
         try:
             with transaction.atomic():
                 instance = serializer.save()
                 return Response(StudentSerializer(instance).data)
+        except serializers.ValidationError as e:
+            logger.error(f"Update student validation error: {e.detail}")
+            return Response({"errors": e.detail}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error(f"Update student error: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

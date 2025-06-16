@@ -1,51 +1,54 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '../../contexts/AuthContext';
 import { useForm, Controller } from "react-hook-form";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
-  UserPlus, Search, Filter, FileText, Users, Check, X, Eye, Download, Edit, Trash2, Upload, Image
+  UserPlus, Search, Filter, FileText, Users, Check, X, Eye, Download, Edit, Trash2, Upload, Image, Settings
 } from "lucide-react";
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import { format } from "date-fns";
 import api from '../../api';
+import { FaFileAlt, FaGraduationCap, FaSignOutAlt } from "react-icons/fa";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 // Define your backend URL here (update as needed)
 const backendUrl = import.meta.env.VITE_REACT_APP_BACKEND_URL || "http://localhost:8000";
 
 interface Student {
   id: number;
-  email: string;
-  name: string;
-  admission_number: string;
+  user_email: string;
+  user_name: string;
+  phone: string;
+  profile_image: string | null;
   class_id: number;
   class_name: string;
-  section_id?: number | null;
-  section_name?: string | null;
-  status: "active" | "on_leave" | "alumni";
+  section_id: number | null;
+  section_name: string | null;
+  academic_session_id: number;
+  academic_session_name: string;
   admission_date: string;
-  alumni_type?: "graduated" | "transferred" | null;
-  academic_session_id?: number;
-  academic_session_name?: string;
+  status: string;
+  alumni_type: string | null;
   dob?: string;
-  gender?: "male" | "female" | "other";
+  gender?: string;
   address?: string;
-  phone?: string;
-  profile_image?: string;
   previous_school?: string;
-  documents?: Document[];
+  admission_number?: string;
+  created_at: string;
+  updated_at: string;
+  documents?: Document[]; // Add this
 }
 
 interface Document {
   id: number;
   file: string;
-  file_name: string;
-  document_type: string;
-  document_type_id?: number;
   description?: string;
+  document_type_id?: number;
   uploaded_at: string;
 }
 
@@ -77,8 +80,8 @@ interface AcademicSession {
 interface NewApplicationForm {
   studentName: string;
   studentEmail: string;
-  classId: string;
-  sectionId: string;
+  class_id: string; // Changed from classId
+  section_id: string; // Changed from sectionId
   admissionDate: string;
   academicSessionId: string;
   dob: string;
@@ -99,8 +102,8 @@ interface NewApplicationForm {
 interface EditStudentForm {
   studentName?: string;
   studentEmail?: string;
-  classId?: string;
-  sectionId?: string;
+  class_id?: string; // Changed from classId
+  section_id?: string; // Changed from sectionId
   admissionDate?: string;
   academicSessionId?: string;
   dob?: string;
@@ -111,11 +114,46 @@ interface EditStudentForm {
   profilePicture?: FileList | null;
 }
 
+interface Certificate {
+  id: number;
+  student_id: number;
+  student_name: string; // Now provided by backend
+  certificate_type: "graduation" | "leave";
+  issue_date: string;
+  class_id: number;
+  class_name: string; // Now provided by backend
+  section_id: number | null;
+  section_name: string | null; // Now provided by backend
+  academic_session_id: number;
+  academic_session_name: string; // Now provided by backend
+  completion_date?: string;
+  reason?: string;
+  remarks?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CertificateForm {
+  certificate_type: "graduation" | "leave";
+  issue_date: string;
+  class_id: string;
+  section_id: string;
+  academic_session_id: string;
+  completion_date?: string;
+  reason?: string;
+  remarks?: string;
+}
+interface Credentials {
+  student: { email: string; password: string };
+  parent?: { email: string; password: string };
+}
+
 const Admissions: React.FC = () => {
   const totalSteps = 3;
   const { user } = useAuth();
   const navigate = useNavigate();
   const [students, setStudents] = useState<Student[]>([]);
+  const [editClassIdState, setEditClassIdState] = useState<number | null>(null);
   const [classes, setClasses] = useState<Class[]>([]);
   const [sections, setSections] = useState<{ [key: number]: Section[] }>({});
   const [parents, setParents] = useState<Parent[]>([]);
@@ -127,7 +165,6 @@ const Admissions: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"active" | "alumni">("active");
   const [showNewApplicationForm, setShowNewApplicationForm] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [editingDocId, setEditingDocId] = useState<number | null>(null);
   const [editDocName, setEditDocName] = useState<string>("");
@@ -140,6 +177,24 @@ const Admissions: React.FC = () => {
     student: { username: string; password: string };
     parent?: { username: string; password: string };
   } | null>(null);
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [certificateFormType, setCertificateFormType] = useState<"graduation" | "leave" | null>(null);
+  const [currentCertificate, setCurrentCertificate] = useState<Certificate | null>(null);
+  const [previewCertificate, setPreviewCertificate] = useState<Certificate | null>(null);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [selectedCredentials, setSelectedCredentials] = useState<{
+      student: { username: string; password: string };
+      parent?: { username: string; password: string };
+    } | null>(null)
+  const [schoolInfo, setSchoolInfo] = useState<{
+    name: string;
+    address: string;
+    phone: string;
+    email: string;
+    website: string;
+    logo: string;
+    motto: string;
+  } | null>(null);
 
   const {
     register,
@@ -150,46 +205,89 @@ const Admissions: React.FC = () => {
     formState: { errors, isValid },
     reset,
     trigger,
-  } = useForm<NewApplicationForm>({
-    mode: "onChange",
-    defaultValues: {
-      studentName: "",
-      studentEmail: "",
-      classId: "",
-      sectionId: "",
-      admissionDate: format(new Date(), "yyyy-MM-dd"),
-      academicSessionId: "",
-      dob: "",
-      gender: "male",
-      address: "",
-      phone: "",
-      parentOption: "new",
-      existingParentId: "",
-      parentName: "",
-      parentEmail: "",
-      parentPhone: "",
-      relationship: "Parent",
-      previousSchool: "",
-      documents: null,
-      profilePicture: null,
-    },
-  });
+} = useForm<NewApplicationForm>({
+  mode: "onChange",
+  defaultValues: {
+    studentName: "",
+    studentEmail: "",
+    class_id: "",
+    section_id: "",
+    admissionDate: format(new Date(), "yyyy-MM-dd"),
+    academicSessionId: "",
+    dob: "",
+    gender: "male",
+    address: "",
+    phone: "",
+    parentOption: "new",
+    existingParentId: "",
+    parentName: "",
+    parentEmail: "",
+    parentPhone: "",
+    relationship: "Parent",
+    previousSchool: "",
+    documents: null,
+    profilePicture: null,
+  },
+});
 
-  const {
-    register: registerEdit,
-    handleSubmit: handleSubmitEdit,
-    control: controlEdit,
-    watch: watchEdit,
-    setValue: setValueEdit,
-    formState: { errors: errorsEdit },
-    reset: resetEdit,
-  } = useForm<EditStudentForm>({
-    mode: "onChange",
-  });
+const {
+  register: registerEdit,
+  handleSubmit: handleSubmitEdit,
+  control: controlEdit,
+  watch: watchEdit,
+  setValue: setValueEdit,
+  formState: { errors: errorsEdit },
+  reset: resetEdit,
+} = useForm<EditStudentForm>({
+  mode: "onChange",
+});
 
-  const selectedClassId = watch("classId");
+const {
+  register: registerCertificate,
+  handleSubmit: handleSubmitCertificate,
+  control: controlCertificate,
+  watch: watchCertificate,
+  setValue: setValueCertificate,
+  formState: { errors: errorsCertificate },
+  reset: resetCertificate,
+} = useForm<CertificateForm>({
+  mode: "onChange",
+  defaultValues: {
+    certificate_type: "graduation",
+    issue_date: format(new Date(), "yyyy-MM-dd"),
+    class_id: "",
+    section_id: "",
+    academic_session_id: "",
+    completion_date: "",
+    reason: "",
+    remarks: "",
+  },
+});
+
+const certificateClassId = watchCertificate("class_id");
+
+  // Move fetchSections above useEffect hooks that use it
+    const fetchSections = useCallback(async (classId: number) => {
+      try {
+        const response = await api.get(`/school/settings/classes/${classId}/sections/`);
+        setSections((prev) => ({ ...prev, [classId]: response.data }));
+      } catch (err) {
+        setSections((prev) => ({ ...prev, [classId]: [] }));
+        toast.error("Failed to load sections.");
+      }
+    }, []);
+
+    useEffect(() => {
+      if (certificateClassId) {
+        fetchSections(parseInt(certificateClassId));
+      } else {
+        setValueCertificate("section_id", "");
+      }
+    }, [certificateClassId, setValueCertificate, fetchSections]);
+
+  const selectedClassId = watch("class_id");
   const parentOption = watch("parentOption");
-  const editClassId = watchEdit("classId");
+  const editClassId = watchEdit("class_id");
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -215,85 +313,68 @@ const Admissions: React.FC = () => {
     );
   }
 
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        const [schoolRes, studentsRes, classesRes, parentsRes, sessionsRes] = await Promise.all([
-          api.get('/school/settings/'),
-          api.get('/students/'),
-          api.get('/school/settings/classes/'),
-          api.get('/parents/'),
-          api.get('/school/settings/sessions/'),
-        ]);
-        console.log('School Settings Response:', schoolRes.data);
-        if (schoolRes.data?.error) {
-          toast.error(schoolRes.data.error || 'Failed to load school settings');
-          setSchoolId(null);
-        } else {
-          setSchoolId(schoolRes.data?.school_id || null);
-        }
-        setStudents(studentsRes.data);
-        setClasses(classesRes.data);
-        setParents(parentsRes.data);
-        setSessions(sessionsRes.data);
-        const activeSession = sessionsRes.data.find((s: AcademicSession) => s.status === 'active');
-        if (activeSession) {
-          setValue('academicSessionId', activeSession.id.toString());
-        } else {
-          toast.error('No active academic session found. Please select one manually.');
-        }
-      } catch (err: any) {
-        console.error('Load Initial Data Error:', err.response?.data || err.message);
-        toast.error(err.response?.data?.detail || 'Failed to load initial data');
+useEffect(() => {
+  const loadInitialData = async () => {
+    try {
+      const [schoolRes, studentsRes, classesRes, parentsRes, sessionsRes] = await Promise.all([
+        api.get('/school/settings/'),
+        api.get('/students/'),
+        api.get('/school/settings/classes/'),
+        api.get('/parents/'),
+        api.get('/school/settings/sessions/'),
+      ]);
+      console.log("Classes response:", classesRes.data); // Debug
+      setSchoolInfo(schoolRes.data);
+      setSchoolId(schoolRes.data?.school_id || null);
+      setStudents(studentsRes.data);
+      setClasses(classesRes.data);
+      setParents(parentsRes.data);
+      setSessions(sessionsRes.data);
+      const activeSession = sessionsRes.data.find((s: AcademicSession) => s.status === 'active');
+      if (activeSession) {
+        setValue('academicSessionId', activeSession.id.toString());
+        setValueCertificate('academic_session_id', activeSession.id.toString());
       }
-    };
-    loadInitialData();
-  }, [setValue]);
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to load initial data');
+    }
+  };
+  loadInitialData();
+}, [setValue, setValueCertificate]);
+
 
   useEffect(() => {
     if (selectedClassId) {
       fetchSections(parseInt(selectedClassId));
     } else {
-      setValue("sectionId", "");
+      setValue("section_id", "");
     }
   }, [selectedClassId, setValue]);
 
   useEffect(() => {
-    if (editClassId) {
-      fetchSections(parseInt(editClassId));
+    if (editClassIdState) {
+      fetchSections(editClassIdState);
     } else {
-      setValueEdit("sectionId", "");
+      setValueEdit("section_id", "");
     }
-  }, [editClassId, setValueEdit]);
+  }, [editClassIdState, setValueEdit, fetchSections]);
 
-  const fetchSections = async (classId: number) => {
+  const handleStatusChange = async (student: Student, certificateType: "graduation" | "leave") => {
+    console.log("handleStatusChange called", { studentId: student.id, certificateType });
     try {
-      const response = await api.get(`/school/settings/classes/${classId}/sections/`);
-      setSections((prev) => ({ ...prev, [classId]: response.data }));
+      setSelectedStudent(student);
+      setCertificateFormType(certificateType);
+      setValueCertificate("certificate_type", certificateType);
+      setValueCertificate("class_id", student.class_id.toString());
+      setValueCertificate("section_id", student.section_id?.toString() || "");
+      setValueCertificate("academic_session_id", student.academic_session_id.toString());
+      setShowCertificateModal(true);
+      console.log("State updated", { showCertificateModal: true, selectedStudent: student.id });
     } catch (err) {
-      setSections((prev) => ({ ...prev, [classId]: [] }));
-      toast.error("Failed to load sections.");
+      console.error("Error initiating status change:", err);
+      toast.error("Failed to initiate status change.");
     }
   };
-
-  const handleStatusChange = async (
-    id: number,
-    status: "active" | "on_leave" | "alumni",
-    alumniType?: "graduated" | "transferred"
-  ) => {
-    try {
-      await api.put(`/students/${id}/`, { status, alumni_type: alumniType });
-      setStudents(
-        students.map((student) =>
-          student.id === id ? { ...student, status, alumni_type: alumniType } : student
-        )
-      );
-      toast.success(`Student status updated to ${status}${alumniType ? ` (${alumniType})` : ""}`);
-    } catch (err) {
-      toast.error("Failed to update student status.");
-    }
-  };
-
   const handleDeleteStudent = async (id: number) => {
     if (!window.confirm("Are you sure you want to delete this student?")) return;
     try {
@@ -304,56 +385,179 @@ const Admissions: React.FC = () => {
       toast.error("Failed to delete student.");
     }
   };
+  const onSubmitCertificate = async (data: CertificateForm) => {
+    if (!selectedStudent || !schoolId) {
+      toast.error("Invalid student or school ID");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const payload = {
+        student_id: selectedStudent.id,
+        student_name: selectedStudent.user_name, // Include for backend consistency
+        certificate_type: data.certificate_type,
+        issue_date: data.issue_date,
+        class_id: parseInt(data.class_id),
+        class_name: classes.find((cls) => cls.id === parseInt(data.class_id))?.name || selectedStudent.class_name,
+        section_id: data.section_id ? parseInt(data.section_id) : null,
+        section_name: data.section_id
+          ? sections[parseInt(data.class_id)]?.find((sec) => sec.id === parseInt(data.section_id))?.name || selectedStudent.section_name
+          : null,
+        academic_session_id: parseInt(data.academic_session_id),
+        academic_session_name: sessions.find((s) => s.id === parseInt(data.academic_session_id))?.name || selectedStudent.academic_session_name,
+        completion_date: data.completion_date || null,
+        reason: data.reason || null,
+        remarks: data.remarks || null,
+      };
+      console.log("Certificate payload:", payload);
+      let response;
+      if (currentCertificate) {
+        response = await api.put(`/certificates/${currentCertificate.id}/`, payload);
+      } else {
+        response = await api.post('/certificates/', payload);
+      }
+      const certificate = response.data;
+      setPreviewCertificate(certificate);
+      setStudents(
+        students.map((s) =>
+          s.id === selectedStudent.id
+            ? {
+                ...s,
+                status: "alumni",
+                alumni_type: certificate.certificate_type === "graduation" ? "graduated" : "transferred",
+              }
+            : s
+        )
+      );
+      toast.success(currentCertificate ? "Certificate updated successfully!" : "Certificate created successfully!");
+    } catch (error: any) {
+      console.error("Certificate submission error:", error.response?.data || error);
+      toast.error(error.response?.data?.detail || "Failed to save certificate");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-const handleEditStudent = async (student: Student) => {
-  setSelectedStudent(student);
-  setValueEdit("studentName", student.name || "");
-  setValueEdit("studentEmail", student.email || "");
-  setValueEdit("classId", student.class_id?.toString() || "");
-  setValueEdit("sectionId", student.section_id?.toString() || "");
-  setValueEdit("admissionDate", student.admission_date || "");
-  setValueEdit("academicSessionId", student.academic_session_id?.toString() || "");
-  setValueEdit("dob", student.dob || "");
-  setValueEdit("gender", student.gender || "male");
-  setValueEdit("address", student.address || "");
-  setValueEdit("phone", student.phone || "");
-  setValueEdit("previousSchool", student.previous_school || "");
-  setValueEdit("profilePicture", null);
-  setEditProfilePicture(null);
-  setImagePreview(student.profile_image ? `${backendUrl}${student.profile_image}` : null);
-  if (student.class_id) {
-    await fetchSections(student.class_id);
-  }
-  setShowEditModal(true);
-};
+  const handleViewCertificate = async (student: Student) => {
+      try {
+        setSelectedStudent(student);
+        setCertificateFormType(student.alumni_type as "graduation" | "leave");
+        const response = await api.get(`/certificates/by-student/${student.id}/`);
+        console.log("Certificate fetch response:", response.data); // Add for debugging
+        if (response.data.length > 0) {
+          // Set the first certificate found
+          setCurrentCertificate(response.data[0]);
+          setPreviewCertificate(response.data[0]);
+        } else {
+          // No certificate found, initialize form
+          setValueCertificate("certificate_type", student.alumni_type as "graduation" | "leave");
+          setValueCertificate("class_id", student.class_id.toString());
+          setValueCertificate("section_id", student.section_id?.toString() || "");
+          setValueCertificate("academic_session_id", student.academic_session_id.toString());
+          setCurrentCertificate(null);
+          setPreviewCertificate(null);
+        }
+        setShowCertificateModal(true);
+      } catch (err: any) {
+        console.error("Error fetching certificate:", err);
+        toast.error(err.response?.data?.detail || "Failed to load certificate.");
+      }
+  };
+  
+  const handleViewCredentials = async (student: Student) => {
+    try {
+      setSelectedStudent(student);
+      setIsLoading(true);
+
+      // Prepare student credentials
+      let studentCredentials = {
+        email: student.user_email,
+        password: "",
+      };
+
+      // Check if this student was recently added and has credentials
+      if (credentials && credentials.student.email === student.user_email) {
+        studentCredentials.password = credentials.student.password;
+      }
+
+      // Fetch parent for this student
+      let parentCredentials = null;
+      const parentResponse = await api.get(`/parents/`);
+      const parent = parentResponse.data.find((p: Parent) => p.students?.includes(student.id));
+      if (parent) {
+        parentCredentials = {
+          email: parent.email,
+          password: credentials && credentials.parent && credentials.parent.email === parent.email ? credentials.parent.password : "",
+        };
+      }
+
+      setSelectedCredentials({
+        student: studentCredentials,
+        parent: parentCredentials,
+      });
+      setShowCredentialsModal(true);
+    } catch (err: any) {
+      console.error("Error fetching credentials:", err);
+      toast.error(err.response?.data?.detail || "Failed to load credentials.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEditStudent = async (student: Student) => {
+      setSelectedStudent(student);
+      setValueEdit("studentName", student.user_name || "");
+      setValueEdit("studentEmail", student.user_email || "");
+      console.log("Initializing class_id:", student.class_id, typeof student.class_id); // Debug
+      setValueEdit("class_id", typeof student.class_id === "number" ? student.class_id.toString() : "");
+      setValueEdit("section_id", student.section_id ? student.section_id.toString() : "");
+      setValueEdit("admissionDate", student.admission_date || "");
+      setValueEdit("academicSessionId", student.academic_session_id ? student.academic_session_id.toString() : "");
+      setValueEdit("dob", student.dob || "");
+      setValueEdit("gender", (student.gender as "male" | "female" | "other") || "male");
+      setValueEdit("address", student.address || "");
+      setValueEdit("phone", student.phone || "");
+      setValueEdit("previousSchool", student.previous_school || "");
+      setValueEdit("profilePicture", null);
+      setEditProfilePicture(null);
+      setImagePreview(student.profile_image ? `${student.profile_image}` : null);
+      if (typeof student.class_id === "number") {
+        setEditClassIdState(student.class_id);
+        await fetchSections(student.class_id);
+      } else {
+        console.error("Invalid student.class_id:", student.class_id);
+        setEditClassIdState(null);
+      }
+      setShowEditModal(true);
+  };
 
   const handleUpdateDocumentName = async (studentId: number, docId: number, newName: string) => {
-  if (!newName.trim()) {
-    toast.error("Document name cannot be empty");
-    return;
-  }
-  try {
-    const response = await api.put(`/students/${studentId}/documents/${docId}/`, {
-      description: newName.trim(),
-    });
-    setSelectedStudent((prev) =>
-      prev
-        ? {
-            ...prev,
-            documents: prev.documents?.map((doc) =>
-              doc.id === docId ? { ...doc, description: newName.trim() } : doc
-            ),
-          }
-        : null
-    );
-    setEditingDocId(null);
-    setEditDocName("");
-    toast.success("Document name updated successfully");
-  } catch (err) {
-    toast.error("Failed to update document name");
-    console.error(err);
-  }
-};
+    if (!newName.trim()) {
+      toast.error("Document name cannot be empty");
+      return;
+    }
+    try {
+      const response = await api.put(`/students/${studentId}/documents/${docId}/`, {
+        description: newName.trim(),
+      });
+      setSelectedStudent((prev) =>
+        prev
+          ? {
+              ...prev,
+              documents: prev.documents?.map((doc) =>
+                doc.id === docId ? { ...doc, ...response.data } : doc
+              ),
+            }
+          : null
+      );
+      setEditingDocId(null);
+      setEditDocName("");
+      toast.success("Document name updated successfully");
+    } catch (err: any) {
+      toast.error(err.response?.data?.description?.join(', ') || "Failed to update document name");
+      console.error(err);
+    }
+  };
 
   const handleViewDocuments = async (student: Student) => {
     try {
@@ -377,7 +581,7 @@ const handleEditStudent = async (student: Student) => {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', doc.file_name || doc.document_type || 'document');
+    link.setAttribute('download', doc.file.split('/').pop() || 'document');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -387,7 +591,7 @@ const handleEditStudent = async (student: Student) => {
     toast.error("Failed to download document");
     console.error(err);
   }
-};
+  };
 
   const handleDeleteDocument = async (studentId: number, docId: number) => {
     if (!window.confirm("Are you sure you want to delete this document?")) return;
@@ -424,7 +628,7 @@ const handleEditStudent = async (student: Student) => {
     let fields: (keyof NewApplicationForm)[] = [];
     switch (step) {
       case 1:
-        fields = ["studentName", "dob", "gender", "classId", "address", "academicSessionId"];
+        fields = ["studentName", "dob", "gender", "class_id", "address", "academicSessionId"];
         break;
       case 2:
         fields = ["studentEmail", "phone", "relationship"];
@@ -445,7 +649,7 @@ const handleEditStudent = async (student: Student) => {
     const fields: (keyof NewApplicationForm)[] = [
       "studentName",
       "studentEmail",
-      "classId",
+      "class_id",
       "academicSessionId",
       "admissionDate",
       "dob",
@@ -487,7 +691,7 @@ const handleEditStudent = async (student: Student) => {
     const requiredFields = [
       { key: 'studentEmail', label: 'Student Email' },
       { key: 'studentName', label: 'Student Name' },
-      { key: 'classId', label: 'Class ID' },
+      { key: 'class_id', label: 'Class ID' },
       { key: 'academicSessionId', label: 'Academic Session ID' },
       { key: 'admissionDate', label: 'Admission Date' },
       { key: 'dob', label: 'Date of Birth' },
@@ -520,8 +724,8 @@ const handleEditStudent = async (student: Student) => {
       formData.append('email', data.studentEmail.trim());
       formData.append('name', data.studentName.trim());
       formData.append('school_id', schoolId);
-      formData.append('class_id', data.classId);
-      if (data.sectionId) formData.append('section_id', data.sectionId);
+      formData.append('class_id', data.class_id);
+      if (data.section_id) formData.append('section_id', data.section_id);
       formData.append('admission_date', data.admissionDate);
       formData.append('academic_session_id', data.academicSessionId);
       formData.append('status', 'active');
@@ -601,7 +805,8 @@ const handleEditStudent = async (student: Student) => {
     } finally {
       setIsLoading(false);
     }
-    };  
+    }; 
+
   const onEditSubmit = async (data: EditStudentForm) => {
     if (!selectedStudent || !schoolId) {
       toast.error("Invalid student or school ID");
@@ -612,10 +817,33 @@ const handleEditStudent = async (student: Student) => {
       const formData = new FormData();
       if (data.studentEmail) formData.append("email", data.studentEmail.trim());
       if (data.studentName) formData.append("name", data.studentName.trim());
-      if (data.classId) formData.append("class_id", data.classId);
-      if (data.sectionId) formData.append("section_id", data.sectionId);
+      if (data.class_id) {
+        console.log("Raw class_id from form:", data.class_id, typeof data.class_id); // Debug
+        const classId = parseInt(data.class_id);
+        console.log("Parsed classId:", classId); // Debug
+        if (isNaN(classId)) {
+          toast.error("Invalid class selection");
+          throw new Error("Invalid class_id: " + JSON.stringify(data.class_id));
+        }
+        formData.append("class_id", classId.toString());
+      }
+      if (data.section_id) {
+        const sectionId = parseInt(data.section_id);
+        if (isNaN(sectionId)) {
+          toast.error("Invalid section selection");
+          throw new Error("Invalid section_id: " + data.section_id);
+        }
+        formData.append("section_id", sectionId.toString());
+      }
       if (data.admissionDate) formData.append("admission_date", data.admissionDate);
-      if (data.academicSessionId) formData.append("academic_session_id", data.academicSessionId);
+      if (data.academicSessionId) {
+        const sessionId = parseInt(data.academicSessionId);
+        if (isNaN(sessionId)) {
+          toast.error("Invalid academic session selection");
+          throw new Error("Invalid academic_session_id: " + data.academicSessionId);
+        }
+        formData.append("academic_session_id", sessionId.toString());
+      }
       if (data.dob) formData.append("dob", data.dob);
       if (data.gender) formData.append("gender", data.gender);
       if (data.address) formData.append("address", data.address.trim());
@@ -625,6 +853,8 @@ const handleEditStudent = async (student: Student) => {
         formData.append("profile_image", data.profilePicture[0]);
       }
       formData.append("school_id", schoolId);
+
+      console.log('Edit FormData being sent:', Object.fromEntries(formData.entries())); // Debug
 
       const response = await api.put(`/students/${selectedStudent.id}/`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -640,7 +870,15 @@ const handleEditStudent = async (student: Student) => {
       setEditProfilePicture(null);
       toast.success("Student updated successfully!");
     } catch (error: any) {
-      toast.error("Failed to update student: " + (error.response?.data?.detail || error.message));
+      console.error('Edit submission error:', error.response?.data || error.message);
+      if (error.response?.data?.errors) {
+        Object.entries(error.response.data.errors).forEach(([key, value]) => {
+          const message = Array.isArray(value) ? value.join(', ') : String(value);
+          toast.error(`${key}: ${message}`);
+        });
+      } else {
+        toast.error(error.response?.data?.error || error.message || "Failed to update student.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -648,8 +886,8 @@ const handleEditStudent = async (student: Student) => {
 
   const filteredStudents = students.filter((student) => {
     const matchesSearch =
-      student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.user_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.admission_number?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === "all" ||
@@ -666,10 +904,6 @@ const handleEditStudent = async (student: Student) => {
     return matchesSearch && matchesStatus && matchesClass && matchesCategory;
   });
 
-  const handleViewDetails = (student: Student) => {
-    setSelectedStudent(student);
-    setShowDetailsModal(true);
-  };
 
   const renderApplicationForm = () => {
     switch (currentStep) {
@@ -743,12 +977,12 @@ const handleEditStudent = async (student: Student) => {
                 Class
               </label>
               <Controller
-                name="classId"
+                name="class_id"
                 control={control}
                 rules={{ required: "Class is required" }}
                 render={({ field }) => (
                   <select
-                    id="classId"
+                    id="class_id"
                     {...field}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -761,20 +995,12 @@ const handleEditStudent = async (student: Student) => {
                   </select>
                 )}
               />
-              {errors.classId && (
-                <p className="mt-1 text-sm text-red-600">{errors.classId.message}</p>
-              )}
-            </div>
-            <div>
-              <label htmlFor="sectionId" className="block text-sm font-medium text-gray-700">
-                Section
-              </label>
               <Controller
-                name="sectionId"
+                name="section_id"
                 control={control}
                 render={({ field }) => (
                   <select
-                    id="sectionId"
+                    id="section_id"
                     {...field}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
                     disabled={!selectedClassId}
@@ -1157,93 +1383,204 @@ const handleEditStudent = async (student: Student) => {
     }
   };
 
-  const renderDetailsModal = () => {
-      if (!selectedStudent) return null;
-      return (
-        <Modal
-          title={`${selectedStudent.name}'s Details`}
-          isOpen={showDetailsModal}
-          onClose={() => {
-            setShowDetailsModal(false);
-            setSelectedStudent(null);
-          }}
-        >
-          <div className="space-y-4">
-            <div className="flex items-center space-x-4">
-              {selectedStudent.profile_image ? (
-                <img
-                  src={`${backendUrl}${selectedStudent.profile_image}`}
-                  alt={selectedStudent.name}
-                  className="h-20 w-20 rounded-full object-cover"
-                />
-              ) : (
-                <div className="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center">
-                  <span className="text-gray-500">{selectedStudent.name?.charAt(0) || "N/A"}</span>
-                </div>
-              )}
-              <div>
-                <h3 className="text-lg font-medium">{selectedStudent.name || "N/A"}</h3>
-                <p className="text-sm text-gray-500">{selectedStudent.email || "N/A"}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Admission Number</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedStudent.admission_number || "N/A"}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Admission Date</label>
-                <p className="mt-1 text-sm text-gray-900">
-                  {selectedStudent.admission_date
-                    ? format(new Date(selectedStudent.admission_date), "MMM dd, yyyy")
-                    : "N/A"}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
-                <p className="mt-1 text-sm text-gray-900">
-                  {selectedStudent.dob ? format(new Date(selectedStudent.dob), "MMM dd, yyyy") : "N/A"}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Gender</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedStudent.gender || "N/A"}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Class</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedStudent.class_name || "N/A"}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Section</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedStudent.section_name || "N/A"}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Phone</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedStudent.phone || "N/A"}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Address</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedStudent.address || "N/A"}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Previous School</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedStudent.previous_school || "N/A"}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Academic Session</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedStudent.academic_session_name || "N/A"}</p>
-              </div>
-            </div>
-            <div className="mt-6">
-              <Button variant="primary" onClick={() => handleViewDocuments(selectedStudent)}>
-                View Documents
-              </Button>
-            </div>
+  const renderCertificateForm = () => {
+    return (
+      <form onSubmit={handleSubmitCertificate(onSubmitCertificate)} className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div>
+          <label htmlFor="certificate_type" className="block text-sm font-medium text-gray-700">
+            Certificate Type
+          </label>
+          <Controller
+            name="certificate_type"
+            control={controlCertificate}
+            rules={{ required: "Certificate type is required" }}
+            render={({ field }) => (
+              <select
+                id="certificate_type"
+                {...field}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+                disabled={!!currentCertificate}
+              >
+                <option value="graduation">Graduation</option>
+                <option value="leave">Leave</option>
+              </select>
+            )}
+          />
+          {errorsCertificate.certificate_type && (
+            <p className="mt-1 text-sm text-red-600">{errorsCertificate.certificate_type.message}</p>
+          )}
+        </div>
+        <div>
+          <label htmlFor="issue_date" className="block text-sm font-medium text-gray-700">
+            Issue Date
+          </label>
+          <input
+            id="issue_date"
+            type="date"
+            {...registerCertificate("issue_date", {
+              required: "Issue date is required",
+              validate: (value) => {
+                const issueDate = new Date(value);
+                const today = new Date();
+                return issueDate <= today || "Issue date cannot be in the future";
+              },
+            })}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+          />
+          {errorsCertificate.issue_date && (
+            <p className="mt-1 text-sm text-red-600">{errorsCertificate.issue_date.message}</p>
+          )}
+        </div>
+        <div>
+          <label htmlFor="class_id" className="block text-sm font-medium text-gray-700">
+            Class
+          </label>
+          <Controller
+            name="class_id"
+            control={controlCertificate}
+            rules={{ required: "Class is required" }}
+            render={({ field }) => (
+              <select
+                id="class_id"
+                {...field}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select Class</option>
+                {classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          />
+          {errorsCertificate.class_id && (
+            <p className="mt-1 text-sm text-red-600">{errorsCertificate.class_id.message}</p>
+          )}
+        </div>
+        <div>
+          <label htmlFor="section_id" className="block text-sm font-medium text-gray-700">
+            Section
+          </label>
+          <Controller
+            name="section_id"
+            control={controlCertificate}
+            render={({ field }) => (
+              <select
+                id="section_id"
+                {...field}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+                disabled={!certificateClassId}
+              >
+                <option value="">Select Section</option>
+                {(sections[parseInt(certificateClassId) || 0] || []).map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          />
+        </div>
+        <div>
+          <label htmlFor="academic_session_id" className="block text-sm font-medium text-gray-700">
+            Academic Session
+          </label>
+          <Controller
+            name="academic_session_id"
+            control={controlCertificate}
+            rules={{ required: "Academic session is required" }}
+            render={({ field }) => (
+              <select
+                id="academic_session_id"
+                {...field}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select Session</option>
+                {sessions.map((session) => (
+                  <option key={session.id} value={session.id}>
+                    {session.name} ({session.status})
+                  </option>
+                ))}
+              </select>
+            )}
+          />
+          {errorsCertificate.academic_session_id && (
+            <p className="mt-1 text-sm text-red-600">{errorsCertificate.academic_session_id.message}</p>
+          )}
+        </div>
+        {watchCertificate("certificate_type") === "graduation" && (
+          <div>
+            <label htmlFor="completion_date" className="block text-sm font-medium text-gray-700">
+              Completion Date
+            </label>
+            <input
+              id="completion_date"
+              type="date"
+              {...registerCertificate("completion_date", {
+                required: watchCertificate("certificate_type") === "graduation" && "Completion date is required",
+                validate: (value) => {
+                  if (!value) return true;
+                  const completionDate = new Date(value);
+                  const today = new Date();
+                  return completionDate <= today || "Completion date cannot be in the future";
+                },
+              })}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+            />
+            {errorsCertificate.completion_date && (
+              <p className="mt-1 text-sm text-red-600">{errorsCertificate.completion_date.message}</p>
+            )}
           </div>
-        </Modal>
-      );
-    };
-const renderEditForm = () => {
+        )}
+        {watchCertificate("certificate_type") === "leave" && (
+          <div className="sm:col-span-2">
+            <label htmlFor="reason" className="block text-sm font-medium text-gray-700">
+              Reason for Leaving
+            </label>
+            <textarea
+              id="reason"
+              {...registerCertificate("reason")}
+              rows={3}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        )}
+        <div className="sm:col-span-2">
+          <label htmlFor="remarks" className="block text-sm font-medium text-gray-700">
+            Remarks (Optional)
+          </label>
+          <textarea
+            id="remarks"
+            {...registerCertificate("remarks")}
+            rows={3}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div className="sm:col-span-2 flex justify-end space-x-4">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowCertificateModal(false);
+              setCurrentCertificate(null);
+              resetCertificate();
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={isLoading}
+          >
+            {isLoading ? "Saving..." : currentCertificate ? "Update Certificate" : "Create Certificate"}
+          </Button>
+        </div>
+      </form>
+    );
+  };
+
+  const renderEditForm = () => {
   return (
     <form onSubmit={handleSubmitEdit(onEditSubmit)} className="grid grid-cols-1 gap-6 sm:grid-cols-2">
       <div>
@@ -1330,44 +1667,53 @@ const renderEditForm = () => {
           Class
         </label>
         <Controller
-          name="classId"
+          name="class_id"
           control={controlEdit}
+          rules={{ required: "Class is required" }}
           render={({ field }) => (
             <select
               id="editClassId"
-              {...field}
+              value={field.value || ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                console.log('Selected class_id:', value, typeof value); // Debug
+                field.onChange(value); // Update form state
+                if (value) {
+                  const classId = parseInt(value);
+                  setEditClassIdState(classId); // Update editClassId
+                  fetchSections(classId); // Fetch sections
+                } else {
+                  setEditClassIdState(null);
+                  setSections({}); // Clear sections
+                }
+              }}
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select Class</option>
               {classes.map((cls) => (
-                <option key={cls.id} value={cls.id}>
+                <option key={cls.id} value={cls.id.toString()}>
                   {cls.name}
                 </option>
               ))}
             </select>
           )}
         />
-        {errorsEdit.classId && (
-          <p className="mt-1 text-sm text-red-600">{errorsEdit.classId.message}</p>
+        {errorsEdit.class_id && (
+          <p className="mt-1 text-sm text-red-600">{errorsEdit.class_id.message}</p>
         )}
-      </div>
-      <div>
-        <label htmlFor="editSectionId" className="block text-sm font-medium text-gray-700">
-          Section
-        </label>
         <Controller
-          name="sectionId"
+          name="section_id"
           control={controlEdit}
           render={({ field }) => (
             <select
               id="editSectionId"
               {...field}
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
-              disabled={!editClassId}
+              disabled={!editClassIdState}
             >
               <option value="">Select Section</option>
-              {(sections[parseInt(editClassId)] || []).map((section) => (
-                <option key={section.id} value={section.id}>
+              {(editClassIdState && sections[editClassIdState] ? sections[editClassIdState] : []).map((section) => (
+                <option key={section.id} value={section.id.toString()}>
                   {section.name}
                 </option>
               ))}
@@ -1390,7 +1736,7 @@ const renderEditForm = () => {
             >
               <option value="">Select Session</option>
               {sessions.map((session) => (
-                <option key={session.id} value={session.id}>
+                <option key={session.id} value={session.id.toString()}>
                   {session.name} ({session.status})
                 </option>
               ))}
@@ -1552,7 +1898,93 @@ const renderEditForm = () => {
       </div>
     </form>
   );
-};
+  };
+
+  const CertificatePreview = ({ certificate, onEdit }: { certificate: Certificate; onEdit: () => void }) => {
+    const downloadCertificate = async () => {
+      const element = document.getElementById("certificate-preview");
+      if (!element) return;
+
+      const canvas = await html2canvas(element, { scale: 2 });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`${certificate.certificate_type}_certificate_${certificate.student_name}.pdf`);
+    };
+
+    return (
+    <div className="space-y-4">
+      <div id="certificate-preview" className="bg-white p-10 border border-gray-300 shadow-lg max-w-2xl mx-auto">
+        <div className="text-center">
+          {schoolInfo?.logo && (
+            <img src={`${backendUrl}${schoolInfo.logo}`} alt="School Logo" className="h-20 mx-auto mb-4" />
+          )}
+          <h1 className="text-3xl font-bold">{schoolInfo?.name || "School Name"}</h1>
+          <p className="text-sm">{schoolInfo?.address || "Address"}</p>
+          <p className="text-sm">{schoolInfo?.phone || "Phone"} | {schoolInfo?.email || "Email"}</p>
+          <p className="text-sm">{schoolInfo?.website || "Website"}</p>
+          {schoolInfo?.motto && <p className="text-sm italic mt-2">{schoolInfo.motto}</p>}
+        </div>
+        <div className="mt-8 text-center">
+          <h2 className="text-2xl font-semibold">
+            {certificate.certificate_type === "graduation" ? "Graduation Certificate" : "Leaving Certificate"}
+          </h2>
+          <p className="mt-4 text-lg">This is to certify that</p>
+          <p className="text-xl font-bold font-cursive">
+            {certificate.student_name || selectedStudent?.user_name || "Unknown Student"}
+          </p>
+          <p className="mt-2 font-cursive">
+            of Class {certificate.class_name || selectedStudent?.class_name || "N/A"}
+            {certificate.section_name ? `, Section ${certificate.section_name}` : selectedStudent?.section_name ? `, Section ${selectedStudent.section_name}` : ""}
+          </p>
+          {certificate.certificate_type === "graduation" && (
+            <>
+              <p className="mt-2">
+                has successfully completed the academic requirements for the{" "}
+                {certificate.academic_session_name || selectedStudent?.academic_session_name || "N/A"} session
+              </p>
+              <p className="mt-2">
+                on {certificate.completion_date ? format(new Date(certificate.completion_date), "MMMM dd, yyyy") : "N/A"}.
+              </p>
+            </>
+          )}
+          {certificate.certificate_type === "leave" && certificate.reason && (
+            <p className="mt-2">has left the school due to: {certificate.reason}</p>
+          )}
+          <p className="mt-2">
+            Certificate issued on {certificate.issue_date ? format(new Date(certificate.issue_date), "MMMM dd, yyyy") : "N/A"}.
+          </p>
+          {certificate.remarks && (
+            <p className="mt-4 text-sm italic">Remarks: {certificate.remarks}</p>
+          )}
+        </div>
+        <div className="mt-10 flex justify-between">
+          <div className="text-center">
+            <p>______________________</p>
+            <p>Principal's Signature</p>
+          </div>
+          <div className="text-center">
+            <p>______________________</p>
+            <p>Registrar's Signature</p>
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-end space-x-4">
+        <Button variant="outline" onClick={onEdit}>
+          Edit Certificate
+        </Button>
+        <Button variant="primary" onClick={downloadCertificate}>
+          Download PDF
+        </Button>
+      </div>
+    </div>
+  );
+
+  };
+
 
   return (
     <div className="space-y-6 p-6">
@@ -1700,43 +2132,42 @@ const renderEditForm = () => {
             </div>
           </form>
           {credentials && (
-            <div className="mt-4 p-4 bg-green-100 rounded-md">
-              <h3 className="text-lg font-medium">Generated Credentials</h3>
+          <div className="mt-4 p-4 bg-green-100 rounded-md">
+            <h3 className="text-lg font-medium">Generated Credentials</h3>
+            <p>
+              Student: Email: {credentials.student.email}, Password: {credentials.student.password}
+            </p>
+            {credentials.parent && (
               <p>
-                Student: Username: {credentials.student.username}, Password: {credentials.student.password}
+                Parent: Email: {credentials.parent.email}, Password: {credentials.parent.password}
               </p>
-              {credentials.parent && (
-                <p>
-                  Parent: Username: {credentials.parent.username}, Password: {credentials.parent.password}
-                </p>
-              )}
-              <Button
-                variant="outline"
-                className="mt-2"
-                onClick={() => {
-                  const text = `
-                    Student Credentials:
-                    Username: ${credentials.student.username}
-                    Password: ${credentials.student.password}
-                    ${
-                      credentials.parent
-                        ? `
-                          Parent Credentials:
-                          Username: ${credentials.parent.username}
-                          Password: ${credentials.parent.password}
-                        `
-                        : ""
-                    }
-                  `;
-                  navigator.clipboard.writeText(text);
-                  toast.success("Credentials copied to clipboard");
-                }}
-              >
-                Copy Credentials
-              </Button>
-            </div>
-          )}
-        </Card>
+            )}
+            <Button
+              variant="outline"
+              className="mt-2"
+              onClick={() => {
+                const text = `
+                  Student Credentials:
+                  Email: ${credentials.student.email}
+                  Password: ${credentials.student.password}
+                  ${
+                    credentials.parent
+                      ? `
+                        Parent Credentials:
+                        Email: ${credentials.parent.email}
+                        Password: ${credentials.parent.password}
+                      `
+                      : ""
+                  }
+                `;
+                navigator.clipboard.writeText(text);
+                toast.success("Credentials copied to clipboard");
+              }}
+            >
+              Copy Credentials
+            </Button>
+          </div>
+        )}        </Card>
       )}
 
       {showEditModal && (
@@ -1773,7 +2204,7 @@ const renderEditForm = () => {
 
     {showDocumentModal && selectedStudent && (
         <Modal
-          title={`${selectedStudent.name}'s Documents`}
+          title={`${selectedStudent.user_name}'s Documents`}
           isOpen={showDocumentModal}
           onClose={() => {
             setShowDocumentModal(false);
@@ -1852,20 +2283,29 @@ const renderEditForm = () => {
                           </div>
                         ) : (
                           <>
-                            <span className="text-sm text-gray-900">
-                              {doc.description || doc.document_type || doc.file_name || "Unnamed Document"}
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingDocId(doc.id);
-                                setEditDocName(doc.description || doc.document_type || doc.file_name || "");
-                              }}
-                            >
-                              <Edit size={16} />
-                            </Button>
-                          </>
+                            <a
+                            href={
+                              doc.file.startsWith("http")
+                                ? doc.file
+                                : `${backendUrl.replace(/\/$/, "")}${doc.file.startsWith("/") ? "" : "/"}${doc.file}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 underline hover:text-blue-800"
+                          >
+                            {doc.description || doc.file.split('/').pop() || "Unnamed Document"}
+                          </a>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingDocId(doc.id);
+                              setEditDocName(doc.description || doc.file.split('/').pop() || "");
+                            }}
+                          >
+                            <Edit size={16} />
+                          </Button>
+                        </>
                         )}
                         <p className="text-sm text-gray-500">
                           {format(new Date(doc.uploaded_at), "MMM dd, yyyy")}
@@ -1898,7 +2338,105 @@ const renderEditForm = () => {
           </div>
         </Modal>
     )}
-    {renderDetailsModal()}
+
+    {showCertificateModal && selectedStudent && (
+        <Modal
+          title={previewCertificate ? "Certificate Preview" : currentCertificate ? "Edit Certificate" : "Create Certificate"}
+          isOpen={showCertificateModal}
+          onClose={() => {
+            setShowCertificateModal(false);
+            setCurrentCertificate(null);
+            setPreviewCertificate(null);
+            resetCertificate();
+          }}
+        >
+          {previewCertificate ? (
+            <CertificatePreview
+              certificate={previewCertificate}
+              onEdit={() => {
+                setCurrentCertificate(previewCertificate);
+                setPreviewCertificate(null);
+                setValueCertificate("certificate_type", previewCertificate.certificate_type);
+                setValueCertificate("issue_date", previewCertificate.issue_date);
+                setValueCertificate("class_id", previewCertificate.class_id.toString());
+                setValueCertificate("section_id", previewCertificate.section_id?.toString() || "");
+                setValueCertificate("academic_session_id", previewCertificate.academic_session_id.toString());
+                setValueCertificate("completion_date", previewCertificate.completion_date || "");
+                setValueCertificate("reason", previewCertificate.reason || "");
+                setValueCertificate("remarks", previewCertificate.remarks || "");
+              }}
+            />
+          ) : (
+            renderCertificateForm()
+          )}
+        </Modal>
+    )}
+  
+    {showCredentialsModal && selectedStudent && (
+    <Modal
+      title={`Credentials for ${selectedStudent.user_name}`}
+      isOpen={showCredentialsModal}
+      onClose={() => {
+        setShowCredentialsModal(false);
+        setSelectedCredentials(null);
+        setSelectedStudent(null);
+      }}
+    >
+      {selectedCredentials ? (
+        <div className="space-y-4">
+          <div className="p-4 bg-green-100 rounded-md">
+            <h3 className="text-lg font-medium">Credentials</h3>
+            <p>
+              Student: Email: {selectedCredentials.student.email}, Password: {selectedCredentials.student.password || "Not available"}
+            </p>
+            {selectedCredentials.parent && (
+              <p>
+                Parent: Email: {selectedCredentials.parent.email}, Password: {selectedCredentials.parent.password || "Not available"}
+              </p>
+            )}
+            <Button
+              variant="outline"
+              className="mt-2"
+              onClick={() => {
+                const text = `
+                  Student Credentials:
+                  Email: ${selectedCredentials.student.email}
+                  Password: ${selectedCredentials.student.password || "Not available"}
+                  ${
+                    selectedCredentials.parent
+                      ? `
+                        Parent Credentials:
+                        Email: ${selectedCredentials.parent.email}
+                        Password: ${selectedCredentials.parent.password || "Not available"}
+                      `
+                      : ""
+                  }
+                `;
+                navigator.clipboard.writeText(text);
+                toast.success("Credentials copied to clipboard");
+              }}
+            >
+              Copy Credentials
+            </Button>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCredentialsModal(false);
+                setSelectedCredentials(null);
+                setSelectedStudent(null);
+              }}
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500">No credentials available.</p>
+      )}
+    </Modal>
+    )}
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <div className="bg-white rounded-lg shadow-sm p-6">
@@ -2008,8 +2546,8 @@ const renderEditForm = () => {
           </select>
         </div>
       </div>
-
-      <Card title={activeTab === "active" ? "Active Students" : "Alumni"}>
+            
+             <Card title={activeTab === "active" ? "Active Students" : "Alumni"}>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -2024,16 +2562,10 @@ const renderEditForm = () => {
                   Class
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Session
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   {activeTab === "active" ? "Admission Date" : "Transferred/Graduation Date"}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  {activeTab === "alumni" ? "Alumni Type" : "Documents"}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Actions
@@ -2055,43 +2587,53 @@ const renderEditForm = () => {
                         <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
                           {student.profile_image ? (
                             <img
-                              src={`${backendUrl}${student.profile_image}`}
-                              alt={student.name}
-                              className="h-10 w-10 rounded-full object-cover"
-                            />
+                                src={
+                                  student.profile_image
+                                    ? student.profile_image.startsWith("http://") || student.profile_image.startsWith("https://")
+                                      ? student.profile_image
+                                      : `${backendUrl.replace(/\/$/, "")}${student.profile_image.startsWith("/") ? "" : "/"}${student.profile_image}`
+                                    : "/placeholder-avatar.png"
+                                }
+                                alt={student.user_name || "Student"}
+                                className="h-10 w-10 rounded-full object-cover"
+                                onError={(e) => {
+                                  console.error(`Failed to load image for student ${student.id}: ${student.profile_image}`);
+                                  e.currentTarget.src = "/placeholder-avatar.png";
+                                }}
+                              />
                           ) : (
                             <span className="text-sm font-medium text-gray-700">
-                              {student.name?.charAt(0) || ""}
+                              {student.user_name?.charAt(0)?.toUpperCase() || "?"}
                             </span>
                           )}
                         </div>
-                        <div className="ml-4">
+                        <div className="ml-4 min-w-[100px]">
                           <div className="text-sm font-medium text-gray-900">
-                            {student.name}
+                            {student.user_name || "Unknown Student"}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {student.email}
+                        {student.user_email || "N/A"}
                       </div>
-                      <div className="text-sm text-gray-500">{student.phone}</div>
+                      <div className="text-sm text-gray-500">{student.phone || "N/A"}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-700">
-                        Class {student.class_name || "N/A"}
-                        {student.section_name ? ` - ${student.section_name}` : ""}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-700">
-                        {student.academic_session_name || "N/A"}
+                        <div>{student.class_name}</div>
+                        <div>{student.section_name}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-700">
-                        {format(new Date(student.admission_date), "MMM dd, yyyy")}
+                        <div>
+                          {student.admission_date
+                            ? format(new Date(student.admission_date), "MMM dd, yyyy")
+                            : "N/A"}
+                        </div>
+                        <div>{student.academic_session_name || "N/A"}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -2109,57 +2651,75 @@ const renderEditForm = () => {
                           : student.status.charAt(0).toUpperCase() + student.status.slice(1)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-700">
-                        {activeTab === "alumni"
-                          ? student.alumni_type
-                            ? student.alumni_type.charAt(0).toUpperCase() + student.alumni_type.slice(1)
-                            : "N/A"
-                          : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleViewDocuments(student)}
+                    <td className="px-6 py-4 whitespace-nowrap align-top">
+                      <div className="text-sm font-medium text-gray-700 flex flex-col items-start space-y-2">
+                        {/* First row: Document and Certificate Icons */}
+                        <div className="flex space-x-2">
+                          <button
+                            className="p-1 hover:bg-gray-100 rounded"
+                            onClick={() => handleViewDocuments(student)}
+                            title="View Documents"
+                          >
+                            <FaFileAlt size={18} />
+                          </button>
+                          {activeTab === "alumni" && student.alumni_type ? (
+                            <button
+                              className="p-1 hover:bg-gray-100 rounded"
+                              onClick={() => handleViewCertificate(student)}
+                              title={student.alumni_type === "graduated" ? "View Graduation Certificate" : "View Leaving Certificate"}
                             >
-                              View Documents
-                            </Button>
+                              {student.alumni_type === "graduated" ? (
+                                <FaGraduationCap size={18} />
+                              ) : (
+                                <FaSignOutAlt size={18} />
+                              )}
+                            </button>
+                          ) : (
+                            student.status === "active" &&
+                            activeTab === "active" && (
+                              <>
+                                <button
+                                  className="p-1 hover:bg-gray-100 rounded"
+                                  onClick={() => handleStatusChange(student, "graduation")}
+                                  title="Graduate"
+                                >
+                                  <FaGraduationCap size={18} />
+                                </button>
+                                <button
+                                  className="p-1 hover:bg-gray-100 rounded"
+                                  onClick={() => handleStatusChange(student, "leave")}
+                                  title="Leave School"
+                                >
+                                  <FaSignOutAlt size={18} />
+                                </button>
+                                <button
+                                  className="p-1 hover:bg-gray-100 rounded"
+                                  onClick={() => handleViewCredentials(student)}
+                                  title="View Credentials"
+                                >
+                                  <Settings size={18} />
+                                </button>
+                              </>
+                            )
                           )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        {student.status === "active" && activeTab === "active" && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleStatusChange(student.id, "alumni", "graduated")}
-                            >
-                              Graduate
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleStatusChange(student.id, "alumni", "transferred")}
-                            >
-                              Leave School
-                            </Button>
-                          </>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditStudent(student)}
-                        >
-                          <Edit size={16} />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteStudent(student.id)}
-                        >
-                          <Trash2 size={16} />
-                        </Button>
+                        </div>
+                        {/* Second row: Edit and Delete */}
+                        <div className="flex space-x-2 mt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditStudent(student)}
+                          >
+                            <Edit size={16} />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteStudent(student.id)}
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -2180,6 +2740,7 @@ const renderEditForm = () => {
           </div>
         )}
       </Card>
+
     </div>
   );
 };

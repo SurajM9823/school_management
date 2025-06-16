@@ -619,7 +619,6 @@ class StudentDocumentType(models.Model):
     def __str__(self):
         return self.name
 
-from django.conf import settings
 
 class StudentDocument(models.Model):
     student = models.ForeignKey('Student', on_delete=models.CASCADE, related_name='documents')
@@ -631,3 +630,22 @@ class StudentDocument(models.Model):
 
     def __str__(self):
         return f"{self.student.user.name} - {self.document_type.name if self.document_type else 'Document'}"
+    
+class Certificate(models.Model):
+    student_id = models.ForeignKey(Student, on_delete=models.CASCADE)
+    certificate_type = models.CharField(max_length=20, choices=[('graduation', 'Graduation'), ('leave', 'Leave')])
+    issue_date = models.DateField()
+    class_id = models.ForeignKey(Class, on_delete=models.CASCADE)
+    section_id = models.ForeignKey(Section, on_delete=models.SET_NULL, null=True, blank=True)
+    academic_session_id = models.ForeignKey(AcademicSession, on_delete=models.CASCADE)
+    completion_date = models.DateField(null=True, blank=True)
+    reason = models.TextField(null=True, blank=True)
+    remarks = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'certificates'
+
+    def __str__(self):
+        return f"{self.certificate_type.title()} Certificate for {self.student.user_name}"
