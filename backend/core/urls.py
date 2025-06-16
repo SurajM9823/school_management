@@ -13,6 +13,7 @@ from core.view.admin.school_setting import (
 from core.view.admin.admissions import (
     ParentView, StudentView, StudentParentView, AdmissionFeeView, StudentFeeView, AdmissionView
 )
+from core.view.admin.certificate_view import CertificateViewSet, StudentCredentialsView
 
 # Register StudentView with a router to handle document endpoints
 router = DefaultRouter()
@@ -77,6 +78,10 @@ urlpatterns = [
     path('admission-fees/<int:fee_id>/', AdmissionFeeView.as_view(), name='admission-fee-update'),
     path('students/<int:student_id>/fees/', StudentFeeView.as_view(), name='student-fee-list'),
     path('students/<int:student_id>/parents/', StudentParentView.as_view(), name='student-parent-list-create'),
+    path('certificates/', CertificateViewSet.as_view({'get': 'list', 'post': 'create'}), name='certificate-list'),
+    path('certificates/by-student/<int:student_id>/', CertificateViewSet.as_view({'get': 'by_student'}), name='certificate-by-student'),
+    path('certificates/<int:pk>/', CertificateViewSet.as_view({'put': 'update'}), name='certificate-update'),
+    path('students/<int:student_id>/credentials/', StudentCredentialsView.as_view(), name='student-credentials'),
     
     # Include router URLs for StudentView (handles documents)
     path('', include(router.urls)),

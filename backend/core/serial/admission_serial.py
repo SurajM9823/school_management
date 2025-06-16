@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from core.serializers import UserSerializer
-from core.models import AcademicSession, Parent, Student, StudentParent, AdmissionFee, StudentFee, Class, Section, User, School, StudentDocument, StudentDocumentType
+from core.models import AcademicSession, Certificate, Parent, Student, StudentParent, AdmissionFee, StudentFee, Class, Section, User, School, StudentDocument, StudentDocumentType
 from django.core.files.storage import default_storage
 import logging
 from django.conf import settings
@@ -75,7 +75,7 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
     document_type_id = serializers.PrimaryKeyRelatedField(
         queryset=StudentDocumentType.objects.all(), required=False, allow_null=True
     )
-    file = serializers.FileField(required=True)
+    file = serializers.FileField(required=False, allow_null=True) 
     description = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     class Meta:
@@ -84,7 +84,8 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         logger.debug(f"StudentDocumentSerializer validate data: {data}")
-        if not data.get('file'):
+        # Only require file if creating (no instance)
+        if not self.instance and not data.get('file'):
             raise serializers.ValidationError("File is required.")
         return data
 
@@ -126,10 +127,40 @@ class StudentSerializer(serializers.ModelSerializer):
             'section_name', 'academic_session_name', 'created_at', 'updated_at'
         ]
 
+    def validate_profile_image(self, value):
+        if value:
+            # Validate file type
+            valid_types = ['image/png', 'image/jpeg']
+            if value.content_type not in valid_types:
+                raise serializers.ValidationError("Only PNG or JPG images are allowed.")
+            # Validate file size (2MB)
+            max_size = 2 * 1024 * 1024  # 2MB
+            if value.size > max_size:
+                raise serializers.ValidationError("Image must be less than 2MB.")
+        return value
+            
     def validate(self, data):
         logger.debug(f"StudentSerializer validate data: {data}")
-        if not data.get('email') or not data.get('name'):
-            raise serializers.ValidationError("Email and name are required.")
+        if not self.partial:  # For creation
+            if not data.get('email') or not data.get('name'):
+                raise serializers.ValidationError("Email and name are required.")
+        # Validate class_id, section_id, academic_session_id
+        if 'class_id' in data and data['class_id']:
+            class_obj = data['class_id']  # Already a Class object
+            logger.debug(f"Validating class_id: {class_obj.id}, name: {class_obj.name}")
+            # Temporarily remove school filter
+            if not Class.objects.filter(id=class_obj.id).exists():
+                raise serializers.ValidationError("Invalid class ID.")
+        if 'section_id' in data and data['section_id']:
+            section_obj = data['section_id']
+            logger.debug(f"Validating section_id: {section_obj.id}")
+            if not Section.objects.filter(id=section_obj.id).exists():
+                raise serializers.ValidationError("Invalid section ID.")
+        if 'academic_session_id' in data and data['academic_session_id']:
+            session_obj = data['academic_session_id']
+            logger.debug(f"Validating academic_session_id: {session_obj.id}")
+            if not AcademicSession.objects.filter(id=session_obj.id).exists():
+                raise serializers.ValidationError("Invalid academic session ID.")
         return data
 
     def create(self, validated_data):
@@ -206,16 +237,19 @@ class StudentSerializer(serializers.ModelSerializer):
                 except School.DoesNotExist:
                     raise serializers.ValidationError("Invalid school ID")
 
-            instance.class_id = class_id if class_id is not None else instance.class_id
-            instance.section = section_id if section_id is not None else instance.section
-            instance.academic_session = academic_session_id if academic_session_id is not None else instance.academic_session
+            # Assign Class object directly
+            if class_id is not None:
+                instance.class_id = class_id
+            if section_id is not None:
+                instance.section = section_id
+            if academic_session_id is not None:
+                instance.academic_session = academic_session_id
 
             for attr, value in validated_data.items():
                 setattr(instance, attr, value)
 
             instance.save()
             return instance
-
 class StudentParentSerializer(serializers.ModelSerializer):
     parent_name = serializers.CharField(source='parent.user.name', read_only=True)
     parent_email = serializers.CharField(source='parent.user.email', read_only=True)
@@ -281,3 +315,4 @@ class StudentFeeSerializer(serializers.ModelSerializer):
         except Exception as e:
             logger.error(f"StudentFee update error: {str(e)}")
             raise serializers.ValidationError(f"Failed to update student fee: {str(e)}")
+    
