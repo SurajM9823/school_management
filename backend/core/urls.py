@@ -1,5 +1,5 @@
 from django.urls import path, include
-from .views import MyTokenObtainPairView
+from .views import MyTokenObtainPairView, CurrentUserView, UserView
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework.routers import DefaultRouter
 from core.view.admin.school_setting import (
@@ -14,6 +14,8 @@ from core.view.admin.admissions import (
     ParentView, StudentView, StudentParentView, AdmissionFeeView, StudentFeeView, AdmissionView
 )
 from core.view.admin.certificate_view import CertificateViewSet, StudentCredentialsView
+from core.view.admin.staff_views import StaffViewSet, StaffProfileImageView
+from core.view.admin.staff_management.StaffLeaveView import StaffLeaveCreateView
 
 # Register StudentView with a router to handle document endpoints
 router = DefaultRouter()
@@ -23,6 +25,8 @@ urlpatterns = [
     # Authentication URLs
     path('token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('school/settings/current-user/', CurrentUserView.as_view(), name='current-user'),
+    path('users/<int:pk>/change-password/', UserView.as_view(), name='user-change-password'),
 
     # Admin Dashboard URLs
     path('school/settings/', SchoolSettingsView.as_view(), name='school-settings'),
@@ -69,6 +73,24 @@ urlpatterns = [
     path('school/settings/buildings/<int:building_id>/rooms/<int:room_id>/', RoomView.as_view(), name='room-detail'),
     path('school/settings/resources/', ResourceView.as_view(), name='resource-list'),
     path('school/settings/resources/<int:resource_id>/', ResourceView.as_view(), name='resource-detail'),
+    # StaffViewSet endpoints
+    path('school/settings/staff/', StaffViewSet.as_view({
+        'get': 'list',
+        'post': 'create'
+    }), name='staff-list'),
+    path('school/settings/staff/<int:pk>/', StaffViewSet.as_view({
+        'get': 'retrieve',
+        'put': 'update',
+        'patch': 'partial_update',
+        'delete': 'destroy'
+    }), name='staff-detail'),
+    path('school/settings/staff/<int:pk>/reset-password/', StaffViewSet.as_view({
+        'post': 'reset_password'
+    }), name='staff-reset-password'),
+    path('school/settings/staff/<int:pk>/credentials/', StaffViewSet.as_view({
+        'get': 'get_credentials'
+    }), name='staff-credentials'),
+    path('school/settings/staff/<int:pk>/profile-image/', StaffProfileImageView.as_view(), name='staff-profile-image'),
 
     # Admin Admission URLs
     path('admissions/', AdmissionView.as_view(), name='admission-create'),
@@ -82,7 +104,9 @@ urlpatterns = [
     path('certificates/by-student/<int:student_id>/', CertificateViewSet.as_view({'get': 'by_student'}), name='certificate-by-student'),
     path('certificates/<int:pk>/', CertificateViewSet.as_view({'put': 'update'}), name='certificate-update'),
     path('students/<int:student_id>/credentials/', StudentCredentialsView.as_view(), name='student-credentials'),
+    #urls for staff leave management
+    path('school/settings/staff/<int:staff_id>/leave/', StaffLeaveCreateView.as_view(), name='staff-leave-create'),
     
-    # Include router URLs for StudentView (handles documents)
+    # Include router URLs for StudentView
     path('', include(router.urls)),
 ]

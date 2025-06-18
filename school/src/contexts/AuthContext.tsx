@@ -33,14 +33,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
+useEffect(() => {
+  const initializeAuth = async () => {
+    console.log('Initializing auth...');
     const accessToken = localStorage.getItem('accessToken');
-    if (storedUser && accessToken) {
-      setUser(JSON.parse(storedUser));
+    const storedUser = localStorage.getItem('user');
+    console.log('Access token:', accessToken);
+    console.log('Stored user:', storedUser);
+    if (accessToken && storedUser) {
+      try {
+        const response = await api.get('/school/settings/current-user/', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        console.log('Current user response:', response.data);
+        const userData = {
+          id: response.data.id,
+          name: response.data.name,
+          email: response.data.email,
+          role: response.data.role,
+          avatar: response.data.avatar || undefined,
+        };
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+      } catch (error: any) {
+        console.error('Token validation failed:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message,
+        });
+        if (error.response?.status === 401) {
+          // Clear tokens only for unauthorized errors
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('user');
+          setUser(null);
+        } else {
+          // For other errors (e.g., 500), keep user logged in
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+          } catch {
+            setUser(null);
+          }
+        }
+      }
+    } else {
+      setUser(null);
     }
     setLoading(false);
-  }, []);
+    console.log('Auth initialization complete, user:', user);
+  };
+  initializeAuth();
+}, []);
 
   const login = async (email: string, password: string) => {
     setLoading(true);

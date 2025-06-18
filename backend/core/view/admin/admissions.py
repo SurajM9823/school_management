@@ -503,11 +503,13 @@ class AdmissionView(APIView):
                 if not parent_serializer.is_valid():
                     logger.error(f"Parent creation error: {parent_serializer.errors}")
                     return Response({"parent_errors": parent_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-                parent = parent_serializer.save()
+                parent_result = parent_serializer.save()
+                parent = parent_result['parent']
                 parent_id = parent.id
                 parent_credentials = {
-                    'username': parent.user.email,  # ✅ Use email (or .name if you want the name)
-                    'password': parent_serializer.context.get('generated_password')
+                    'email': parent_result['email'],
+                    'password': parent_result['password'],
+                    'user_id': parent_result['user_id']
                 }
             elif parent_option == 'existing':
                 parent_id = request.data.get('parent_id')
@@ -541,10 +543,15 @@ class AdmissionView(APIView):
             return Response({
                 'student': StudentSerializer(student).data,
                 'student_credentials': {
-                    'username': result['username'],  # This is set to email in your serializer, so it's fine
-                    'password': result['password']
+                    'email': result['email'],
+                    'password': result['password'],
+                    'user_id': result['user_id']
                 },
-                'parent_credentials': parent_credentials
+                'parent_credentials': parent_credentials and {
+                    'email': parent_credentials['email'],
+                    'password': parent_credentials['password'],
+                    'user_id': parent_credentials['user_id']
+                }
             }, status=status.HTTP_201_CREATED)
         except Exception as e:
             logger.error(f"Admission creation error: {str(e)}")

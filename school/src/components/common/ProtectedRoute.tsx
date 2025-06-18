@@ -12,6 +12,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles }) => {
   const { user, isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
+  console.log('ProtectedRoute: loading=', loading, 'isAuthenticated=', isAuthenticated, 'user=', user);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -20,29 +22,37 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles }) => {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
+    console.log('Not authenticated or no user, redirecting to /login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (user && !roles.includes(user.role)) {
-    // Redirect to appropriate dashboard based on role
-    switch (user.role) {
-      case 'admin':
-        return <Navigate to="/admin/dashboard\" replace />;
-      case 'teacher':
-        return <Navigate to="/teacher/dashboard" replace />;
-      case 'parent':
-        return <Navigate to="/parent/dashboard" replace />;
-      case 'student':
-        return <Navigate to="/student/dashboard" replace />;
-      case 'accountant':
-        return <Navigate to="/accountant/fees" replace />;
-      default:
-        return <Navigate to="/login" replace />;
-    }
+  if (!roles.includes(user.role)) {
+    console.log(`User role ${user.role} not in allowed roles ${roles}, redirecting`);
+    // Redirect to role-specific dashboard
+    const redirectPath = getRedirectPath(user.role);
+    return <Navigate to={redirectPath} replace />;
   }
 
+  console.log(`Access granted for user role ${user.role} to route with roles ${roles}`);
   return <Layout>{children}</Layout>;
+};
+
+const getRedirectPath = (role: string): string => {
+  switch (role) {
+    case 'admin':
+      return '/admin/dashboard';
+    case 'teacher':
+      return '/teacher/dashboard';
+    case 'parent':
+      return '/parent/dashboard';
+    case 'student':
+      return '/student/dashboard';
+    case 'accountant':
+      return '/accountant/fees';
+    default:
+      return '/login';
+  }
 };
 
 export default ProtectedRoute;

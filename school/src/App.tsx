@@ -26,6 +26,7 @@ import Exams from "./pages/admin/Exams";
 import Scholarships from "./pages/admin/Scholarships";
 import UserManagement from "./pages/admin/UserManagement";
 import StaffManagement from "./pages/admin/StaffManagement";
+import StaffDetailDrill from "./pages/admin/StaffDetailDrill";
 import TransportManagement from "./pages/admin/TransportManagement";
 import Attendance from "./pages/teacher/Attendance";
 import Assignments from "./pages/teacher/Assignments";
@@ -154,6 +155,14 @@ function App() {
             element={
               <ProtectedRoute roles={["admin"]}>
                 <StaffManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/staff/:id"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <StaffDetailDrill />
               </ProtectedRoute>
             }
           />

@@ -16,11 +16,13 @@ class ParentSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(required=False, allow_blank=True)
     address = serializers.CharField(required=False, allow_blank=True)
     user = UserSerializer(read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)  # Add this
+    
 
     class Meta:
         model = Parent
-        fields = ['id', 'user', 'email', 'name', 'phone', 'address']
-        read_only_fields = ['id', 'user']
+        fields = ['id', 'user', 'user_id','email', 'name', 'phone', 'address']
+        read_only_fields = ['id', 'user', 'user_id']
 
     def validate(self, data):
         logger.debug(f"ParentSerializer validate data: {data}")
@@ -40,15 +42,16 @@ class ParentSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Name cannot be empty.")
             logger.debug(f"Creating parent with email: {email}, name: {name}")
 
-            # Generate credentials
-            username, password = Parent.generate_credentials()
-            logger.debug(f"Generated credentials: username={username}, password=***")
+            # Generate random password
+            password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+            logger.debug(f"Generated password for parent: ***")
 
             # Create user
             if User.objects.filter(email=email).exists():
                 raise serializers.ValidationError(f"User with email {email} already exists.")
             user = User.objects.create_user(
                 email=email,
+                username=email,  # Use email as username
                 name=name,
                 role='parent',
                 school=request.user.school,
@@ -63,14 +66,18 @@ class ParentSerializer(serializers.ModelSerializer):
             )
 
             self.context['generated_password'] = password
-            return parent
+            return {
+                'parent': parent,
+                'email': email,
+                'password': password,
+                'user_id': user.id
+            }
         except serializers.ValidationError as e:
             logger.error(f"Parent creation validation error: {e}")
             raise
         except Exception as e:
             logger.error(f"Parent creation error: {str(e)}")
             raise serializers.ValidationError(f"Failed to create parent: {str(e)}")
-
 class StudentDocumentSerializer(serializers.ModelSerializer):
     document_type_id = serializers.PrimaryKeyRelatedField(
         queryset=StudentDocumentType.objects.all(), required=False, allow_null=True
@@ -117,6 +124,7 @@ class StudentSerializer(serializers.ModelSerializer):
     class_name = serializers.CharField(source='class_id.name', read_only=True)
     section_name = serializers.CharField(source='section.name', read_only=True, allow_null=True)
     academic_session_name = serializers.CharField(source='academic_session.name', read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
 
     class Meta:
         model = Student
@@ -124,7 +132,7 @@ class StudentSerializer(serializers.ModelSerializer):
             'id', 'email', 'name', 'user_email', 'user_name', 'school_id', 'class_id', 'section_id', 'academic_session_id',
             'admission_number', 'admission_date', 'dob', 'gender', 'address', 'phone',
             'previous_school', 'profile_image', 'status', 'alumni_type', 'class_name',
-            'section_name', 'academic_session_name', 'created_at', 'updated_at'
+            'section_name', 'academic_session_name', 'created_at', 'updated_at', 'user_id'
         ]
 
     def validate_profile_image(self, value):
@@ -180,8 +188,8 @@ class StudentSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             # Generate credentials
-            username, password = Student.generate_credentials()
-            logger.debug(f"Generated credentials: username={username}, password=***")
+            password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+            logger.debug(f"Generated password for student: ***")
 
             # Create user
             try:
@@ -189,6 +197,7 @@ class StudentSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(f"User with email {email} already exists.")
                 user = User.objects.create_user(
                     email=email,
+                    username=email,  # Use email as username
                     name=name,
                     role='student',
                     school=school,
@@ -198,7 +207,7 @@ class StudentSerializer(serializers.ModelSerializer):
                 logger.error(f"User creation error: {str(e)}")
                 raise serializers.ValidationError(f"Failed to create user: {str(e)}")
 
-            # Remove redundant school argument
+            # Create student
             student = Student.objects.create(
                 user=user,
                 class_id=class_id,
@@ -209,10 +218,10 @@ class StudentSerializer(serializers.ModelSerializer):
             )
             return {
                 'student': student,
-                'username': email,
-                'password': password
+                'email': email,
+                'password': password,
+                'user_id': user.id
             }
-
     def update(self, instance, validated_data):
         email = validated_data.pop('email', None)
         name = validated_data.pop('name', None)

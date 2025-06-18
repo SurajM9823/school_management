@@ -9,21 +9,34 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['email', 'name', 'role', 'avatar', 'is_active', 'school']
         read_only_fields = ['is_active', 'avatar']
+        extra_kwargs = {
+            'email': {'required': True, 'allow_blank': False},
+            'name': {'required': True, 'allow_blank': False},
+            'role': {'required': True, 'allow_blank': False},
+        }
 
     def validate(self, data):
         logger.debug(f"UserSerializer validate data: {data}")
         if not data.get('email') or not data.get('name') or not data.get('role'):
             raise serializers.ValidationError("Email, name, and role are required.")
-        if User.objects.filter(email=data.get('email')).exists():
+        if self.context['request'].method == 'POST' and User.objects.filter(email=data.get('email')).exists():
             raise serializers.ValidationError("A user with this email already exists.")
         return data
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        # Provide fallbacks for null values
+        representation['email'] = instance.email or 'unknown@example.com'
+        representation['name'] = instance.name or 'Unknown'
+        representation['role'] = instance.role or 'unknown'
+        return representation
 
     def create(self, validated_data):
         email = validated_data.pop('email')
         name = validated_data.pop('name')
         role = validated_data.pop('role')
         school = validated_data.get('school')
-        password = validated_data.get('password')  # Expect password from context or validated_data
+        password = validated_data.get('password', User.objects.make_random_password())  # Fallback password
         try:
             user = User.objects.create_user(
                 email=email,
@@ -35,8 +48,7 @@ class UserSerializer(serializers.ModelSerializer):
             return user
         except Exception as e:
             logger.error(f"User creation error: {str(e)}")
-            raise serializers.ValidationError(f"Failed to create user: {str(e)}")
-        
+            raise serializers.ValidationError(f"Failed to create user: {str(e)}")            
 
 class SchoolSerializer(serializers.ModelSerializer):
     logo = serializers.ImageField(required=False, allow_null=True)

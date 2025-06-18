@@ -6,9 +6,7 @@ import pytz
 from django.core.validators import MinValueValidator, MaxValueValidator
 import random
 import string
-
-
-
+from django.utils import timezone
 
 class UserManager(BaseUserManager):
     def create_user(self, email, name, role, school=None, password=None):
@@ -41,7 +39,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     avatar = models.URLField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
-    school = models.ForeignKey('School', on_delete=models.SET_NULL, null=True, blank=True, related_name='users')  # Add this
+    school = models.ForeignKey(
+        'School',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users',
+        to_field='school_id'  # Reference School.school_id (UUID)
+    )
     is_staff = models.BooleanField(default=False)
     objects = UserManager()
 
@@ -51,7 +56,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
-
 class School(models.Model):
     school_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     name = models.CharField(max_length=255)
@@ -59,10 +63,10 @@ class School(models.Model):
     phone = models.CharField(max_length=20)
     email = models.EmailField()
     website = models.URLField(blank=True, null=True)
-    academic_year = models.CharField(max_length=20)  # e.g., "2024-2025"
+    academic_year = models.CharField(max_length=20)
     logo = models.ImageField(upload_to='school_logos/', blank=True, null=True)
     founded_date = models.DateField(blank=True, null=True)
-    affiliation = models.CharField(max_length=100, blank=True, null=True)  # e.g., "CBSE"
+    affiliation = models.CharField(max_length=100, blank=True, null=True)
     motto = models.CharField(max_length=255, blank=True, null=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -74,7 +78,7 @@ class School(models.Model):
 
     def __str__(self):
         return self.name
-
+    
 class LocaleSettings(models.Model):
     timezone = models.CharField(max_length=100, choices=[(tz, tz) for tz in pytz.all_timezones])
     language = models.CharField(max_length=10, default='en')  # e.g., 'en', 'ne'
@@ -649,3 +653,142 @@ class Certificate(models.Model):
 
     def __str__(self):
         return f"{self.certificate_type.title()} Certificate for {self.student.user_name}"
+
+
+class Staff(models.Model):
+    EMPLOYMENT_TYPE_CHOICES = [
+        ('full_time', 'Full Time'),
+        ('part_time', 'Part Time'),
+        ('contract', 'Contract'),
+        ('temporary', 'Temporary'),
+    ]
+    
+    PAY_FREQUENCY_CHOICES = [
+        ('monthly', 'Monthly'),
+        ('bi_weekly', 'Bi-Weekly'),
+        ('weekly', 'Weekly'),
+    ]
+    
+    TAX_STATUS_CHOICES = [
+        ('exempt', 'Tax Exempt'),
+        ('non_exempt', 'Tax Non-Exempt'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='staff_profile')
+    school = models.ForeignKey(
+        'School',
+        on_delete=models.CASCADE,
+        related_name='staff',
+        to_field='school_id'  # Reference School.school_id (UUID)
+    )
+    staff_role = models.ForeignKey(StaffRole, on_delete=models.SET_NULL, null=True, related_name='staff')
+    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, related_name='staff')
+    
+    # Personal Information
+    employee_id = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    date_of_birth = models.DateField(null=True, blank=True)
+    profile_image = models.ImageField(upload_to='staff_profiles/%Y/%m/%d/', blank=True, null=True)
+    gender = models.CharField(max_length=10, choices=[
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+    ], null=True, blank=True)
+    address = models.TextField(blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    emergency_contact_name = models.CharField(max_length=100, blank=True, null=True)
+    emergency_contact_phone = models.CharField(max_length=20, blank=True, null=True)
+    
+    # Employment Details
+    hire_date = models.DateField()
+    employment_type = models.CharField(max_length=20, choices=EMPLOYMENT_TYPE_CHOICES, default='full_time')
+    contract_end_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=[
+        ('active', 'Active'),
+        ('on_leave', 'On Leave'),
+        ('terminated', 'Terminated'),
+    ], default='active')
+    
+    # Role-Specific Fields (for teachers)
+    classes = models.ManyToManyField(Class, related_name='teachers', blank=True)
+    subjects = models.ManyToManyField(Subject, related_name='teachers', blank=True)
+    
+    # Payroll Information
+    base_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    pay_frequency = models.CharField(max_length=20, choices=PAY_FREQUENCY_CHOICES, default='monthly')
+    tax_status = models.CharField(max_length=20, choices=TAX_STATUS_CHOICES, default='non_exempt')
+    allowances = models.JSONField(default=dict, blank=True)  # e.g., {"housing": 500, "transport": 200}
+    deductions = models.JSONField(default=dict, blank=True)  # e.g., {"tax": 100, "insurance": 50}
+    bank_account_number = models.CharField(max_length=50, blank=True, null=True)
+    bank_name = models.CharField(max_length=100, blank=True, null=True)
+    bank_branch = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Benefits
+    health_insurance_number = models.CharField(max_length=50, blank=True, null=True)
+    pension_plan_number = models.CharField(max_length=50, blank=True, null=True)
+    provident_fund_number = models.CharField(max_length=50, blank=True, null=True)
+    
+    # Credentials
+    generated_password = models.CharField(max_length=100, blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Staff"
+        verbose_name_plural = "Staff"
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} ({self.user.email})"
+
+    def save(self, *args, **kwargs):
+        if not self.employee_id:
+            today = date.today()
+            prefix = today.strftime('%Y%m%d')
+            last_staff = Staff.objects.filter(employee_id__startswith=prefix).order_by('-employee_id').first()
+            if last_staff:
+                last_num = int(last_staff.employee_id.split('-')[-1])
+                new_num = f"{prefix}-{last_num + 1:03d}"
+            else:
+                new_num = f"{prefix}-001"
+            self.employee_id = new_num
+            
+        if not self.generated_password:
+            self.generated_password = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(8))
+            self.user.set_password(self.generated_password)
+            self.user.save()
+            
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def generate_credentials():
+        chars = string.ascii_letters + string.digits
+        password = ''.join(random.choice(chars) for _ in range(8))
+        return password
+
+
+
+class StaffLeave(models.Model):
+    staff = models.ForeignKey('Staff', on_delete=models.CASCADE, related_name='leaves')
+    leave_type = models.ForeignKey('LeaveType', on_delete=models.CASCADE, related_name='staff_leaves')
+    academic_session = models.ForeignKey('AcademicSession', on_delete=models.CASCADE, related_name='staff_leaves')
+    school = models.ForeignKey(
+        'School',
+        on_delete=models.CASCADE,
+        related_name='staff_leaves',
+        to_field='school_id'
+    )
+    start_date = models.DateField(default=timezone.now)
+    end_date = models.DateField(null=True, blank=True)
+    days = models.FloatField()
+    reason = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Staff Leave"
+        verbose_name_plural = "Staff Leaves"
+
+    def __str__(self):
+        return f"{self.staff} - {self.leave_type.name} ({self.start_date})"

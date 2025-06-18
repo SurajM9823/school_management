@@ -21,6 +21,7 @@ const backendUrl = import.meta.env.VITE_REACT_APP_BACKEND_URL || "http://localho
 
 interface Student {
   id: number;
+  user_id: number; // Add this
   user_email: string;
   user_name: string;
   phone: string;
@@ -64,9 +65,11 @@ interface Section {
 
 interface Parent {
   id: number;
+  user_id: number; // Add this
   name: string;
   email: string;
   phone: string;
+  students?: number[]; // Add to track linked students
 }
 
 interface AcademicSession {
@@ -144,8 +147,8 @@ interface CertificateForm {
   remarks?: string;
 }
 interface Credentials {
-  student: { email: string; password: string };
-  parent?: { email: string; password: string };
+  student: { email: string; password: string; user_id: number };
+  parent?: { email: string; password: string; user_id: number };
 }
 
 const Admissions: React.FC = () => {
@@ -173,6 +176,8 @@ const Admissions: React.FC = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [editProfilePicture, setEditProfilePicture] = useState<FileList | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [newStudentPassword, setNewStudentPassword] = useState('');
+  const [newParentPassword, setNewParentPassword] = useState('');
   const [credentials, setCredentials] = useState<{
     student: { username: string; password: string };
     parent?: { username: string; password: string };
@@ -473,11 +478,13 @@ useEffect(() => {
       let studentCredentials = {
         email: student.user_email,
         password: "",
+        user_id: student.user_id, // Add user_id
       };
 
       // Check if this student was recently added and has credentials
       if (credentials && credentials.student.email === student.user_email) {
         studentCredentials.password = credentials.student.password;
+        studentCredentials.user_id = credentials.student.user_id; // Ensure user_id is set
       }
 
       // Fetch parent for this student
@@ -488,6 +495,7 @@ useEffect(() => {
         parentCredentials = {
           email: parent.email,
           password: credentials && credentials.parent && credentials.parent.email === parent.email ? credentials.parent.password : "",
+          user_id: parent.user_id, // Add user_id
         };
       }
 
@@ -767,8 +775,18 @@ useEffect(() => {
       const studentsRes = await api.get('/students/');
       setStudents(studentsRes.data);
       setCredentials({
-        student: response.data.student_credentials,
-        parent: response.data.parent_credentials,
+        student: {
+          email: response.data.student_credentials.email,
+          password: response.data.student_credentials.password,
+          user_id: response.data.student_credentials.user_id,
+        },
+        parent: response.data.parent_credentials
+          ? {
+              email: response.data.parent_credentials.email,
+              password: response.data.parent_credentials.password,
+              user_id: response.data.parent_credentials.user_id,
+            }
+          : undefined,
       });
       reset();
       setShowNewApplicationForm(false);
@@ -879,6 +897,29 @@ useEffect(() => {
       } else {
         toast.error(error.response?.data?.error || error.message || "Failed to update student.");
       }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+const handleChangePassword = async (userId: number, newPassword: string, type: 'student' | 'parent') => {
+    if (!newPassword.trim() || newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters long.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await api.put(`/users/${userId}/change-password/`, { new_password: newPassword });
+      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} password changed successfully.`);
+      if (type === 'student') {
+        setNewStudentPassword('');
+      } else {
+        setNewParentPassword('');
+      }
+    } catch (err: any) {
+      console.error(`Error changing ${type} password:`, err);
+      toast.error(err.response?.data?.error || `Failed to change ${type} password.`);
     } finally {
       setIsLoading(false);
     }
@@ -2373,69 +2414,111 @@ useEffect(() => {
     )}
   
     {showCredentialsModal && selectedStudent && (
-    <Modal
-      title={`Credentials for ${selectedStudent.user_name}`}
-      isOpen={showCredentialsModal}
-      onClose={() => {
-        setShowCredentialsModal(false);
-        setSelectedCredentials(null);
-        setSelectedStudent(null);
-      }}
-    >
-      {selectedCredentials ? (
-        <div className="space-y-4">
-          <div className="p-4 bg-green-100 rounded-md">
-            <h3 className="text-lg font-medium">Credentials</h3>
-            <p>
-              Student: Email: {selectedCredentials.student.email}, Password: {selectedCredentials.student.password || "Not available"}
-            </p>
-            {selectedCredentials.parent && (
-              <p>
-                Parent: Email: {selectedCredentials.parent.email}, Password: {selectedCredentials.parent.password || "Not available"}
-              </p>
-            )}
-            <Button
-              variant="outline"
-              className="mt-2"
-              onClick={() => {
-                const text = `
-                  Student Credentials:
-                  Email: ${selectedCredentials.student.email}
-                  Password: ${selectedCredentials.student.password || "Not available"}
-                  ${
-                    selectedCredentials.parent
-                      ? `
-                        Parent Credentials:
-                        Email: ${selectedCredentials.parent.email}
-                        Password: ${selectedCredentials.parent.password || "Not available"}
-                      `
-                      : ""
-                  }
-                `;
-                navigator.clipboard.writeText(text);
-                toast.success("Credentials copied to clipboard");
-              }}
-            >
-              Copy Credentials
-            </Button>
+      <Modal
+        title={`Credentials for ${selectedStudent.user_name}`}
+        isOpen={showCredentialsModal}
+        onClose={() => {
+          setShowCredentialsModal(false);
+          setSelectedCredentials(null);
+          setSelectedStudent(null);
+          setNewStudentPassword('');
+          setNewParentPassword('');
+        }}
+      >
+        {selectedCredentials ? (
+          <div className="space-y-4">
+            <div className="p-4 bg-green-100 rounded-md">
+              <h3 className="text-lg font-medium">Credentials</h3>
+              <div className="mt-2">
+                <p className="text-sm font-medium">Student</p>
+                <p>Email: {selectedCredentials.student.email}</p>
+                <p>Password: {selectedCredentials.student.password || "Not available"}</p>
+                <div className="mt-2 flex items-center space-x-2">
+                  <input
+                    type="text"
+                    placeholder="Enter new student password"
+                    value={newStudentPassword}
+                    onChange={(e) => setNewStudentPassword(e.target.value)}
+                    className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleChangePassword(selectedCredentials.student.user_id, newStudentPassword, 'student')}
+                    disabled={isLoading || !newStudentPassword.trim()}
+                  >
+                    Change Password
+                  </Button>
+                </div>
+              </div>
+              {selectedCredentials.parent && (
+                <div className="mt-4">
+                  <p className="text-sm font-medium">Parent</p>
+                  <p>Email: {selectedCredentials.parent.email}</p>
+                  <p>Password: {selectedCredentials.parent.password || "Not available"}</p>
+                  <div className="mt-2 flex items-center space-x-2">
+                    <input
+                      type="text"
+                      placeholder="Enter new parent password"
+                      value={newParentPassword}
+                      onChange={(e) => setNewParentPassword(e.target.value)}
+                      className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleChangePassword(selectedCredentials.parent.user_id, newParentPassword, 'parent')}
+                      disabled={isLoading || !newParentPassword.trim()}
+                    >
+                      Change Password
+                    </Button>
+                  </div>
+                </div>
+              )}
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => {
+                  const text = `
+                    Student Credentials:
+                    Email: ${selectedCredentials.student.email}
+                    Password: ${selectedCredentials.student.password || "Not available"}
+                    ${
+                      selectedCredentials.parent
+                        ? `
+                          Parent Credentials:
+                          Email: ${selectedCredentials.parent.email}
+                          Password: ${selectedCredentials.parent.password || "Not available"}
+                        `
+                        : ""
+                    }
+                  `;
+                  navigator.clipboard.writeText(text);
+                  toast.success("Credentials copied to clipboard");
+                }}
+              >
+                Copy Credentials
+              </Button>
+            </div>
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCredentialsModal(false);
+                  setSelectedCredentials(null);
+                  setSelectedStudent(null);
+                  setNewStudentPassword('');
+                  setNewParentPassword('');
+                }}
+              >
+                Close
+              </Button>
+            </div>
           </div>
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowCredentialsModal(false);
-                setSelectedCredentials(null);
-                setSelectedStudent(null);
-              }}
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <p className="text-sm text-gray-500">No credentials available.</p>
-      )}
-    </Modal>
+        ) : (
+          <p className="text-sm text-gray-500">No credentials available.</p>
+        )}
+      </Modal>
     )}
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
@@ -2582,38 +2665,40 @@ useEffect(() => {
               ) : (
                 filteredStudents.map((student) => (
                   <tr key={student.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
-                          {student.profile_image ? (
-                            <img
-                                src={
-                                  student.profile_image
-                                    ? student.profile_image.startsWith("http://") || student.profile_image.startsWith("https://")
-                                      ? student.profile_image
-                                      : `${backendUrl.replace(/\/$/, "")}${student.profile_image.startsWith("/") ? "" : "/"}${student.profile_image}`
-                                    : "/placeholder-avatar.png"
-                                }
-                                alt={student.user_name || "Student"}
-                                className="h-10 w-10 rounded-full object-cover"
-                                onError={(e) => {
-                                  console.error(`Failed to load image for student ${student.id}: ${student.profile_image}`);
-                                  e.currentTarget.src = "/placeholder-avatar.png";
-                                }}
-                              />
-                          ) : (
-                            <span className="text-sm font-medium text-gray-700">
-                              {student.user_name?.charAt(0)?.toUpperCase() || "?"}
-                            </span>
-                          )}
-                        </div>
-                        <div className="ml-4 min-w-[100px]">
-                          <div className="text-sm font-medium text-gray-900">
-                            {student.user_name || "Unknown Student"}
-                          </div>
-                        </div>
+                   <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
+                        {student.profile_image ? (
+                          <img
+                            src={
+                              student.profile_image.startsWith("http://") || student.profile_image.startsWith("https://")
+                                ? student.profile_image
+                                : `${backendUrl.replace(/\/$/, "")}${student.profile_image.startsWith("/") ? "" : "/"}${student.profile_image}`
+                            }
+                            alt={student.user_name || "Student"}
+                            className="h-12 w-12 rounded-full object-cover border border-gray-300"
+                            onError={(e) => {
+                              e.currentTarget.src = "/placeholder-avatar.png";
+                            }}
+                          />
+                        ) : (
+                          <span className="text-sm font-medium text-gray-700">
+                            {student.user_name?.charAt(0)?.toUpperCase() || "?"}
+                          </span>
+                        )}
                       </div>
-                    </td>
+                      <div className="ml-4 min-w-[100px]">
+                        <div className="text-sm font-medium text-gray-900">
+                          {student.user_name || "Unknown Student"}
+                        </div>
+                        {student.dob && (
+                          <div className="text-sm text-gray-500">
+                            DOB: {format(new Date(student.dob), "MMM dd, yyyy")}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {student.user_email || "N/A"}
