@@ -511,6 +511,7 @@ class AdmissionView(APIView):
     @transaction.atomic
     def post(self, request):
         try:
+            logger.debug(f"Request data: {request.data}")
             logger.debug(f"Raw request data: {dict(request.data)}")
             logger.debug(f"Request files: {request.FILES}")
             logger.debug(f"Request content type: {request.content_type}")

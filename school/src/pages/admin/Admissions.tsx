@@ -178,10 +178,7 @@ const Admissions: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [newStudentPassword, setNewStudentPassword] = useState('');
   const [newParentPassword, setNewParentPassword] = useState('');
-  const [credentials, setCredentials] = useState<{
-    student: { username: string; password: string };
-    parent?: { username: string; password: string };
-  } | null>(null);
+  const [credentials, setCredentials] = useState<Credentials | null>(null);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
   const [certificateFormType, setCertificateFormType] = useState<"graduation" | "leave" | null>(null);
   const [currentCertificate, setCurrentCertificate] = useState<Certificate | null>(null);
