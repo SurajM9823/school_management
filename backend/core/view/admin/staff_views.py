@@ -34,17 +34,27 @@ class StaffViewSet(viewsets.ModelViewSet):
 
     def get_user_school_id(self, user):
         logger.info(f"Fetching school_id for user: {user.email}")
-        if user.school:
-            logger.info(f"Found User.school_id: {user.school.school_id}")
-            return str(user.school.school_id)
+        # Check User.school_id (UUID in core_user)
+        if user.school_id:
+            logger.info(f"Found User.school_id: {user.school_id}")
+            try:
+                school = School.objects.get(school_id=user.school_id)
+                return str(school.school_id)
+            except School.DoesNotExist:
+                logger.error(f"School does not exist for school_id: {user.school_id}")
+                raise ValidationError({"detail": f"School does not exist for user {user.email}"})
+            except ValueError:
+                logger.error(f"Invalid UUID format for school_id: {user.school_id}")
+                raise ValidationError({"detail": f"Invalid school ID format: {user.school_id}"})
+        # Fallback to Staff record
         try:
             staff = Staff.objects.get(user=user)
             logger.info(f"Found Staff record with school_id: {staff.school.school_id}")
             return str(staff.school.school_id)
         except Staff.DoesNotExist:
             logger.error(f"No Staff record found for user: {user.email}")
-            raise ValidationError({"detail": "User is not associated with a school."})
-
+            raise ValidationError({"detail": f"User is not associated with a school."})
+    
     def create(self, request, *args, **kwargs):
         logger.info(f"Received staff creation request with data: {request.data}")
         try:

@@ -8,7 +8,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.decorators import action
 from rest_framework import status
 from core.models import (
-    Parent, Student, StudentParent, AdmissionFee, StudentFee,
+    Parent, Staff, Student, StudentParent, AdmissionFee, StudentFee,
     Class, Section, StudentDocument, StudentDocumentType, AcademicSession, School
 )
 from core.serial.admission_serial import (
@@ -82,19 +82,39 @@ from rest_framework import status
 class ParentView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
-    def get(self, request):
+    def get_user_school(self, user):
+        logger.info(f"Fetching school for user: {user.email}")
+        if user.school_id:
+            logger.info(f"Found User.school_id: {user.school_id}")
+            try:
+                school = School.objects.get(school_id=user.school_id)
+                return school
+            except School.DoesNotExist:
+                logger.error(f"School does not exist for school_id: {user.school_id}")
+                return None
+            except ValueError:
+                logger.error(f"Invalid UUID format for school_id: {user.school_id}")
+                return None
         try:
-            school = request.user.school
-            if school is None:
-                logger.error(f"No school associated with user {request.user.email}")
-                return Response({"error": "No school associated with this user"}, status=status.HTTP_400_BAD_REQUEST)
-            parents = Parent.objects.filter(school=school, user__is_active=True)
-            serializer = ParentSerializer(parents, many=True)
-            return Response(serializer.data)
-        except ObjectDoesNotExist:
-            logger.error(f"School does not exist for user {request.user.email}")
-            return Response({"error": "School does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+            staff = Staff.objects.get(user=user)
+            logger.info(f"Found Staff record with school_id: {staff.school.school_id}")
+            return staff.school
+        except Staff.DoesNotExist:
+            logger.error(f"No Staff record found for user: {user.email}")
+            return None
 
+    def get(self, request):
+        logger.info(f"Fetching parents for user: {request.user.email}")
+        school = self.get_user_school(request.user)
+        if school is None:
+            logger.error(f"No school associated with user {request.user.email}")
+            return Response({"error": "No school associated with this user"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        parents = Parent.objects.filter(school=school, user__is_active=True)
+        serializer = ParentSerializer(parents, many=True, context={'request': request})
+        logger.info(f"Returning {len(parents)} parents for school: {school.name}")
+        return Response(serializer.data)
+    
 class StudentView(ModelViewSet):
     queryset = Student.objects.all().select_related('user', 'school', 'class_id', 'section', 'academic_session')
     serializer_class = StudentSerializer

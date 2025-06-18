@@ -1,16 +1,15 @@
 import logging
 from rest_framework import serializers
 from core.serial.admin.staffmanagement.StaffLeaveSerializer import StaffLeaveSerializer
-from core.serializers import ClassSerializer, DepartmentSerializer, SchoolSerializer, StaffRoleSerializer, SubjectSerializer, UserSerializer
+from core.serializers import ClassSerializer, DepartmentSerializer, SchoolSerializer, StaffRoleSerializer, SubjectSerializer
 from core.models import Staff, User, School, StaffRole, Department, Class, Subject
 from uuid import UUID
 from datetime import date
-# Import StaffLeaveSerializer from its separate file
 
 logger = logging.getLogger(__name__)
 
 class StaffSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    user = serializers.SerializerMethodField()
     school = SchoolSerializer(read_only=True)
     staff_role = StaffRoleSerializer(read_only=True, allow_null=True)
     department = DepartmentSerializer(read_only=True, allow_null=True)
@@ -43,14 +42,30 @@ class StaffSerializer(serializers.ModelSerializer):
         write_only=True,
         source='subjects'
     )
-    school_id = serializers.UUIDField(required=True, write_only=True, source='school.school_id')
+    school_id = serializers.UUIDField(required=True, write_only=True)
     profile_image = serializers.SerializerMethodField()
+    user_email = serializers.EmailField(write_only=True, required=True, source='user.email')
+    user_name = serializers.CharField(write_only=True, required=True, source='user.name')
+    user_role = serializers.ChoiceField(
+        write_only=True,
+        required=True,
+        choices=User.ROLE_CHOICES,
+        source='user.role'
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.context.get('request') and self.context['request'].method in ['PUT', 'PATCH']:
             for field in self.fields.values():
                 field.required = False
+
+    def get_user(self, obj):
+        return {
+            'email': obj.user.email,
+            'name': obj.user.name,
+            'role': obj.user.role,
+            'avatar': obj.user.avatar.url if obj.user.avatar else None
+        }
 
     def get_profile_image(self, obj):
         if obj.profile_image and self.context.get('request'):
@@ -59,10 +74,11 @@ class StaffSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         logger.info(f"Validating staff data: {data}")
-        school_id = data.get('school', {}).get('school_id')
+        school_id = data.get('school_id')
         if not school_id:
             raise serializers.ValidationError({"school_id": "School ID is required."})
         try:
+            UUID(str(school_id))
             School.objects.get(school_id=school_id)
             logger.info(f"Found school with school_id: {school_id}")
         except School.DoesNotExist:
@@ -78,55 +94,43 @@ class StaffSerializer(serializers.ModelSerializer):
         if data.get('status') and data['status'] not in valid_statuses:
             raise serializers.ValidationError({"status": f"Invalid status. Must be one of: {valid_statuses}"})
 
-        # Validate user data during creation
+        user_data = data.get('user', {})
         if self.context['request'].method == 'POST':
-            user_data = data.get('user', {})
-            if not all(user_data.get(key) for key in ['email', 'name', 'role']):
+            if not all([user_data.get('email'), user_data.get('name'), user_data.get('role')]):
                 raise serializers.ValidationError({"user": "Email, name, and role are required for new staff."})
+            if User.objects.filter(email=user_data['email']).exists():
+                raise serializers.ValidationError({"user_email": "A user with this email already exists."})
 
         return data
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        # Ensure user field is always populated
-        if not representation['user'] or not (representation['user']['email'] and representation['user']['name']):
-            representation['user'] = {
-                'email': 'unknown@example.com',
-                'name': 'Unknown',
-                'role': 'unknown',
-                'avatar': None
-            }
-        # Flatten fields for frontend compatibility
-        representation['user_name'] = representation['user']['name']
-        representation['user_email'] = representation['user']['email']
-        representation['user_role'] = representation['user']['role']
-        representation['department_name'] = representation['department']['name'] if representation['department'] else ''
+        representation['user_name'] = instance.user.name
+        representation['user_email'] = instance.user.email
+        representation['user_role'] = instance.user.role
+        representation['department_name'] = instance.department.name if instance.department else ''
         representation['subjects_names'] = [subject['name'] for subject in representation['subjects']] if representation['subjects'] else []
         return representation
 
     def create(self, validated_data):
         logger.info(f"Creating staff with validated data: {validated_data}")
         try:
-            user_data = {
-                'email': validated_data.pop('user', {}).get('email', ''),
-                'name': validated_data.pop('user', {}).get('name', ''),
-                'role': validated_data.pop('user', {}).get('role', ''),
-            }
-            if not all(user_data.values()):
-                raise serializers.ValidationError({"user": "Email, name, and role are required."})
-
+            user_data = validated_data.pop('user', {})
             classes = validated_data.pop('classes', [])
             subjects = validated_data.pop('subjects', [])
-            school = validated_data.pop('school', None)
+            school_id = validated_data.pop('school_id')
             staff_role = validated_data.pop('staff_role', None)
             department = validated_data.pop('department', None)
 
-            user = User.objects.create_user(**user_data, password=Staff.generate_credentials())
+            user = User.objects.create_user(
+                email=user_data['email'],
+                name=user_data['name'],
+                role=user_data['role'],
+                password=Staff.generate_credentials()
+            )
             logger.info(f"Created user: {user.email}")
 
-            if school:
-                school = School.objects.get(school_id=school['school_id'])
-
+            school = School.objects.get(school_id=school_id)
             staff = Staff.objects.create(
                 user=user,
                 school=school,
@@ -134,7 +138,7 @@ class StaffSerializer(serializers.ModelSerializer):
                 department=department,
                 **validated_data
             )
-            logger.info(f"Created staff: ID={staff.id}, School ID={school.school_id}")
+            logger.info(f"Created staff: ID={staff.id}, School ID={school_id}")
 
             if classes:
                 staff.classes.set(classes)
@@ -161,13 +165,13 @@ class StaffSerializer(serializers.ModelSerializer):
 
             classes = validated_data.pop('classes', None)
             subjects = validated_data.pop('subjects', None)
-            school = validated_data.pop('school', None)
+            school_id = validated_data.pop('school_id', None)
             staff_role = validated_data.pop('staff_role', None)
             department = validated_data.pop('department', None)
 
-            if school:
-                instance.school = School.objects.get(school_id=school['school_id'])
-                logger.info(f"Updated school: {school['school_id']}")
+            if school_id:
+                instance.school = School.objects.get(school_id=school_id)
+                logger.info(f"Updated school: {school_id}")
 
             if staff_role:
                 instance.staff_role = staff_role
@@ -201,7 +205,7 @@ class StaffSerializer(serializers.ModelSerializer):
             'pay_frequency', 'tax_status', 'allowances', 'deductions', 'bank_account_number',
             'bank_name', 'bank_branch', 'health_insurance_number', 'pension_plan_number',
             'provident_fund_number', 'generated_password', 'created_at', 'updated_at',
-            'profile_image', 'leaves'
+            'profile_image', 'leaves', 'user_email', 'user_name', 'user_role'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'employee_id', 'generated_password']
         extra_kwargs = {

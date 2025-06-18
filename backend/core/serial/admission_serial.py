@@ -51,7 +51,6 @@ class ParentSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(f"User with email {email} already exists.")
             user = User.objects.create_user(
                 email=email,
-                username=email,  # Use email as username
                 name=name,
                 role='parent',
                 school=request.user.school,
@@ -78,6 +77,7 @@ class ParentSerializer(serializers.ModelSerializer):
         except Exception as e:
             logger.error(f"Parent creation error: {str(e)}")
             raise serializers.ValidationError(f"Failed to create parent: {str(e)}")
+        
 class StudentDocumentSerializer(serializers.ModelSerializer):
     document_type_id = serializers.PrimaryKeyRelatedField(
         queryset=StudentDocumentType.objects.all(), required=False, allow_null=True
@@ -197,7 +197,6 @@ class StudentSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(f"User with email {email} already exists.")
                 user = User.objects.create_user(
                     email=email,
-                    username=email,  # Use email as username
                     name=name,
                     role='student',
                     school=school,
@@ -222,6 +221,7 @@ class StudentSerializer(serializers.ModelSerializer):
                 'password': password,
                 'user_id': user.id
             }
+        
     def update(self, instance, validated_data):
         email = validated_data.pop('email', None)
         name = validated_data.pop('name', None)
