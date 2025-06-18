@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://sms.nirc.com.np/api/',
+  baseURL: 'http://localhost:8000/api/', // Remove /api/
   headers: {
     'Content-Type': 'application/json',
   },
@@ -10,7 +10,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
-    console.log('Sending token:', token); // Debug log
+    console.log('Sending token:', token);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -28,8 +28,8 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('refreshToken');
         if (!refreshToken) throw new Error('No refresh token');
-        console.log('Refreshing token with:', refreshToken); // Debug log
-        const response = await axios.post('https://sms.nirc.com.np/api/token/refresh/', { refresh: refreshToken });
+        console.log('Refreshing token with:', refreshToken);
+        const response = await axios.post('http://localhost:8000/api/token/refresh/', { refresh: refreshToken });
         const { access } = response.data;
         localStorage.setItem('accessToken', access);
         api.defaults.headers.common['Authorization'] = `Bearer ${access}`;

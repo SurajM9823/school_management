@@ -6,9 +6,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security settings
 SECRET_KEY = 't5q#!%w5^gu831pg7++@ro3uk5m(2&jr*@nd)cz@56pcopdm5^'
 DEBUG = True
-ALLOWED_HOSTS = ['sms.nirc.com.np', '127.0.0.1', 'localhost']
-CORS_ALLOWED_ORIGINS = ["https://sms.nirc.com.np",]
-CSRF_TRUSTED_ORIGINS = ['https://sms.nirc.com.np']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+CORS_ALLOWED_ORIGINS = ["http://localhost:5173",]
+CSRF_TRUSTED_ORIGINS = ['http://localhost:5173', 'http://localhost:5173', 'http://localhost']
 
 # Application definition
 INSTALLED_APPS = [
@@ -60,7 +60,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'school_db',
         'USER': 'root',
-        'PASSWORD': 'SchoolSMS@74',
+        'PASSWORD': 'root',
         'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
@@ -133,3 +133,34 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
