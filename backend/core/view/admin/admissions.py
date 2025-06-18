@@ -4,6 +4,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.decorators import action
 from rest_framework import status
 from core.models import (
@@ -25,9 +26,17 @@ class ParentView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
     def get(self, request):
-        parents = Parent.objects.filter(school=request.user.school, user__is_active=True)
-        serializer = ParentSerializer(parents, many=True)
-        return Response(serializer.data)
+        try:
+            school = request.user.school
+            if school is None:
+                logger.error(f"No school associated with user {request.user.email}")
+                return Response({"error": "No school associated with this user"}, status=status.HTTP_400_BAD_REQUEST)
+            parents = Parent.objects.filter(school=school, user__is_active=True)
+            serializer = ParentSerializer(parents, many=True)
+            return Response(serializer.data)
+        except ObjectDoesNotExist:
+            logger.error(f"School does not exist for user {request.user.email}")
+            return Response({"error": "School does not exist"}, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request):
         serializer = ParentSerializer(data=request.data, context={'request': request})
@@ -65,22 +74,56 @@ class StudentView(ModelViewSet):
     serializer_class = StudentSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
 
-    def get_queryset(self):
-        queryset = super().get_queryset().filter(school=self.request.user.school)
-        status_filter = self.request.query_params.get('status', None)
-        class_id = self.request.query_params.get('class_id', None)
-        section_id = self.request.query_params.get('section_id', None)
-        academic_session_id = self.request.query_params.get('academic_session_id', None)
-        if status_filter:
-            queryset = queryset.filter(status=status_filter)
-        if class_id:
-            queryset = queryset.filter(class_id=class_id)
-        if section_id:
-            queryset = queryset.filter(section_id=section_id)
-        if academic_session_id:
-            queryset = queryset.filter(academic_session_id=academic_session_id)
-        return queryset
+    # In core/view/admin/admissions.py
 
+from django.core.exceptions import ObjectDoesNotExist
+from rest_framework import status
+
+class ParentView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request):
+        try:
+            school = request.user.school
+            if school is None:
+                logger.error(f"No school associated with user {request.user.email}")
+                return Response({"error": "No school associated with this user"}, status=status.HTTP_400_BAD_REQUEST)
+            parents = Parent.objects.filter(school=school, user__is_active=True)
+            serializer = ParentSerializer(parents, many=True)
+            return Response(serializer.data)
+        except ObjectDoesNotExist:
+            logger.error(f"School does not exist for user {request.user.email}")
+            return Response({"error": "School does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+
+class StudentView(ModelViewSet):
+    queryset = Student.objects.all().select_related('user', 'school', 'class_id', 'section', 'academic_session')
+    serializer_class = StudentSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get_queryset(self):
+        try:
+            school = self.request.user.school
+            if school is None:
+                logger.error(f"No school associated with user {self.request.user.email}")
+                return self.queryset.none()  # Return empty queryset if no school
+            queryset = super().get_queryset().filter(school=school)
+            status_filter = self.request.query_params.get('status', None)
+            class_id = self.request.query_params.get('class_id', None)
+            section_id = self.request.query_params.get('section_id', None)
+            academic_session_id = self.request.query_params.get('academic_session_id', None)
+            if status_filter:
+                queryset = queryset.filter(status=status_filter)
+            if class_id:
+                queryset = queryset.filter(class_id=class_id)
+            if section_id:
+                queryset = queryset.filter(section_id=section_id)
+            if academic_session_id:
+                queryset = queryset.filter(academic_session_id=academic_session_id)
+            return queryset
+        except ObjectDoesNotExist:
+            logger.error(f"School does not exist for user {self.request.user.email}")
+            return self.queryset.none()  # Return empty queryset if school doesn't exist
+        
     def perform_create(self, serializer):
         try:
             with transaction.atomic():

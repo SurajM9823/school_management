@@ -88,7 +88,7 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentDocument
         fields = ['id', 'student', 'document_type_id', 'session', 'file', 'description', 'uploaded_at']
-
+    
     def validate(self, data):
         logger.debug(f"StudentDocumentSerializer validate data: {data}")
         # Only require file if creating (no instance)
