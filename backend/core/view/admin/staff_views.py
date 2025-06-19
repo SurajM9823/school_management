@@ -135,9 +135,12 @@ class StaffViewSet(viewsets.ModelViewSet):
         logger.info(f"Resetting password for staff ID: {pk}")
         try:
             staff = self.get_object()
-            new_password = Staff.generate_credentials()
-            staff.generated_password = new_password
+            new_password = request.data.get('new_password')  # Use the password provided by the frontend
+            if not new_password:
+                return Response({'detail': 'New password is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
             staff.user.set_password(new_password)
+            staff.generated_password = new_password  # Store the plain-text password
             staff.user.save()
             staff.save()
             logger.info(f"Password reset for staff ID: {staff.id}, Email: {staff.user.email}")
@@ -156,12 +159,12 @@ class StaffViewSet(viewsets.ModelViewSet):
             staff = self.get_object()
             return Response({
                 'email': staff.user.email,
-                'password': staff.generated_password
+                'password': staff.generated_password or ''  # Ensure we don't return None
             }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Error fetching credentials: {str(e)}")
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
+        
 class StaffProfileImageView(APIView):
     def post(self, request, pk):
         staff = get_object_or_404(Staff, pk=pk, school_id=request.user.school.school_id)

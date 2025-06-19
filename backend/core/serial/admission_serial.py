@@ -183,30 +183,24 @@ class StudentSerializer(serializers.ModelSerializer):
         school = request.user.school if request and request.user else None
         if not school:
             raise serializers.ValidationError("No school associated with user.")
-        if school_id and school.school_id != school_id:
-            raise serializers.ValidationError("Invalid school ID.")
+        if school_id:
+            try:
+                school = School.objects.get(school_id=school_id)
+            except School.DoesNotExist:
+                logger.error(f"Invalid school_id: {school_id}, falling back to user school")
+                school = request.user.school
 
         with transaction.atomic():
-            # Generate credentials
             password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
-            logger.debug(f"Generated password for student: ***")
-
-            # Create user
-            try:
-                if User.objects.filter(email=email).exists():
-                    raise serializers.ValidationError(f"User with email {email} already exists.")
-                user = User.objects.create_user(
-                    email=email,
-                    name=name,
-                    role='student',
-                    school=school,
-                    password=password
-                )
-            except Exception as e:
-                logger.error(f"User creation error: {str(e)}")
-                raise serializers.ValidationError(f"Failed to create user: {str(e)}")
-
-            # Create student
+            if User.objects.filter(email=email).exists():
+                raise serializers.ValidationError(f"User with email {email} already exists.")
+            user = User.objects.create_user(
+                email=email,
+                name=name,
+                role='student',
+                school=school,
+                password=password
+            )
             student = Student.objects.create(
                 user=user,
                 class_id=class_id,
@@ -221,7 +215,7 @@ class StudentSerializer(serializers.ModelSerializer):
                 'password': password,
                 'user_id': user.id
             }
-        
+            
     def update(self, instance, validated_data):
         email = validated_data.pop('email', None)
         name = validated_data.pop('name', None)

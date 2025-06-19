@@ -118,6 +118,7 @@ interface StaffFormData {
   health_insurance_number: string;
   pension_plan_number: string;
   provident_fund_number: string;
+  status: 'active' | 'on_leave' | 'terminated'; // Add status field
 }
 
 interface LeaveFormData {
@@ -170,6 +171,7 @@ const StaffManagement: React.FC = () => {
       health_insurance_number: '',
       pension_plan_number: '',
       provident_fund_number: '',
+      status: 'active',
     },
   });
   const leaveForm = useForm<LeaveFormData>({
@@ -205,48 +207,75 @@ const StaffManagement: React.FC = () => {
   const selectedRole = watch('role');
   const employmentType = watch('employment_type');
 
-  useEffect(() => {
-    const source = axios.CancelToken.source();
-    if (!user || user.role !== 'admin') {
-      navigate('/login');
-      toast.error('Unauthorized access. Please log in as admin.');
-      return;
-    }
-    fetchData(source.token);
-    return () => source.cancel('Request canceled due to component unmount');
-  }, [user, navigate]);
+useEffect(() => {
+  const source = axios.CancelToken.source();
+  if (!user || user.role !== 'admin') {
+    navigate('/login');
+    toast.error('Unauthorized access. Please log in as admin.');
+    return;
+  }
+  fetchData(source.token);
+  return () => source.cancel('Request canceled due to component unmount');
+}, [user, navigate]);
 
-  useEffect(() => {
-    if (staffRoles.length > 0 && !editingStaff) {
-      setValue('staff_role_id', staffRoles[0].id);
-    }
-    if (departments.length > 0 && !editingStaff) {
-      setValue('department_id', departments[0].id);
-    }
-    if (leaveTypes.length > 0 && showLeaveModal) {
-      leaveForm.setValue('leave_type_id', leaveTypes[0].id);
-    }
-    if (academicSessions.length > 0 && showLeaveModal) {
-      const activeSession = academicSessions.find(s => s.name.includes('2024-2025')) || academicSessions[0];
-      leaveForm.setValue('academic_session_id', activeSession.id);
-    }
-  }, [staffRoles, departments, leaveTypes, academicSessions, editingStaff, showLeaveModal, setValue, leaveForm]);
+useEffect(() => {
+  console.log('Current staffRoles:', staffRoles);
+  console.log('Current departments:', departments);
+  if (showForm && !editingStaff && staffRoles.length > 0 && !watch('staff_role_id')) {
+    setValue('staff_role_id', staffRoles[0].id);
+  }
+  if (showForm && !editingStaff && departments.length > 0 && !watch('department_id')) {
+    setValue('department_id', departments[0].id);
+  }
+  if (leaveTypes.length > 0 && showLeaveModal) {
+    leaveForm.setValue('leave_type_id', leaveTypes[0].id);
+  }
+  if (academicSessions.length > 0 && showLeaveModal) {
+    const activeSession = academicSessions.find(s => s.name.includes('2024-2025')) || academicSessions[0];
+    leaveForm.setValue('academic_session_id', activeSession.id);
+  }
+}, [staffRoles, departments, leaveTypes, academicSessions, editingStaff, showForm, showLeaveModal, setValue, leaveForm, watch]);
 
-  const fetchData = async (cancelToken?: any) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [staffResponse, schoolResponse, roleResponse, deptResponse, classResponse, subjectResponse, leaveTypeResponse, sessionResponse] = await Promise.all([
-        api.get('/school/settings/staff/', { cancelToken }),
-        api.get('/school/settings/', { cancelToken }),
-        api.get('/school/settings/staff-roles/', { cancelToken }),
-        api.get('/school/settings/departments/', { cancelToken }),
-        api.get('/school/settings/classes/', { cancelToken }),
-        api.get('/school/settings/subjects/', { cancelToken }),
-        api.get('/school/settings/leave-types/', { cancelToken, params: { leave_for: 'staff' } }),
-        api.get('/school/settings/sessions/', { cancelToken }),
-      ]);
-      setStaffList(staffResponse.data.map((staff: any) => ({
+
+const fetchData = async (cancelToken?: any) => {
+  setIsLoading(true);
+  setError(null);
+  try {
+    const [
+      staffResponse,
+      schoolResponse,
+      roleResponse,
+      deptResponse,
+      classResponse,
+      subjectResponse,
+      leaveTypeResponse,
+      sessionResponse,
+    ] = await Promise.all([
+      api.get('/school/settings/staff/', { cancelToken }),
+      api.get('/school/settings/', { cancelToken }),
+      api.get('/school/settings/staff-roles/', { cancelToken }),
+      api.get('/school/settings/departments/', { cancelToken }),
+      api.get('/school/settings/classes/', { cancelToken }),
+      api.get('/school/settings/subjects/', { cancelToken }),
+      api.get('/school/settings/leave-types/', {
+        cancelToken,
+        params: { leave_for: 'staff' },
+      }),
+      api.get('/school/settings/sessions/', { cancelToken }),
+    ]);
+
+    // Console log the responses for staff roles and departments
+    console.log('Staff Roles Response:', roleResponse.data);
+    console.log('Departments Response:', deptResponse.data);
+    console.log('School Response:', schoolResponse.data); // Debug school data
+
+    // Set state for staff roles and departments
+    setStaffRoles(roleResponse.data);
+    setDepartments(deptResponse.data);
+
+    // Set state for staff list
+    setStaffList(
+      staffResponse.data.map((staff: any) => ({
         id: staff.id,
         user_name: staff.user_name,
         user_email: staff.user_email,
@@ -281,21 +310,28 @@ const StaffManagement: React.FC = () => {
         pension_plan_number: staff.pension_plan_number || '',
         provident_fund_number: staff.provident_fund_number || '',
         generated_password: staff.generated_password || '',
-        profile_image: staff.profile_image || null, // Added
-      })));
-      // ... rest of fetchData unchanged ...
-    } catch (err: any) {
-      if (axios.isCancel(err)) {
-        console.log('Request canceled:', err.message);
-        return;
-      }
-      console.error('Fetch data error:', err);
-      setError(err.response?.data?.message || 'Failed to load data.');
-      toast.error('Failed to load data');
-    } finally {
-      setIsLoading(false);
+        profile_image: staff.profile_image || null,
+      }))
+    );
+
+    // Set other states (unchanged)
+    setSchools(schoolResponse.data || []); // Ensure schools is always an array
+    setClasses(classResponse.data);
+    setSubjects(subjectResponse.data);
+    setLeaveTypes(leaveTypeResponse.data);
+    setAcademicSessions(sessionResponse.data);
+  } catch (err: any) {
+    if (axios.isCancel(err)) {
+      console.log('Request canceled:', err.message);
+      return;
     }
-  };
+    console.error('Fetch data error:', err.response?.data || err.message);
+    setError(err.response?.data?.message || 'Failed to load data.');
+    toast.error('Failed to load data');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const filteredStaff = useMemo(() => {
     return staffList
@@ -342,6 +378,7 @@ const StaffManagement: React.FC = () => {
         health_insurance_number: data.health_insurance_number || '',
         pension_plan_number: data.pension_plan_number || '',
         provident_fund_number: data.provident_fund_number || '',
+        status: data.status || 'active',
       };
       if (editingStaff) {
         response = await api.put(`/school/settings/staff/${editingStaff.id}/`, payload);
@@ -451,41 +488,46 @@ const StaffManagement: React.FC = () => {
       setIsLoading(false);
     }
   };
-
-  const handleEditStaff = (staff: StaffMember) => {
-    setEditingStaff(staff);
-    setCredentials(null);
-    setValue('name', staff.user_name);
-    setValue('email', staff.user_email);
-    setValue('role', staff.user_role);
-    setValue('staff_role_id', staff.staff_role_id);
-    setValue('department_id', staff.department_id);
-    setValue('first_name', staff.first_name);
-    setValue('last_name', staff.last_name);
-    setValue('date_of_birth', staff.date_of_birth || null);
-    setValue('gender', staff.gender || '');
-    setValue('address', staff.address || '');
-    setValue('phone', staff.phone || '');
-    setValue('emergency_contact_name', staff.emergency_contact_name || '');
-    setValue('emergency_contact_phone', staff.emergency_contact_phone || '');
-    setValue('hire_date', staff.hire_date);
-    setValue('employment_type', staff.employment_type);
-    setValue('contract_end_date', staff.contract_end_date || null);
-    setValue('classes', staff.classes_ids || []);
-    setValue('subjects', staff.subjects_ids || []);
-    setValue('base_salary', staff.base_salary);
-    setValue('pay_frequency', staff.pay_frequency);
-    setValue('tax_status', staff.tax_status);
-    setValue('allowances', staff.allowances || {});
-    setValue('deductions', staff.deductions || {});
-    setValue('bank_account', staff.bank_account_number || '');
-    setValue('bank_name', staff.bank_name || '');
-    setValue('bank_branch', staff.bank_branch || '');
-    setValue('health_insurance_number', staff.health_insurance_number || '');
-    setValue('pension_plan_number', staff.pension_plan_number || '');
-    setValue('provident_fund_number', staff.provident_fund_number || '');
-    setShowForm(true);
-  };
+const handleEditStaff = (staff: StaffMember) => {
+  setEditingStaff(staff);
+  setCredentials(null);
+  setValue('name', staff.user_name);
+  setValue('email', staff.user_email);
+  setValue('role', staff.user_role);
+  // Validate staff_role_id
+  const selectedRole = staffRoles.find(role => role.id === Number(staff.staff_role_id));
+  setValue('staff_role_id', selectedRole ? Number(staff.staff_role_id) : (staffRoles.length > 0 ? staffRoles[0].id : 0));
+  // Validate department_id
+  const selectedDept = departments.find(dept => dept.id === Number(staff.department_id));
+  setValue('department_id', selectedDept ? Number(staff.department_id) : (departments.length > 0 ? departments[0].id : 0));
+  setValue('first_name', staff.first_name);
+  setValue('last_name', staff.last_name);
+  setValue('date_of_birth', staff.date_of_birth || null);
+  setValue('gender', staff.gender || '');
+  setValue('address', staff.address || '');
+  setValue('phone', staff.phone || '');
+  setValue('emergency_contact_name', staff.emergency_contact_name || '');
+  setValue('emergency_contact_phone', staff.emergency_contact_phone || '');
+  setValue('hire_date', staff.hire_date);
+  setValue('employment_type', staff.employment_type);
+  setValue('contract_end_date', staff.contract_end_date || null);
+  setValue('classes', staff.classes_ids || []);
+  setValue('subjects', staff.subjects_ids || []);
+  setValue('base_salary', staff.base_salary);
+  setValue('pay_frequency', staff.pay_frequency);
+  setValue('tax_status', staff.tax_status);
+  setValue('allowances', staff.allowances || {});
+  setValue('deductions', staff.deductions || {});
+  setValue('bank_account', staff.bank_account_number || '');
+  setValue('bank_name', staff.bank_name || '');
+  setValue('bank_branch', staff.bank_branch || '');
+  setValue('health_insurance_number', staff.health_insurance_number || '');
+  setValue('pension_plan_number', staff.pension_plan_number || '');
+  setValue('provident_fund_number', staff.provident_fund_number || '');
+  console.log('Editing staff_role_id:', staff.staff_role_id, 'Selected:', watch('staff_role_id'));
+  console.log('Editing department_id:', staff.department_id, 'Selected:', watch('department_id'));
+  setShowForm(true);
+};
 
   const handleDeleteStaff = async (staffId: string) => {
     if (!window.confirm('Are you sure you want to delete this staff member? This action cannot be undone.')) return;
@@ -532,90 +574,83 @@ const StaffManagement: React.FC = () => {
   };
 
   const handleSubmitLeave = async (data: LeaveFormData) => {
-    if (!showLeaveModal) return;
-    setIsLoading(true);
-    try {
-      const payload = {
-        leave_type: data.leave_type_id,
-        academic_session: data.academic_session_id,
-        start_date: data.start_date,
-        end_date: data.end_date || null,
-        days: data.days,
-        reason: data.reason,
-        staff: showLeaveModal.id,
-        school: schools[0].id, // Use schools[0].id from state
-      };
-      const response = await api.post(`/school/settings/staff/${showLeaveModal.id}/leave/`, payload);
-      setStaffList(prev =>
-        prev.map(s =>
-          s.id === showLeaveModal.id ? { ...s, status: 'on_leave' } : s
-        )
-      );
-      toast.success('Leave applied and status updated successfully');
-      setShowLeaveModal(null);
-      leaveForm.reset();
-    } catch (err: any) {
-      console.error('Apply leave error:', err);
-      const errorMessage =
-        err.response?.data?.detail ||
-        Object.entries(err.response?.data || {})
-          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
-          .join('; ') ||
-        'Failed to apply leave';
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  if (!showLeaveModal) return;
+  if (!schools.length) {
+    toast.error('No school data available. Please try again later.');
+    setError('No school data available.');
+    return;
+  }
+  setIsLoading(true);
+  try {
+    const payload = {
+      leave_type: data.leave_type_id,
+      academic_session: data.academic_session_id,
+      start_date: data.start_date,
+      end_date: data.end_date || null,
+      days: data.days,
+      reason: data.reason,
+      staff: showLeaveModal.id,
+      school: schools[0].id, // Safe now since we checked schools.length
+    };
+    const response = await api.post(`/school/settings/staff/${showLeaveModal.id}/leave/`, payload);
+    setStaffList(prev =>
+      prev.map(s =>
+        s.id === showLeaveModal.id ? { ...s, status: 'on_leave' } : s
+      )
+    );
+    toast.success('Leave applied and status updated successfully');
+    setShowLeaveModal(null);
+    leaveForm.reset();
+  } catch (err: any) {
+    console.error('Apply leave error:', err);
+    const errorMessage =
+      err.response?.data?.detail ||
+      Object.entries(err.response?.data || {})
+        .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+        .join('; ') ||
+      'Failed to apply leave';
+    setError(errorMessage);
+    toast.error(errorMessage);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleShowCredentials = async (staff: StaffMember) => {
     setShowCredentialsModal(staff);
     setNewPassword(staff.generated_password || '');
-    if (!staff.generated_password) {
-      try {
-        const response = await api.get(`/school/settings/staff/${staff.id}/`);
-        setStaffList(prev =>
-          prev.map(s =>
-            s.id === staff.id ? { ...s, generated_password: response.data.generated_password || '' } : s
-          )
-        );
-        setNewPassword(response.data.generated_password || '');
-      } catch (err: any) {
-        console.error('Fetch credentials error:', err);
-        toast.error('Failed to load credentials');
-      }
-    }
   };
 
-  const handleUpdatePassword = async (staffId: string) => {
-    if (!newPassword) {
-      toast.error('Password cannot be empty');
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const response = await api.post(`/school/settings/staff/${staffId}/reset-password/`, { new_password: newPassword });
-      setStaffList(prev =>
-        prev.map(s =>
-          s.id === staffId ? { ...s, generated_password: response.data.new_password } : s
-        )
-      );
-      setShowCredentialsModal(prev => (prev ? { ...prev, generated_password: response.data.new_password } : null));
-      toast.success('Password updated successfully');
-    } catch (err: any) {
-      console.error('Update password error:', err);
-      setError(err.response?.data?.message || 'Failed to update password');
-      toast.error(err.response?.data?.message || 'Failed to update password');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+const handleUpdatePassword = async (staffId: string) => {
+  if (!newPassword) {
+    toast.error('Password cannot be empty');
+    return;
+  }
+  setIsLoading(true);
+  try {
+    const response = await api.post(`/school/settings/staff/${staffId}/reset-password/`, { new_password: newPassword });
+    setStaffList(prev =>
+      prev.map(s =>
+        s.id === staffId ? { ...s, generated_password: response.data.new_password } : s
+      )
+    );
+    setShowCredentialsModal(prev => (prev ? { ...prev, generated_password: response.data.new_password } : null));
+    setNewPassword(response.data.new_password); // Ensure the input reflects the updated password
+    toast.success('Password updated successfully');
+  } catch (err: any) {
+    console.error('Update password error:', err);
+    setError(err.response?.data?.detail || 'Failed to update password');
+    toast.error(err.response?.data?.detail || 'Failed to update password');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleNameClick = (staffId: string) => {
     navigate(`/admin/staff/${staffId}`);
   };
 
+  
   return (
     <div className="space-y-6">
       <ToastContainer position="top-right" autoClose={3000} />
@@ -693,32 +728,43 @@ const StaffManagement: React.FC = () => {
                   {errors.role && <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>}
                 </div>
                 <div>
-                  <label htmlFor="staff_role_id" className="block text-sm font-medium text-gray-700">Staff Role*</label>
-                  <select
-                    {...register('staff_role_id', { required: editingStaff ? false : 'Staff role is required', valueAsNumber: true })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                  >
-                    <option value="">Select Staff Role</option>
-                    {staffRoles.map(role => (
-                      <option key={role.id} value={role.id}>{role.name}</option>
-                    ))}
-                  </select>
-                  {errors.staff_role_id && <p className="mt-1 text-sm text-red-600">{errors.staff_role_id.message}</p>}
-                </div>
-                <div>
-                  <label htmlFor="department_id" className="block text-sm font-medium text-gray-700">Department*</label>
-                  <select
-                    {...register('department_id', { required: editingStaff ? false : 'Department is required', valueAsNumber: true })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                  >
-                    <option value="">Select Department</option>
-                    {departments.map(dept => (
-                      <option key={dept.id} value={dept.id}>{dept.name}</option>
-                    ))}
-                  </select>
-                  {errors.department_id && <p className="mt-1 text-sm text-red-600">{errors.department_id.message}</p>}
-                </div>
-              </div>
+  <label htmlFor="staff_role_id" className="block text-sm font-medium text-gray-700">Staff Role*</label>
+  <select
+    {...register('staff_role_id', { required: editingStaff ? false : 'Staff role is required', valueAsNumber: true })}
+    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
+  >
+    {staffRoles.length === 0 ? (
+      <option value="">Loading Staff Roles...</option>
+    ) : (
+      <>
+        {!watch('staff_role_id') && <option value="">Select Staff Role</option>}
+        {staffRoles.map(role => (
+          <option key={role.id} value={role.id}>{role.name}</option>
+        ))}
+      </>
+    )}
+  </select>
+  {errors.staff_role_id && <p className="mt-1 text-sm text-red-600">{errors.staff_role_id.message}</p>}
+</div>
+<div>
+  <label htmlFor="department_id" className="block text-sm font-medium text-gray-700">Department*</label>
+  <select
+    {...register('department_id', { required: editingStaff ? false : 'Department is required', valueAsNumber: true })}
+    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
+  >
+    {departments.length === 0 ? (
+      <option value="">Loading Departments...</option>
+    ) : (
+      <>
+        {!watch('department_id') && <option value="">Select Department</option>}
+        {departments.map(dept => (
+          <option key={dept.id} value={dept.id}>{dept.name}</option>
+        ))}
+      </>
+    )}
+  </select>
+  {errors.department_id && <p className="mt-1 text-sm text-red-600">{errors.department_id.message}</p>}
+</div>              </div>
 
               <h4 className="text-md font-medium text-gray-900">Personal Information</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -816,6 +862,18 @@ const StaffManagement: React.FC = () => {
                     <option value="temporary">Temporary</option>
                   </select>
                   {errors.employment_type && <p className="mt-1 text-sm text-red-600">{errors.employment_type.message}</p>}
+                </div>
+                <div>
+                  <label htmlFor="status" className="block text-sm font-medium text-gray-700">Status*</label>
+                  <select
+                    {...register('status', { required: editingStaff ? false : 'Status is required' })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                  >
+                    <option value="active">Active</option>
+                    <option value="on_leave">On Leave</option>
+                    <option value="terminated">Terminated</option>
+                  </select>
+                  {errors.status && <p className="mt-1 text-sm text-red-600">{errors.status.message}</p>}
                 </div>
                 {employmentType === 'contract' && (
                   <div>

@@ -93,6 +93,9 @@ class StaffSerializer(serializers.ModelSerializer):
         valid_statuses = ['active', 'inactive', 'on_leave', 'terminated']
         if data.get('status') and data['status'] not in valid_statuses:
             raise serializers.ValidationError({"status": f"Invalid status. Must be one of: {valid_statuses}"})
+        
+        if self.instance and 'generated_password' in data and self.context['request'].method in ['PUT', 'PATCH']:
+            raise serializers.ValidationError({"generated_password": "Cannot modify generated_password directly. Use the reset-password endpoint."})
 
         user_data = data.get('user', {})
         if self.context['request'].method == 'POST':
