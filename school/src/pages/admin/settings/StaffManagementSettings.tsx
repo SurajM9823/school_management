@@ -8,6 +8,7 @@ import { Users, Plus, Trash2, Edit, Save } from 'lucide-react';
 import Card from '../../../components/common/Card';
 import Button from '../../../components/common/Button';
 import api from '../../../api';
+import { AxiosError } from 'axios';
 
 interface LeaveType {
   id: number;
@@ -130,13 +131,20 @@ const StaffManagementSettings: React.FC = () => {
       setLeaveTypes(leaveResponse.data);
       setStaffRoles(roleResponse.data);
       setDepartments(deptResponse.data);
-    } catch (err: any) {
-      console.error('Fetch staff management data error:', err);
-      setError(
-        err.response?.data?.message ||
-        'Failed to load data. Please try again or contact support.'
-      );
-      toast.error('Failed to load data');
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = 'Failed to load data. Please try again.';
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || 'No school associated with your account.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired. Please log in again.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Fetch staff management data error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -159,13 +167,26 @@ const StaffManagementSettings: React.FC = () => {
       setShowLeaveModal(false);
       setEditingLeaveId(null);
       resetLeave();
-    } catch (err: any) {
-      console.error('Leave type error:', err);
-      setError(
-        err.response?.data?.message ||
-        `Failed to ${editingLeaveId ? 'update' : 'add'} leave type.`
-      );
-      toast.error(`Failed to ${editingLeaveId ? 'update' : 'add'} leave type`);
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
+      let errorMessage = `Failed to ${editingLeaveId ? 'update' : 'add'} leave type.`;
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || Object.entries(error.response?.data || {})
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join(', ');
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.status === 403) {
+        errorMessage = error.response?.data?.error || 'System leave types cannot be modified.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Leave type not found.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Leave type error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -188,13 +209,24 @@ const StaffManagementSettings: React.FC = () => {
       setShowRoleModal(false);
       setEditingRoleId(null);
       resetRole();
-    } catch (err: any) {
-      console.error('Staff role error:', err);
-      setError(
-        err.response?.data?.message ||
-        `Failed to ${editingRoleId ? 'update' : 'add'} staff role.`
-      );
-      toast.error(`Failed to ${editingRoleId ? 'update' : 'add'} staff role`);
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
+      let errorMessage = `Failed to ${editingRoleId ? 'update' : 'add'} staff role.`;
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || Object.entries(error.response?.data || {})
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join(', ');
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Staff role not found.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Staff role error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -217,13 +249,24 @@ const StaffManagementSettings: React.FC = () => {
       setShowDeptModal(false);
       setEditingDeptId(null);
       resetDept();
-    } catch (err: any) {
-      console.error('Department error:', err);
-      setError(
-        err.response?.data?.message ||
-        `Failed to ${editingDeptId ? 'update' : 'add'} department.`
-      );
-      toast.error(`Failed to ${editingDeptId ? 'update' : 'add'} department`);
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
+      let errorMessage = `Failed to ${editingDeptId ? 'update' : 'add'} department.`;
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || Object.entries(error.response?.data || {})
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join(', ');
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Department not found.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Department error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -271,13 +314,24 @@ const StaffManagementSettings: React.FC = () => {
         setDepartments(departments.filter(d => d.id !== id));
       }
       toast.success(`${type.replace('-', ' ')} deleted successfully`);
-    } catch (err: any) {
-      console.error(`Delete ${type} error:`, err);
-      setError(
-        err.response?.data?.message ||
-        `Failed to delete ${type.replace('-', ' ')}.`
-      );
-      toast.error(`Failed to delete ${type.replace('-', ' ')}`);
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = `Failed to delete ${type.replace('-', ' ')}.`;
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || 'Invalid request.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.status === 403) {
+        errorMessage = error.response?.data?.error || 'System leave types cannot be deleted.';
+      } else if (error.response?.status === 404) {
+        errorMessage = `${type.replace('-', ' ')} not found.`;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error(`Delete ${type} error:`, error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -514,7 +568,7 @@ const StaffManagementSettings: React.FC = () => {
                 >
                   <option value="days/year">Days/Year</option>
                   <option value="days/occurrence">Days/Occurrence</option>
-                  <option value="as needed">As Needed</option>
+                  <option value="as_needed">As Needed</option>
                 </select>
                 {leaveErrors.unit && <p className="mt-1 text-sm text-red-600">{leaveErrors.unit.message}</p>}
               </div>

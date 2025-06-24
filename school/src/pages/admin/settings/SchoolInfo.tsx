@@ -1,16 +1,16 @@
-
+// SchoolInfo.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useForm } from 'react-hook-form';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { School, Save, Upload } from 'lucide-react';
+import { School, Save } from 'lucide-react';
 import Card from '../../../components/common/Card';
 import Button from '../../../components/common/Button';
 import api from '../../../api';
 
-// Define backend base URL (use environment variable in production)
+// Define backend base URL
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
 interface SchoolData {
@@ -79,8 +79,9 @@ const SchoolInfo: React.FC = () => {
       console.error('Fetch school data error:', err);
       if (err.response?.status === 401) {
         navigate('/login');
+        toast.error('Session expired. Please log in again.');
       } else if (err.response?.status === 404) {
-        setError('School data not found. Please contact support or create settings.');
+        setError('No school associated with your account. Please contact support or create school settings.');
       } else {
         setError(
           err.response?.data?.message ||
@@ -99,7 +100,8 @@ const SchoolInfo: React.FC = () => {
         toast.error('Only PNG, JPEG, or JPG files are allowed');
         return;
       }
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+      if (file.size > 2 * 1024 * 1024) {
+        // 2MB limit
         toast.error('File size must be less than 2MB');
         return;
       }
@@ -146,6 +148,9 @@ const SchoolInfo: React.FC = () => {
       if (err.response?.status === 401) {
         navigate('/login');
         toast.error('Session expired. Please log in again.');
+      } else if (err.response?.status === 404) {
+        setError('No school associated with your account. Please contact support.');
+        toast.error('No school associated with your account.');
       } else {
         setError(
           err.response?.data?.message ||
@@ -341,7 +346,7 @@ const SchoolInfo: React.FC = () => {
         )}
         {!isLoading && !error && !schoolData && (
           <div className="text-center py-4 text-sm text-gray-500">
-            No school data available. Please contact support or create settings.
+            No school data available. Please contact support or create school settings.
           </div>
         )}
       </Card>

@@ -106,10 +106,16 @@ const SessionConfig: React.FC = () => {
         setSelectedSessionId(response.data[0].id);
       }
     } catch (err: unknown) {
-      const error = err as AxiosError;
-      const errorMessage = error.response?.status === 404
-        ? 'Sessions endpoint not found. Please check the API URL.'
-        : 'Failed to load sessions.';
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = 'Failed to load sessions.';
+      if (error.response?.status === 404) {
+        errorMessage = error.response?.data?.error || 'No school associated with your account or no sessions found.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired. Please log in again.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
       setError(errorMessage);
       toast.error(errorMessage);
       console.error('Fetch sessions error:', error.response?.data);
@@ -125,8 +131,18 @@ const SessionConfig: React.FC = () => {
       const response: AxiosResponse<Term[]> = await api.get(`/school/settings/sessions/${sessionId}/terms/`);
       setTerms(response.data || []);
     } catch (err: unknown) {
-      const error = err as AxiosError;
-      toast.error('Failed to load terms');
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = 'Failed to load terms.';
+      if (error.response?.status === 404) {
+        errorMessage = error.response?.data?.error || 'Session not found or no terms available.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Fetch terms error:', error.response?.data);
     } finally {
       setIsLoading(false);
@@ -140,8 +156,18 @@ const SessionConfig: React.FC = () => {
       const response: AxiosResponse<Holiday[]> = await api.get(`/school/settings/sessions/${sessionId}/holidays/`);
       setHolidays(response.data || []);
     } catch (err: unknown) {
-      const error = err as AxiosError;
-      toast.error('Failed to load holidays');
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = 'Failed to load holidays.';
+      if (error.response?.status === 404) {
+        errorMessage = error.response?.data?.error || 'Session not found or no holidays available.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Fetch holidays error:', error.response?.data);
     } finally {
       setIsLoading(false);
@@ -174,12 +200,22 @@ const SessionConfig: React.FC = () => {
       setEditingSessionId(null);
       reset({ name: '', status: 'upcoming', start_date: '', end_date: '' });
     } catch (err: unknown) {
-      const error = err as AxiosError<{ [key: string]: string | string[] }>;
-      const errorMessage = error.response?.data
-        ? Object.entries(error.response.data)
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
+      let errorMessage = `Failed to ${editingSessionId ? 'update' : 'add'} session.`;
+      if (error.response?.status === 404) {
+        errorMessage = error.response?.data?.error || 'No school associated with your account.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired. Please log in again.';
+      } else if (error.response?.data) {
+        if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else {
+          errorMessage = Object.entries(error.response.data)
             .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
-            .join(', ')
-        : `Failed to ${editingSessionId ? 'update' : 'add'} session.`;
+            .join(', ');
+        }
+      }
       setError(errorMessage);
       toast.error(errorMessage);
       console.error('Session submit error:', error.response?.data);
@@ -219,15 +255,20 @@ const SessionConfig: React.FC = () => {
       setEditingTermId(null);
       reset({ name: '', start_date: '', end_date: '', is_active: true });
     } catch (err: unknown) {
-      const error = err as AxiosError<{ [key: string]: string | string[] }>;
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
       let errorMessage = `Failed to ${editingTermId ? 'update' : 'add'} term.`;
-      if (error.response?.data) {
-        if (typeof error.response.data === 'object') {
+      if (error.response?.status === 404) {
+        errorMessage = error.response?.data?.error || 'Session or term not found.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.data) {
+        if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else {
           errorMessage = Object.entries(error.response.data)
             .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
             .join(', ');
-        } else if (typeof error.response.data === 'string') {
-          errorMessage = error.response.data;
         }
       }
       setError(errorMessage);
@@ -275,15 +316,20 @@ const SessionConfig: React.FC = () => {
       setEditingHolidayId(null);
       reset({ name: '', start_date: '', end_date: '', holiday_type: 'school_holiday', holiday_category: 'all', is_active: true });
     } catch (err: unknown) {
-      const error = err as AxiosError<{ [key: string]: string | string[] }>;
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
       let errorMessage = `Failed to ${editingHolidayId ? 'update' : 'add'} holiday.`;
-      if (error.response?.data) {
-        if (typeof error.response.data === 'object') {
+      if (error.response?.status === 404) {
+        errorMessage = error.response?.data?.error || 'Session or holiday not found.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.data) {
+        if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else {
           errorMessage = Object.entries(error.response.data)
             .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
             .join(', ');
-        } else if (typeof error.response.data === 'string') {
-          errorMessage = error.response.data;
         }
       }
       setError(errorMessage);
@@ -322,9 +368,18 @@ const SessionConfig: React.FC = () => {
       }
       toast.success('Session deleted successfully');
     } catch (err: unknown) {
-      const error = err as AxiosError;
-      setError('Failed to delete session.');
-      toast.error('Failed to delete session');
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = 'Failed to delete session.';
+      if (error.response?.status === 404) {
+        errorMessage = error.response?.data?.error || 'Session not found.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Delete session error:', error.response?.data);
     } finally {
       setIsLoading(false);
@@ -349,9 +404,18 @@ const SessionConfig: React.FC = () => {
       setTerms(terms.filter(t => t.id !== id));
       toast.success('Term deleted successfully');
     } catch (err: unknown) {
-      const error = err as AxiosError;
-      setError('Failed to delete term.');
-      toast.error('Failed to delete term');
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = 'Failed to delete term.';
+      if (error.response?.status === 404) {
+        errorMessage = error.response?.data?.error || 'Term not found.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Delete term error:', error.response?.data);
     } finally {
       setIsLoading(false);
@@ -378,9 +442,18 @@ const SessionConfig: React.FC = () => {
       setHolidays(holidays.filter(h => h.id !== id));
       toast.success('Holiday deleted successfully');
     } catch (err: unknown) {
-      const error = err as AxiosError;
-      setError('Failed to delete holiday.');
-      toast.error('Failed to delete holiday');
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = 'Failed to delete holiday.';
+      if (error.response?.status === 404) {
+        errorMessage = error.response?.data?.error || 'Holiday not found.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Delete holiday error:', error.response?.data);
     } finally {
       setIsLoading(false);

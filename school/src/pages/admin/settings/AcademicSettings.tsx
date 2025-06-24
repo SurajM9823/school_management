@@ -4,11 +4,11 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useForm } from 'react-hook-form';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { BookOpen, Plus, Edit, Trash2 } from 'lucide-react';
+import { BookOpen, Plus, Edit, Trash2, Save } from 'lucide-react';
 import Card from '../../../components/common/Card';
 import Button from '../../../components/common/Button';
 import api from '../../../api';
-import { AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 
 interface Class {
   id: number;
@@ -142,7 +142,8 @@ const AcademicSettings: React.FC = () => {
         api.get('/school/settings/promotion-rules/'),
         api.get('/school/settings/class-capacity/'),
       ]);
-      setClasses(classesResponse.data);
+      const classesData = classesResponse.data;
+      setClasses(classesData);
       setSubjects(subjectsResponse.data);
       setGradingScales(gradingScalesResponse.data);
       setPromotionRules(promotionRulesResponse.data);
@@ -155,15 +156,28 @@ const AcademicSettings: React.FC = () => {
         class_capacity_min_students: classCapacityResponse.data.min_students || 0,
       });
       const sectionsData: { [key: number]: Section[] } = {};
-      for (const cls of classesResponse.data) {
-        const sectionsResponse = await api.get(`/school/settings/classes/${cls.id}/sections/`);
-        sectionsData[cls.id] = sectionsResponse.data;
-      }
+      const sectionPromises = classesData.map((cls: Class) =>
+        api.get(`/school/settings/classes/${cls.id}/sections/`).then(response => ({ id: cls.id, sections: response.data }))
+      );
+      const sectionResponses = await Promise.all(sectionPromises);
+      sectionResponses.forEach(({ id, sections }) => {
+        sectionsData[id] = sections;
+      });
       setSections(sectionsData);
-    } catch (err: any) {
-      console.error('Fetch error:', err);
-      setError(err.response?.data?.message || 'Failed to load academic settings.');
-      toast.error('Failed to load academic settings');
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = 'Failed to load academic settings. Please try again.';
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || 'No school associated with your account.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired. Please log in again.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Fetch academic data error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -174,7 +188,7 @@ const AcademicSettings: React.FC = () => {
     setError(null);
     try {
       const payload = { name: data.class_name, max_capacity: data.class_max_capacity };
-      let response: AxiosResponse<any, any>;
+      let response: any;
       if (editingClassId) {
         response = await api.put(`/school/settings/classes/${editingClassId}/`, payload);
         setClasses(classes.map(c => c.id === editingClassId ? response.data : c));
@@ -187,10 +201,24 @@ const AcademicSettings: React.FC = () => {
       setShowClassModal(false);
       setEditingClassId(null);
       reset({ class_name: '', class_max_capacity: 0 });
-    } catch (err: any) {
-      console.error('Class error:', err);
-      setError(err.response?.data?.message || `Failed to ${editingClassId ? 'update' : 'add'} class.`);
-      toast.error(`Failed to ${editingClassId ? 'update' : 'add'} class`);
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
+      let errorMessage = `Failed to ${editingClassId ? 'update' : 'add'} class.`;
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || Object.entries(error.response?.data || {})
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join(', ');
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Class not found.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Class error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -201,7 +229,7 @@ const AcademicSettings: React.FC = () => {
     setError(null);
     try {
       const payload = { name: data.section_name, max_capacity: data.section_max_capacity || null };
-      let response: AxiosResponse<any, any>;
+      let response: any;
       if (editingSectionId) {
         response = await api.put(`/school/settings/classes/${currentClassId}/sections/${editingSectionId}/`, payload);
         setSections({
@@ -219,11 +247,26 @@ const AcademicSettings: React.FC = () => {
       }
       setShowSectionModal(false);
       setEditingSectionId(null);
+      setCurrentClassId(null);
       reset({ section_name: '', section_max_capacity: null });
-    } catch (err: any) {
-      console.error('Section error:', err);
-      setError(err.response?.data?.message || `Failed to ${editingSectionId ? 'update' : 'add'} section.`);
-      toast.error(`Failed to ${editingSectionId ? 'update' : 'add'} section`);
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
+      let errorMessage = `Failed to ${editingSectionId ? 'update' : 'add'} section.`;
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || Object.entries(error.response?.data || {})
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join(', ');
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Class or section not found.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Section error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -239,7 +282,7 @@ const AcademicSettings: React.FC = () => {
         subject_type: data.subject_type,
         class_ids: data.subject_class_ids,
       };
-      let response: AxiosResponse<any, any>;
+      let response: any;
       if (editingSubjectId) {
         response = await api.put(`/school/settings/subjects/${editingSubjectId}/`, payload);
         setSubjects(subjects.map(s => s.id === editingSubjectId ? response.data : s));
@@ -252,10 +295,24 @@ const AcademicSettings: React.FC = () => {
       setShowSubjectModal(false);
       setEditingSubjectId(null);
       reset({ subject_name: '', subject_code: '', subject_type: 'core', subject_class_ids: [] });
-    } catch (err: any) {
-      console.error('Subject error:', err);
-      setError(err.response?.data?.message || `Failed to ${editingSubjectId ? 'update' : 'add'} subject.`);
-      toast.error(`Failed to ${editingSubjectId ? 'update' : 'add'} subject`);
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
+      let errorMessage = `Failed to ${editingSubjectId ? 'update' : 'add'} subject.`;
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || Object.entries(error.response?.data || {})
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join(', ');
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Subject not found.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Subject error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -272,7 +329,7 @@ const AcademicSettings: React.FC = () => {
         gpa: data.grading_scale_gpa,
         description: data.grading_scale_description,
       };
-      let response: AxiosResponse<any, any>;
+      let response: any;
       if (editingScaleId) {
         response = await api.put(`/school/settings/grading-scales/${editingScaleId}/`, payload);
         setGradingScales(gradingScales.map(gs => gs.scale_id === editingScaleId ? response.data : gs));
@@ -285,10 +342,24 @@ const AcademicSettings: React.FC = () => {
       setShowGradingScaleModal(false);
       setEditingScaleId(null);
       reset({ grading_scale_grade: '', grading_scale_min_score: 0, grading_scale_max_score: 0, grading_scale_gpa: '', grading_scale_description: '' });
-    } catch (err: any) {
-      console.error('Grading scale error:', err);
-      setError(err.response?.data?.message || `Failed to ${editingScaleId ? 'update' : 'add'} grading scale.`);
-      toast.error(`Failed to ${editingScaleId ? 'update' : 'add'} grading scale`);
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
+      let errorMessage = `Failed to ${editingScaleId ? 'update' : 'add'} grading scale.`;
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || Object.entries(error.response?.data || {})
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join(', ');
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Grading scale not found.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Grading scale error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -311,10 +382,22 @@ const AcademicSettings: React.FC = () => {
         promotion_rules_consider_attendance: response.data.consider_attendance,
       });
       toast.success('Promotion rules updated successfully');
-    } catch (err: any) {
-      console.error('Promotion rules error:', err);
-      setError(err.response?.data?.message || 'Failed to update promotion rules.');
-      toast.error('Failed to update promotion rules');
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
+      let errorMessage = 'Failed to update promotion rules.';
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || Object.entries(error.response?.data || {})
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join(', ');
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Promotion rules error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -335,10 +418,22 @@ const AcademicSettings: React.FC = () => {
         class_capacity_min_students: response.data.min_students,
       });
       toast.success('Class capacity updated successfully');
-    } catch (err: any) {
-      console.error('Class capacity error:', err);
-      setError(err.response?.data?.message || 'Failed to update class capacity.');
-      toast.error('Failed to update class capacity');
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
+      let errorMessage = 'Failed to update class capacity.';
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || Object.entries(error.response?.data || {})
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join(', ');
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Class capacity error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -405,10 +500,24 @@ const AcademicSettings: React.FC = () => {
         setGradingScales(gradingScales.filter(gs => gs.scale_id !== id));
       }
       toast.success(`${type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' ')} deleted successfully`);
-    } catch (err: any) {
-      console.error(`Delete ${type} error:`, err);
-      setError(err.response?.data?.message || `Failed to delete ${type.replace('-', ' ')}.`);
-      toast.error(`Failed to delete ${type.replace('-', ' ')}`);
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = `Failed to delete ${type.replace('-', ' ')}.`;
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || Object.entries(error.response?.data || {})
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join(', ');
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.status === 404) {
+        errorMessage = `${type.replace('-', ' ')} not found.`;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error(`Delete ${type} error:`, error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -555,13 +664,20 @@ const AcademicSettings: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
+                {subjects.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                      No subjects available.
+                    </td>
+                  </tr>
+                )}
                 {subjects.map((subject) => (
                   <tr key={subject.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{subject.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{subject.code}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{subject.subject_type}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {subject.class_ids.length > 0 ? subject.class_ids.map(id => classes.find(c => c.id === id)?.name).join(', ') : 'None'}
+                      {subject.class_ids.length > 0 ? subject.class_ids.map(id => classes.find(c => c.id === id)?.name).filter(Boolean).join(', ') : 'None'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Button
@@ -617,6 +733,13 @@ const AcademicSettings: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
+                {gradingScales.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                      No grading scales available.
+                    </td>
+                  </tr>
+                )}
                 {gradingScales.map((scale) => (
                   <tr key={scale.scale_id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{scale.grade}</td>
@@ -733,6 +856,7 @@ const AcademicSettings: React.FC = () => {
                 <Button
                   type="submit"
                   variant="primary"
+                  icon={<Save size={16} />}
                   disabled={isLoading}
                 >
                   {isLoading ? 'Saving...' : editingClassId ? 'Update Class' : 'Add Class'}
@@ -782,6 +906,7 @@ const AcademicSettings: React.FC = () => {
                 <Button
                   type="submit"
                   variant="primary"
+                  icon={<Save size={16} />}
                   disabled={isLoading}
                 >
                   {isLoading ? 'Saving...' : editingSectionId ? 'Update Section' : 'Add Section'}
@@ -854,6 +979,7 @@ const AcademicSettings: React.FC = () => {
                 <Button
                   type="submit"
                   variant="primary"
+                  icon={<Save size={16} />}
                   disabled={isLoading}
                 >
                   {isLoading ? 'Saving...' : editingSubjectId ? 'Update Subject' : 'Add Subject'}
@@ -929,6 +1055,7 @@ const AcademicSettings: React.FC = () => {
                 <Button
                   type="submit"
                   variant="primary"
+                  icon={<Save size={16} />}
                   disabled={isLoading}
                 >
                   {isLoading ? 'Saving...' : editingScaleId ? 'Update Grading Scale' : 'Add Grading Scale'}
@@ -983,6 +1110,7 @@ const AcademicSettings: React.FC = () => {
                 <Button
                   type="submit"
                   variant="primary"
+                  icon={<Save size={16} />}
                   disabled={isLoading}
                 >
                   {isLoading ? 'Saving...' : 'Save Changes'}
@@ -1030,6 +1158,7 @@ const AcademicSettings: React.FC = () => {
                 <Button
                   type="submit"
                   variant="primary"
+                  icon={<Save size={16} />}
                   disabled={isLoading}
                 >
                   {isLoading ? 'Saving...' : 'Save Changes'}

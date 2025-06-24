@@ -4,16 +4,26 @@ from django.contrib.auth.models import Group, Permission
 import logging
 
 logger = logging.getLogger(__name__)
+
+
 class UserSerializer(serializers.ModelSerializer):
+    school = serializers.SerializerMethodField()  # Add custom field for school
+
     class Meta:
         model = User
-        fields = ['email', 'name', 'role', 'avatar', 'is_active', 'school']
-        read_only_fields = ['is_active', 'avatar']
+        fields = ['email', 'name', 'role', 'avatar', 'is_active', 'school', 'is_superuser']
+        read_only_fields = ['is_active', 'avatar', 'is_superuser']
         extra_kwargs = {
             'email': {'required': True, 'allow_blank': False},
             'name': {'required': True, 'allow_blank': False},
             'role': {'required': True, 'allow_blank': False},
         }
+
+    def get_school(self, obj):
+        if obj.school:
+            # Return school_id without hyphens
+            return str(obj.school.school_id).replace('-', '')
+        return None
 
     def validate(self, data):
         logger.debug(f"UserSerializer validate data: {data}")
@@ -29,6 +39,7 @@ class UserSerializer(serializers.ModelSerializer):
         representation['email'] = instance.email or 'unknown@example.com'
         representation['name'] = instance.name or 'Unknown'
         representation['role'] = instance.role or 'unknown'
+        representation['is_superuser'] = instance.is_superuser
         return representation
 
     def create(self, validated_data):
@@ -36,7 +47,7 @@ class UserSerializer(serializers.ModelSerializer):
         name = validated_data.pop('name')
         role = validated_data.pop('role')
         school = validated_data.get('school')
-        password = validated_data.get('password', User.objects.make_random_password())  # Fallback password
+        password = validated_data.get('password', User.objects.make_random_password())
         try:
             user = User.objects.create_user(
                 email=email,
@@ -48,8 +59,8 @@ class UserSerializer(serializers.ModelSerializer):
             return user
         except Exception as e:
             logger.error(f"User creation error: {str(e)}")
-            raise serializers.ValidationError(f"Failed to create user: {str(e)}")            
-
+            raise serializers.ValidationError(f"Failed to create user: {str(e)}")
+        
 class SchoolSerializer(serializers.ModelSerializer):
     logo = serializers.ImageField(required=False, allow_null=True)
 
@@ -69,52 +80,28 @@ class SchoolSerializer(serializers.ModelSerializer):
             representation['logo'] = None
         return representation
 
-
 class LocaleSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = LocaleSettings
-        fields = ['timezone', 'language', 'date_format', 'time_format', 'currency_code', 'currency_symbol', 'first_day_of_week']
-
-
-class TermSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Term
-        fields = ['id', 'name', 'start_date', 'end_date', 'is_active', 'session_id']
+        fields = [
+            'timezone', 'language', 'date_format', 'time_format',
+            'currency_code', 'currency_symbol', 'first_day_of_week', 'school'
+        ]
+        read_only_fields = ['school']
 
     def validate(self, data):
-        if data['start_date'] > data['end_date']:
-            raise serializers.ValidationError("Start date must be before end date")
+        logger.debug(f"LocaleSettingsSerializer validate data: {data}")
+        # Add any custom validation if needed
         return data
-
-    def create(self, validated_data):
-        session_id = self.context.get('session_id')
-        if not session_id:
-            raise serializers.ValidationError("session_id is required")
-        validated_data['session_id'] = session_id
-        return super().create(validated_data)
-
-class HolidaySerializer(serializers.ModelSerializer):
-    session_id = serializers.IntegerField(write_only=True)  # Explicitly define session_id for input
-
-    class Meta:
-        model = Holiday
-        fields = ['id', 'name', 'start_date', 'end_date', 'holiday_type', 'holiday_category', 'is_active', 'session_id']
-
-    def validate(self, data):
-        if data.get('end_date') and data['start_date'] > data['end_date']:
-            raise serializers.ValidationError("Start date must be before end date")
-        return data
-
-    def create(self, validated_data):
-        session_id = validated_data.pop('session_id')  # Extract session_id from validated data
-        try:
-            session = AcademicSession.objects.get(id=session_id)
-        except AcademicSession.DoesNotExist:
-            raise serializers.ValidationError("Invalid session_id")
-        validated_data['session'] = session  # Map to the session ForeignKey
-        return super().create(validated_data)
-
+    
 class AcademicSessionSerializer(serializers.ModelSerializer):
+    school_id = serializers.CharField(write_only=True, required=False)  # Allow school_id input if needed
+
+    class Meta:
+        model = AcademicSession
+        fields = ['id', 'name', 'status', 'start_date', 'end_date', 'school_id']
+        read_only_fields = ['school_id']  # Make school_id read-only after creation
+
     def validate_status(self, value):
         valid_choices = [choice[0] for choice in AcademicSession._meta.get_field('status').choices]
         if value not in valid_choices:
@@ -126,9 +113,69 @@ class AcademicSessionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Start date must be before end date")
         return data
 
+    def create(self, validated_data):
+        validated_data.pop('school_id', None)  # Remove school_id if provided
+        request = self.context.get('request')
+        school = request.user.school
+        if not school:
+            raise serializers.ValidationError("User is not associated with any school")
+        validated_data['school'] = school
+        return super().create(validated_data)
+
+class TermSerializer(serializers.ModelSerializer):
+    session_id = serializers.IntegerField(write_only=True)
+
     class Meta:
-        model = AcademicSession
-        fields = ['id', 'name', 'status', 'start_date', 'end_date']
+        model = Term
+        fields = ['id', 'name', 'start_date', 'end_date', 'is_active', 'session_id']
+        read_only_fields = ['school']
+
+    def validate(self, data):
+        if data['start_date'] > data['end_date']:
+            raise serializers.ValidationError("Start date must be before end date")
+        return data
+
+    def create(self, validated_data):
+        session_id = validated_data.pop('session_id')
+        request = self.context.get('request')
+        school = request.user.school
+        if not school:
+            raise serializers.ValidationError("User is not associated with any school")
+        try:
+            session = AcademicSession.objects.get(id=session_id, school=school)
+        except AcademicSession.DoesNotExist:
+            raise serializers.ValidationError("Invalid session_id or session does not belong to your school")
+        validated_data['session'] = session
+        validated_data['school'] = school
+        return super().create(validated_data)
+
+class HolidaySerializer(serializers.ModelSerializer):
+    session_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = Holiday
+        fields = ['id', 'name', 'start_date', 'end_date', 'holiday_type', 'holiday_category', 'is_active', 'session_id']
+        read_only_fields = ['school']
+
+    def validate(self, data):
+        if data.get('end_date') and data['start_date'] > data['end_date']:
+            raise serializers.ValidationError("Start date must be before end date")
+        return data
+
+    def create(self, validated_data):
+        session_id = validated_data.pop('session_id')
+        request = self.context.get('request')
+        school = request.user.school
+        if not school:
+            raise serializers.ValidationError("User is not associated with any school")
+        try:
+            session = AcademicSession.objects.get(id=session_id, school=school)
+        except AcademicSession.DoesNotExist:
+            raise serializers.ValidationError("Invalid session_id or session does not belong to your school")
+        validated_data['session'] = session
+        validated_data['school'] = school
+        return super().create(validated_data)
+
 
 class GradingSettingsSerializer(serializers.ModelSerializer):
     grading_system = serializers.CharField(source='grading_type')
@@ -227,20 +274,25 @@ class RoleSerializer(serializers.ModelSerializer):
         model = Group
         fields = ['id', 'name', 'permissions']
 
-
 class StaffRoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = StaffRole
         fields = ['id', 'name', 'is_active']
 
     def create(self, validated_data):
+        school = self.context['request'].user.school
+        if not school:
+            raise serializers.ValidationError({"error": "User is not associated with a school"})
+        validated_data['school'] = school
         role = super().create(validated_data)
-        logger.info(f"Staff role '{role.name}' created by user {self.context['request'].user}")
+        logger.info(f"Staff role '{role.name}' created by user {self.context['request'].user} for school {school}")
         return role
 
     def update(self, instance, validated_data):
+        if instance.school != self.context['request'].user.school:
+            raise serializers.ValidationError({"error": "Cannot modify roles from another school"})
         role = super().update(instance, validated_data)
-        logger.info(f"Staff role '{role.name}' updated by user {self.context['request'].user}")
+        logger.info(f"Staff role '{role.name}' updated by user {self.context['request'].user} for school {instance.school}")
         return role
 
 class LeaveTypeSerializer(serializers.ModelSerializer):
@@ -270,7 +322,7 @@ class LeaveTypeSerializer(serializers.ModelSerializer):
             })
         if not allow_carry_over:
             data['max_carry_over_days'] = None
-        if data.get('default_days') < 0:
+        if data.get('default_days') and data.get('default_days') < 0:
             raise serializers.ValidationError({
                 'default_days': 'Default days cannot be negative.'
             })
@@ -278,34 +330,46 @@ class LeaveTypeSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        school = self.context['request'].user.school
+        if not school:
+            raise serializers.ValidationError({"error": "User is not associated with a school"})
+        validated_data['school'] = school
         leave_type = super().create(validated_data)
-        logger.info(f"Leave type '{leave_type.name}' created for {leave_type.leave_for} by user {self.context['request'].user}")
+        logger.info(f"Leave type '{leave_type.name}' created for {leave_type.leave_for} by user {self.context['request'].user} for school {school}")
         return leave_type
 
     def update(self, instance, validated_data):
+        if instance.school != self.context['request'].user.school:
+            raise serializers.ValidationError({"error": "Cannot modify leave types from another school"})
         if instance.is_system_leave:
             raise serializers.ValidationError({
                 'non_field_errors': 'System leave types cannot be modified.'
             })
         leave_type = super().update(instance, validated_data)
-        logger.info(f"Leave type '{leave_type.name}' updated for {leave_type.leave_for} by user {self.context['request'].user}")
+        logger.info(f"Leave type '{leave_type.name}' updated for {leave_type.leave_for} by user {self.context['request'].user} for school {instance.school}")
         return leave_type
-    
+
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
         fields = ['id', 'name', 'is_active']
 
     def create(self, validated_data):
+        school = self.context['request'].user.school
+        if not school:
+            raise serializers.ValidationError({"error": "User is not associated with a school"})
+        validated_data['school'] = school
         dept = super().create(validated_data)
-        logger.info(f"Department '{dept.name}' created by user {self.context['request'].user}")
+        logger.info(f"Department '{dept.name}' created by user {self.context['request'].user} for school {school}")
         return dept
 
     def update(self, instance, validated_data):
+        if instance.school != self.context['request'].user.school:
+            raise serializers.ValidationError({"error": "Cannot modify departments from another school"})
         dept = super().update(instance, validated_data)
-        logger.info(f"Department '{dept.name}' updated by user {self.context['request'].user}")
+        logger.info(f"Department '{dept.name}' updated by user {self.context['request'].user} for school {instance.school}")
         return dept
-
+    
 class BulkLeaveAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = BulkLeaveAssignment
@@ -320,18 +384,32 @@ class ClassSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
+        school = self.context['request'].user.school
+        if not school:
+            raise serializers.ValidationError({"error": "User is not associated with a school"})
         if data['max_capacity'] < 1:
             raise serializers.ValidationError({'max_capacity': 'Maximum capacity must be at least 1.'})
+        # Check unique name per school
+        name = data.get('name')
+        if name:
+            instance_id = getattr(self.instance, 'id', None)
+            if Class.objects.filter(school=school, name=name, is_active=True).exclude(id=instance_id).exists():
+                raise serializers.ValidationError({'name': f"Class name '{name}' already exists for this school."})
         return data
 
     def create(self, validated_data):
+        school = self.context['request'].user.school
+        validated_data['school'] = school
         class_obj = super().create(validated_data)
-        logger.info(f"Class '{class_obj.name}' created by user {self.context['request'].user}")
+        logger.info(f"Class '{class_obj.name}' created by user {self.context['request'].user} for school {school}")
         return class_obj
 
-    def update(self, validated_data):
-        class_obj = super().update(validated_data)
-        logger.info(f"Class '{class_obj.name}' updated by user {self.context['request'].user}")
+    def update(self, instance, validated_data):
+        school = self.context['request'].user.school
+        if instance.school != school:
+            raise serializers.ValidationError({"error": "Cannot update class from another school"})
+        class_obj = super().update(instance, validated_data)
+        logger.info(f"Class '{class_obj.name}' updated by user {self.context['request'].user} for school {school}")
         return class_obj
 
 class SectionSerializer(serializers.ModelSerializer):
@@ -345,24 +423,45 @@ class SectionSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
+        school = self.context['request'].user.school
+        if not school:
+            raise serializers.ValidationError({"error": "User is not associated with a school"})
         if data.get('max_capacity') and data['max_capacity'] < 1:
             raise serializers.ValidationError({'max_capacity': 'Maximum capacity must be at least 1.'})
+        # Validate class_id belongs to the user's school
+        class_id = data.get('class_id') or (self.instance.class_id if self.instance else None)
+        if class_id and not Class.objects.filter(id=class_id.id, school=school, is_active=True).exists():
+            raise serializers.ValidationError({'class_id': 'Invalid class for this school.'})
+        # Check unique section name per class
+        name = data.get('name')
+        if name and class_id:
+            instance_id = getattr(self.instance, 'id', None)
+            if Section.objects.filter(name=name, class_id=class_id, is_active=True).exclude(id=instance_id).exists():
+                raise serializers.ValidationError({'name': f"Section name '{name}' already exists for this class."})
         return data
 
     def create(self, validated_data):
+        school = self.context['request'].user.school
+        validated_data['school'] = school
         section = super().create(validated_data)
-        logger.info(f"Section '{section.name}' for class '{section.class_id.name}' created by user {self.context['request'].user}")
+        logger.info(f"Section '{section.name}' for class '{section.class_id.name}' created by user {self.context['request'].user} for school {school}")
         return section
 
     def update(self, instance, validated_data):
+        school = self.context['request'].user.school
+        if instance.school != school:
+            raise serializers.ValidationError({"error": "Cannot update section from another school"})
         section = super().update(instance, validated_data)
-        logger.info(f"Section '{section.name}' for class '{section.class_id.name}' updated by user {self.context['request'].user}")
+        logger.info(f"Section '{section.name}' for class '{section.class_id.name}' updated by user {self.context['request'].user} for school {school}")
         return section
-    
 
 class SubjectSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='pk', read_only=True)
-    class_ids = serializers.PrimaryKeyRelatedField(many=True, queryset=Class.objects.filter(is_active=True), source='classes')
+    class_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Class.objects.filter(is_active=True),
+        source='classes'
+    )
 
     class Meta:
         model = Subject
@@ -372,63 +471,125 @@ class SubjectSerializer(serializers.ModelSerializer):
             'is_active': {'read_only': True}
         }
 
+    def validate(self, data):
+        school = self.context['request'].user.school
+        if not school:
+            raise serializers.ValidationError({"error": "User is not associated with a school"})
+        # Validate classes belong to the user's school
+        classes = data.get('classes', [])
+        if classes:
+            invalid_classes = [cls.id for cls in classes if not Class.objects.filter(id=cls.id, school=school, is_active=True).exists()]
+            if invalid_classes:
+                raise serializers.ValidationError({'class_ids': f"Classes {invalid_classes} are invalid or not part of this school."})
+        # Check unique code per school
+        code = data.get('code')
+        if code:
+            instance_id = getattr(self.instance, 'id', None)
+            if Subject.objects.filter(school=school, code=code, is_active=True).exclude(id=instance_id).exists():
+                raise serializers.ValidationError({'code': f"Subject code '{code}' already exists for this school."})
+        return data
+
     def create(self, validated_data):
+        school = self.context['request'].user.school
         classes = validated_data.pop('classes', [])
+        validated_data['school'] = school
         subject = super().create(validated_data)
         subject.classes.set(classes)
-        logger.info(f"Subject '{subject.name}' created with classes {classes} by user {self.context['request'].user}")
+        logger.info(f"Subject '{subject.name}' created with classes {[c.id for c in classes]} by user {self.context['request'].user} for school {school}")
         return subject
 
     def update(self, instance, validated_data):
+        school = self.context['request'].user.school
+        if instance.school != school:
+            raise serializers.ValidationError({"error": "Cannot update subject from another school"})
         classes = validated_data.pop('classes', None)
         subject = super().update(instance, validated_data)
         if classes is not None:
             subject.classes.set(classes)
-        logger.info(f"Subject '{subject.name}' updated with classes {classes} by user {self.context['request'].user}")
+        logger.info(f"Subject '{subject.name}' updated with classes {[c.id for c in classes or []]} by user {self.context['request'].user} for school {school}")
         return subject
-    
 
 class GradingScaleSerializer(serializers.ModelSerializer):
     scale_id = serializers.IntegerField(source='pk', read_only=True)
-    min_score = serializers.SerializerMethodField()
-    max_score = serializers.SerializerMethodField()
+    min_score = serializers.IntegerField(write_only=True)
+    max_score = serializers.IntegerField(write_only=True)
 
     class Meta:
         model = GradingScale
         fields = ['scale_id', 'grade', 'min_score', 'max_score', 'gpa', 'description', 'is_active']
         extra_kwargs = {
-            'percentage_range': {'write_only': True},
+            'percentage_range': {'read_only': True},
             'is_active': {'read_only': True}
         }
 
-    def get_min_score(self, obj):
-        try:
-            min_score, _ = map(float, obj.percentage_range.replace('%', '').split('-'))
-            return int(min_score)
-        except:
-            return 0
-
-    def get_max_score(self, obj):
-        try:
-            _, max_score = map(float, obj.percentage_range.replace('%', '').split('-'))
-            return int(max_score)
-        except:
-            return 100
-
     def validate(self, data):
-        min_score = self.context['request'].data.get('min_score')
-        max_score = self.context['request'].data.get('max_score')
+        school = self.context['request'].user.school
+        if not school:
+            raise serializers.ValidationError({"error": "User is not associated with a school"})
+        min_score = data.get('min_score')
+        max_score = data.get('max_score')
         if min_score is not None and max_score is not None:
-            if int(min_score) >= int(max_score):
+            if min_score >= max_score:
                 raise serializers.ValidationError({'min_score': 'Min score must be less than max score.'})
             data['percentage_range'] = f"{min_score}-{max_score}%"
         return data
-    
+
+    def create(self, validated_data):
+        school = self.context['request'].user.school
+        validated_data['school'] = school
+        scale = super().create(validated_data)
+        logger.info(f"Grading scale '{scale.grade}' created by user {self.context['request'].user} for school {school}")
+        return scale
+
+    def update(self, instance, validated_data):
+        school = self.context['request'].user.school
+        if instance.school != school:
+            raise serializers.ValidationError({"error": "Cannot update grading scale from another school"})
+        scale = super().update(instance, validated_data)
+        logger.info(f"Grading scale '{scale.grade}' updated by user {self.context['request'].user} for school {school}")
+        return scale
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        try:
+            min_score, max_score = map(float, instance.percentage_range.replace('%', '').split('-'))
+            ret['min_score'] = int(min_score)
+            ret['max_score'] = int(max_score)
+        except:
+            ret['min_score'] = 0
+            ret['max_score'] = 100
+        return ret
+
 class PromotionRulesSerializer(serializers.ModelSerializer):
     class Meta:
         model = PromotionRules
         fields = ['min_overall_percentage', 'max_failed_subjects', 'consider_attendance', 'updated_at']
         read_only_fields = ['updated_at']
+
+    def validate(self, data):
+        school = self.context['request'].user.school
+        if not school:
+            raise serializers.ValidationError({"error": "User is not associated with a school"})
+        if 'min_overall_percentage' in data and (data['min_overall_percentage'] < 0 or data['min_overall_percentage'] > 100):
+            raise serializers.ValidationError({'min_overall_percentage': 'Percentage must be between 0 and 100.'})
+        if 'max_failed_subjects' in data and data['max_failed_subjects'] < 0:
+            raise serializers.ValidationError({'max_failed_subjects': 'Cannot be negative.'})
+        return data
+
+    def create(self, validated_data):
+        school = self.context['request'].user.school
+        validated_data['school'] = school
+        rules = super().create(validated_data)
+        logger.info(f"Promotion rules created by user {self.context['request'].user} for school {school}")
+        return rules
+
+    def update(self, instance, validated_data):
+        school = self.context['request'].user.school
+        if instance.school != school:
+            raise serializers.ValidationError({"error": "Cannot update promotion rules from another school"})
+        rules = super().update(instance, validated_data)
+        logger.info(f"Promotion rules updated by user {self.context['request'].user} for school {school}")
+        return rules
 
 class ClassCapacitySerializer(serializers.ModelSerializer):
     max_students = serializers.IntegerField(source='max_capacity')
@@ -439,16 +600,79 @@ class ClassCapacitySerializer(serializers.ModelSerializer):
         fields = ['max_students', 'min_students', 'updated_at']
         read_only_fields = ['updated_at']
 
+    def validate(self, data):
+        school = self.context['request'].user.school
+        if not school:
+            raise serializers.ValidationError({"error": "User is not associated with a school"})
+        max_capacity = data.get('max_capacity')
+        default_capacity = data.get('default_capacity')
+        if max_capacity is not None and max_capacity < 1:
+            raise serializers.ValidationError({'max_students': 'Maximum capacity must be at least 1.'})
+        if default_capacity is not None and default_capacity < 0:
+            raise serializers.ValidationError({'min_students': 'Minimum capacity cannot be negative.'})
+        if max_capacity is not None and default_capacity is not None and default_capacity > max_capacity:
+            raise serializers.ValidationError({'min_students': 'Minimum capacity cannot exceed maximum capacity.'})
+        return data
+
+    def create(self, validated_data):
+        school = self.context['request'].user.school
+        validated_data['school'] = school
+        capacity = super().create(validated_data)
+        logger.info(f"Class capacity created by user {self.context['request'].user} for school {school}")
+        return capacity
+
+    def update(self, instance, validated_data):
+        school = self.context['request'].user.school
+        if instance.school != school:
+            raise serializers.ValidationError({"error": "Cannot update class capacity from another school"})
+        capacity = super().update(instance, validated_data)
+        logger.info(f"Class capacity updated by user {self.context['request'].user} for school {school}")
+        return capacity
+
     def to_internal_value(self, data):
         data = data.copy()
         data['max_capacity'] = data.get('max_students')
         data['default_capacity'] = data.get('min_students')
         return super().to_internal_value(data)
-    
+        
 class RoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
         fields = ['id', 'name', 'capacity', 'room_type', 'is_active']
+        extra_kwargs = {
+            'is_active': {'read_only': True}
+        }
+
+    def validate(self, data):
+        school = self.context['request'].user.school
+        if not school:
+            raise serializers.ValidationError({"error": "User is not associated with a school"})
+        if data.get('capacity') < 0:
+            raise serializers.ValidationError({'capacity': 'Capacity cannot be negative.'})
+        building = data.get('building') or (self.instance.building if self.instance else None)
+        if building and not Building.objects.filter(id=building.id, school=school, is_active=True).exists():
+            raise serializers.ValidationError({'building': 'Invalid building for this school.'})
+        name = data.get('name')
+        if name and building:
+            instance_id = getattr(self.instance, 'id', None)
+            if Room.objects.filter(name=name, building=building, is_active=True).exclude(id=instance_id).exists():
+                raise serializers.ValidationError({'name': f"Room name '{name}' already exists in this building."})
+        return data
+
+    def create(self, validated_data):
+        school = self.context['request'].user.school
+        validated_data['school'] = school
+        room = super().create(validated_data)
+        logger.info(f"Room '{room.name}' created by user {self.context['request'].user} for school {school}")
+        return room
+
+    def update(self, instance, validated_data):
+        school = self.context['request'].user.school
+        if instance.school != school:
+            raise serializers.ValidationError({"error": "Cannot update room from another school"})
+        room = super().update(instance, validated_data)
+        logger.info(f"Room '{room.name}' updated by user {self.context['request'].user} for school {school}")
+        return room
 
 class BuildingSerializer(serializers.ModelSerializer):
     rooms = RoomSerializer(many=True, read_only=True)
@@ -456,6 +680,38 @@ class BuildingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Building
         fields = ['id', 'name', 'is_active', 'rooms']
+        extra_kwargs = {
+            'is_active': {'read_only': True}
+        }
+
+    def validate(self, data):
+        school = self.context['request'].user.school
+        if not school:
+            raise serializers.ValidationError({"error": "User is not associated with a school"})
+        campus = data.get('campus') or (self.instance.campus if self.instance else None)
+        if campus and not Campus.objects.filter(id=campus.id, school=school, is_active=True).exists():
+            raise serializers.ValidationError({'campus': 'Invalid campus for this school.'})
+        name = data.get('name')
+        if name and campus:
+            instance_id = getattr(self.instance, 'id', None)
+            if Building.objects.filter(name=name, campus=campus, is_active=True).exclude(id=instance_id).exists():
+                raise serializers.ValidationError({'name': f"Building name '{name}' already exists in this campus."})
+        return data
+
+    def create(self, validated_data):
+        school = self.context['request'].user.school
+        validated_data['school'] = school
+        building = super().create(validated_data)
+        logger.info(f"Building '{building.name}' created by user {self.context['request'].user} for school {school}")
+        return building
+
+    def update(self, instance, validated_data):
+        school = self.context['request'].user.school
+        if instance.school != school:
+            raise serializers.ValidationError({"error": "Cannot update building from another school"})
+        building = super().update(instance, validated_data)
+        logger.info(f"Building '{building.name}' updated by user {self.context['request'].user} for school {school}")
+        return building
 
 class CampusSerializer(serializers.ModelSerializer):
     buildings = BuildingSerializer(many=True, read_only=True)
@@ -463,8 +719,74 @@ class CampusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Campus
         fields = ['id', 'name', 'address', 'contact_person', 'is_active', 'buildings']
+        extra_kwargs = {
+            'is_active': {'read_only': True}
+        }
+
+    def validate(self, data):
+        school = self.context['request'].user.school
+        if not school:
+            raise serializers.ValidationError({"error": "User is not associated with a school"})
+        name = data.get('name')
+        if name:
+            instance_id = getattr(self.instance, 'id', None)
+            if Campus.objects.filter(school=school, name=name, is_active=True).exclude(id=instance_id).exists():
+                raise serializers.ValidationError({'name': f"Campus name '{name}' already exists for this school."})
+        return data
+
+    def create(self, validated_data):
+        school = self.context['request'].user.school
+        validated_data['school'] = school
+        campus = super().create(validated_data)
+        logger.info(f"Campus '{campus.name}' created by user {self.context['request'].user} for school {school}")
+        return campus
+
+    def update(self, instance, validated_data):
+        school = self.context['request'].user.school
+        if instance.school != school:
+            raise serializers.ValidationError({"error": "Cannot update campus from another school"})
+        campus = super().update(instance, validated_data)
+        logger.info(f"Campus '{campus.name}' updated by user {self.context['request'].user} for school {school}")
+        return campus
 
 class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resource
         fields = ['id', 'name', 'total_count', 'available_count', 'is_active']
+        extra_kwargs = {
+            'is_active': {'read_only': True}
+        }
+
+    def validate(self, data):
+        school = self.context['request'].user.school
+        if not school:
+            raise serializers.ValidationError({"error": "User is not associated with a school"})
+        total_count = data.get('total_count')
+        available_count = data.get('available_count', total_count)
+        if total_count is not None and total_count < 1:
+            raise serializers.ValidationError({'total_count': 'Total count must be at least 1.'})
+        if available_count is not None and available_count < 0:
+            raise serializers.ValidationError({'available_count': 'Available count cannot be negative.'})
+        if total_count is not None and available_count is not None and available_count > total_count:
+            raise serializers.ValidationError({'available_count': 'Available count cannot exceed total count.'})
+        name = data.get('name')
+        if name:
+            instance_id = getattr(self.instance, 'id', None)
+            if Resource.objects.filter(school=school, name=name, is_active=True).exclude(id=instance_id).exists():
+                raise serializers.ValidationError({'name': f"Resource name '{name}' already exists for this school."})
+        return data
+
+    def create(self, validated_data):
+        school = self.context['request'].user.school
+        validated_data['school'] = school
+        resource = super().create(validated_data)
+        logger.info(f"Resource '{resource.name}' created by user {self.context['request'].user} for school {school}")
+        return resource
+
+    def update(self, instance, validated_data):
+        school = self.context['request'].user.school
+        if instance.school != school:
+            raise serializers.ValidationError({"error": "Cannot update resource from another school"})
+        resource = super().update(instance, validated_data)
+        logger.info(f"Resource '{resource.name}' updated by user {self.context['request'].user} for school {school}")
+        return resource

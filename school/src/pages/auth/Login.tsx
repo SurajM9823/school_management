@@ -5,9 +5,7 @@ import { School, Mail, Lock } from 'lucide-react';
 import Button from '../../components/common/Button';
 
 interface LocationState {
-  from?: {
-    pathname: string;
-  };
+  from?: { pathname: string };
 }
 
 type User = {
@@ -16,6 +14,7 @@ type User = {
   email: string;
   role: 'admin' | 'teacher' | 'parent' | 'student' | 'accountant';
   avatar?: string;
+  is_superuser?: boolean;
 };
 
 const Login: React.FC = () => {
@@ -30,27 +29,28 @@ const Login: React.FC = () => {
   
   const from = (location.state as LocationState)?.from?.pathname || '/';
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
     try {
-      const response = await login(email, password);
-      const user: User = response.user; // Access user from login response
-      console.log('User after login:', user);
-      
-      const redirectPath = getRedirectPath(user);
-      console.log('Redirecting to:', redirectPath);
-      navigate(redirectPath, { replace: true });
-    } catch (err) {
-      setError('Invalid email or password');
-      setIsLoading(false);
-      console.error('Login error:', err);
+        const response = await login(email, password);
+        const user: User = response.user;
+        console.log('User after login:', user);
+        const redirectPath = getRedirectPath(user);
+        navigate(redirectPath, { replace: true });
+    } catch (err: any) {
+        const errorMsg = err.response?.data?.non_field_errors?.[0] || err.message || 'Login failed. Please check your credentials or contact support.';
+        setError(errorMsg);
+        setIsLoading(false);
+        console.error('Login error:', err);
     }
-  };
+};
 
   const getRedirectPath = (user: User) => {
+    if (user.is_superuser) {
+      return '/superadmin/dashboard';
+    }
     switch (user.role) {
       case 'admin':
         return '/admin/dashboard';
@@ -204,14 +204,14 @@ const Login: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setEmail('student1@example.com')} // Fixed typo
+                onClick={() => setEmail('student1@example.com')}
                 className="text-sm text-blue-600 hover:text-blue-500"
               >
                 Student: student1@example.com
               </button>
               <button
                 type="button"
-                onClick={() => setEmail('accountant1@example.com')} // Fixed typo
+                onClick={() => setEmail('accountant1@example.com')}
                 className="text-sm text-blue-600 hover:text-blue-500"
               >
                 Accountant: accountant1@example.com

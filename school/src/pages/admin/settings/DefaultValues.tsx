@@ -8,6 +8,7 @@ import { Settings, Save, Plus, Trash2 } from 'lucide-react';
 import Card from '../../../components/common/Card';
 import Button from '../../../components/common/Button';
 import api from '../../../api';
+import { AxiosError, AxiosResponse } from 'axios';
 
 interface GradingSettings {
   grading_system: string;
@@ -26,7 +27,7 @@ interface AttendanceSettings {
 interface FeeType {
   id?: number;
   name: string;
-  default_amount: string; // Changed from number to string to match API response
+  default_amount: string;
   is_mandatory: boolean;
 }
 
@@ -63,6 +64,7 @@ const DefaultValues: React.FC = () => {
   useEffect(() => {
     if (!user || user.role !== 'admin') {
       navigate('/login');
+      toast.error('Unauthorized access. Please log in as admin.');
       return;
     }
     fetchDefaultSettings();
@@ -86,10 +88,20 @@ const DefaultValues: React.FC = () => {
       };
       setDefaultSettings(settings);
       reset(settings);
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 'Failed to load default settings. Please try again.';
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = 'Failed to load default settings. Please try again.';
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || 'No school associated with your account.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired. Please log in again.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
       setError(errorMessage);
       toast.error(errorMessage);
+      console.error('Fetch settings error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -102,9 +114,9 @@ const DefaultValues: React.FC = () => {
     }
     setIsLoading(true);
     try {
-      const response = await api.post('/school/settings/fee-types/', {
+      const response: AxiosResponse<FeeType> = await api.post('/school/settings/fee-types/', {
         ...newFeeType,
-        default_amount: parseFloat(newFeeType.default_amount), // Convert to number for API
+        default_amount: parseFloat(newFeeType.default_amount),
       });
       setDefaultSettings(prev => ({
         ...prev!,
@@ -112,8 +124,19 @@ const DefaultValues: React.FC = () => {
       }));
       setNewFeeType({ name: '', default_amount: '0', is_mandatory: true });
       toast.success('Fee type added successfully');
-    } catch (err) {
-      toast.error('Failed to add fee type');
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
+      let errorMessage = 'Failed to add fee type.';
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || Object.entries(error.response?.data || {})
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join(', ');
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      }
+      toast.error(errorMessage);
+      console.error('Add fee type error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -128,8 +151,19 @@ const DefaultValues: React.FC = () => {
         fee_types: prev?.fee_types.filter(ft => ft.id !== id) || [],
       }));
       toast.success('Fee type deleted successfully');
-    } catch (err) {
-      toast.error('Failed to delete fee type');
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = 'Failed to delete fee type.';
+      if (error.response?.status === 404) {
+        errorMessage = error.response?.data?.error || 'Fee type not found.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      toast.error(errorMessage);
+      console.error('Delete fee type error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -146,9 +180,22 @@ const DefaultValues: React.FC = () => {
       ]);
       await fetchDefaultSettings();
       toast.success('Default settings updated successfully');
-    } catch (err) {
-      setError('Failed to update default settings.');
-      toast.error('Failed to update default settings');
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
+      let errorMessage = 'Failed to update default settings.';
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || Object.entries(error.response?.data || {})
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join(', ');
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Update settings error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }

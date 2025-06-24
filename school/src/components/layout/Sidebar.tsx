@@ -1,3 +1,4 @@
+// src/components/Sidebar.tsx
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,6 +20,9 @@ import {
   ClipboardCheck,
   Briefcase,
   Bus,
+  Building2,
+  CreditCard,
+  Activity,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -57,6 +61,14 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
   if (!user) return null;
 
   const getNavigationLinks = () => {
+    if (user.is_superuser) {
+      return [
+        { to: '/superadmin/dashboard', icon: <School size={20} />, label: 'Dashboard' },
+        { to: '/superadmin/add-school', icon: <Building2 size={20} />, label: 'Add School' },
+        { to: '/superadmin/activities', icon: <Activity size={20} />, label: 'Activity Tracker' },
+        { to: '/superadmin/settings', icon: <Settings size={20} />, label: 'Settings' },
+      ];
+    }
     switch (user.role) {
       case 'admin':
         return [
@@ -164,7 +176,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
                   className: location.pathname === item.to ? 'text-blue-600' : 'text-gray-500 group-hover:text-gray-700',
                 })}
                 label={item.label}
-                current={location.pathname === item.to || (item.to === '/admin/settings' && location.pathname.startsWith('/admin/settings'))}
+                current={location.pathname === item.to || (item.to === '/superadmin/settings' && location.pathname.startsWith('/superadmin/settings'))}
               />
             ))}
           </nav>

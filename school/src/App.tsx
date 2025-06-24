@@ -19,7 +19,7 @@ import RolesPermissions from "./pages/admin/settings/RolesPermissions";
 import StaffManagementSettings from "./pages/admin/settings/StaffManagementSettings";
 import AcademicSettings from "./pages/admin/settings/AcademicSettings";
 import CampusSettings from "./pages/admin/settings/CampusSettings";
-import AdmissionFees from "./pages/admin/settings/AdmissionFees"; // New import
+import AdmissionFees from "./pages/admin/settings/AdmissionFees";
 import Teachers from "./pages/admin/Teachers";
 import Classes from "./pages/admin/Classes";
 import Exams from "./pages/admin/Exams";
@@ -65,6 +65,10 @@ import FeeStructures from "./pages/accountant/FeeStructures";
 import AccountantExpenses from "./pages/accountant/Expenses";
 import Profile from "./pages/common/Profile";
 import NotFound from "./pages/common/NotFound";
+import SuperadminDashboard from "./pages/superadmin/SuperadminDashboard";
+import AddSchool from "./pages/superadmin/AddSchool";
+import SubscriptionManagement from "./pages/superadmin/SubscriptionManagement";
+import ActivityTracker from "./pages/superadmin/ActivityTracker";
 
 function App() {
   return (
@@ -72,6 +76,48 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+
+          {/* Superadmin Routes */}
+          <Route
+            path="/superadmin/dashboard"
+            element={
+              <ProtectedRoute roles={["admin"]} superuserOnly={true}>
+                <SuperadminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/superadmin/add-school"
+            element={
+              <ProtectedRoute roles={["admin"]} superuserOnly={true}>
+                <AddSchool />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/superadmin/subscriptions/:schoolId"
+            element={
+              <ProtectedRoute roles={["admin"]} superuserOnly={true}>
+                <SubscriptionManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/superadmin/activities"
+            element={
+              <ProtectedRoute roles={["admin"]} superuserOnly={true}>
+                <ActivityTracker />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/superadmin/settings"
+            element={
+              <ProtectedRoute roles={["admin"]} superuserOnly={true}>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Admin Routes */}
           <Route
@@ -108,7 +154,7 @@ function App() {
             <Route path="staff" element={<StaffManagementSettings />} />
             <Route path="academic" element={<AcademicSettings />} />
             <Route path="campus" element={<CampusSettings />} />
-            <Route path="admission-fees" element={<AdmissionFees />} /> {/* New route */}
+            <Route path="admission-fees" element={<AdmissionFees />} />
           </Route>
           <Route
             path="/admin/teachers"

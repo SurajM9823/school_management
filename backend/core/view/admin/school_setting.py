@@ -1,202 +1,409 @@
+import uuid
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from core.models import Class, FeeType, School,LocaleSettings,AcademicSession, Section, Term, Holiday,GradingSettings, AttendanceSettings, FeeSettings
-from core.serializers import ClassSerializer, FeeTypeSerializer, SchoolSerializer,LocaleSettingsSerializer, AcademicSessionSerializer, SectionSerializer, TermSerializer, HolidaySerializer, GradingSettingsSerializer, AttendanceSettingsSerializer, FeeSettingsSerializer, RoleSerializer, CampusSerializer, BuildingSerializer, RoomSerializer, ResourceSerializer
+from core.models import Class, FeeType, School, LocaleSettings, AcademicSession, Section, Term, Holiday, GradingSettings, AttendanceSettings, FeeSettings
+from core.serializers import ClassSerializer, FeeTypeSerializer, SchoolSerializer, LocaleSettingsSerializer, AcademicSessionSerializer, SectionSerializer, TermSerializer, HolidaySerializer, GradingSettingsSerializer, AttendanceSettingsSerializer, FeeSettingsSerializer, RoleSerializer, CampusSerializer, BuildingSerializer, RoomSerializer, ResourceSerializer
 from core.models import NotificationSettings, NotificationTemplate, StaffRole, LeaveType, Department, Subject, GradingScale, PromotionRules, ClassCapacity, Campus, Building, Room, Resource
 from core.serializers import NotificationSettingsSerializer, NotificationTemplateSerializer, StaffRoleSerializer, LeaveTypeSerializer, DepartmentSerializer, BulkLeaveAssignmentSerializer, SubjectSerializer, GradingScaleSerializer, PromotionRulesSerializer, ClassCapacitySerializer
 from django.contrib.auth.models import Group
-from smtplib import SMTP, SMTP_SSL
+from smtplib import SMTP, SMTP_SSL, SMTPException
 from email.mime.text import MIMEText
+from core.views import IsSchoolAdmin
 
 import logging
 logger = logging.getLogger(__name__)
 
-
+# core/views.py
 class SchoolSettingsView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
         logger.info(f"Fetching school settings for user: {request.user}")
-        school = School.objects.first()
-        if not school:
-            logger.warning("No school found in database")
-            return Response({"error": "School not configured"}, status=status.HTTP_404_NOT_FOUND)
+        # Fetch the school associated with the logged-in user
+        try:
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
         logger.info(f"Found school: {school.name}, ID: {school.school_id}")
         serializer = SchoolSerializer(school)
         return Response(serializer.data)
 
     def post(self, request):
-        if School.objects.exists():
-            return Response({"error": "School already configured"}, status=status.HTTP_400_BAD_REQUEST)
+        # Check if a school already exists for the user
+        if request.user.school:
+            return Response({"error": "School already configured for this user"}, status=status.HTTP_400_BAD_REQUEST)
+        
         serializer = SchoolSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            school = serializer.save()
+            # Associate the school with the user
+            request.user.school = school
+            request.user.save()
+            logger.info(f"School created and associated with user: {request.user}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request):
-        school = School.objects.first()
-        if not school:
-            return Response({"error": "School not configured"}, status=status.HTTP_404_NOT_FOUND)
+        # Fetch the school associated with the logged-in user
+        try:
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
         serializer = SchoolSerializer(school, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            logger.info(f"School updated: {school.name}, ID: {school.school_id}")
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 class LocaleSettingsView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
-        settings = LocaleSettings.objects.first()
-        if not settings:
+        logger.info(f"Fetching locale settings for user: {request.user}")
+        try:
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            settings = LocaleSettings.objects.get(school=school)
+            serializer = LocaleSettingsSerializer(settings)
+            logger.info(f"Locale settings found for school: {school.name}")
+            return Response(serializer.data)
+        except LocaleSettings.DoesNotExist:
+            logger.info(f"No locale settings found for school: {school.name}")
             return Response({"error": "Locale settings not configured"}, status=status.HTTP_404_NOT_FOUND)
-        serializer = LocaleSettingsSerializer(settings)
-        return Response(serializer.data)
+
+    def post(self, request):
+        logger.info(f"Creating locale settings for user: {request.user}")
+        try:
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
+        if LocaleSettings.objects.filter(school=school).exists():
+            logger.warning(f"Locale settings already exist for school: {school.name}")
+            return Response({"error": "Locale settings already configured for this school"}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = LocaleSettingsSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(school=school)
+            logger.info(f"Locale settings created for school: {school.name}")
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        logger.error(f"Serializer errors: {serializer.errors}")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request):
-        logger.info(f"PUT request data: {request.data}")
-        settings = LocaleSettings.objects.first()
-        if not settings:
-            settings = LocaleSettings()
+        logger.info(f"Updating locale settings for user: {request.user}")
+        try:
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            settings = LocaleSettings.objects.get(school=school)
+        except LocaleSettings.DoesNotExist:
+            logger.info(f"No locale settings found for school: {school.name}, creating new")
+            settings = LocaleSettings(school=school)
+
         serializer = LocaleSettingsSerializer(settings, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            logger.info(f"Locale settings updated for school: {school.name}")
             return Response(serializer.data)
         logger.error(f"Serializer errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class AcademicSessionView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
-        sessions = AcademicSession.objects.all()
+        try:
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
+        sessions = AcademicSession.objects.filter(school=school)
         serializer = AcademicSessionSerializer(sessions, many=True)
+        logger.info(f"Fetched {len(sessions)} sessions for school: {school.name}")
         return Response(serializer.data)
 
     def post(self, request):
+        try:
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
         logger.info(f"POST request data: {request.data}")
-        serializer = AcademicSessionSerializer(data=request.data)
+        serializer = AcademicSessionSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
-            logger.info("Session created successfully")
+            logger.info(f"Session created for school: {school.name}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         logger.error(f"Serializer errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, session_id):
         try:
-            session = AcademicSession.objects.get(id=session_id)
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            session = AcademicSession.objects.get(id=session_id, school=school)
         except AcademicSession.DoesNotExist:
-            return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+            logger.info(f"Session {session_id} not found for school: {school.name}")
+            return Response({"error": "Session not found or does not belong to your school"}, status=status.HTTP_404_NOT_FOUND)
+
         logger.info(f"PUT request data: {request.data}")
-        serializer = AcademicSessionSerializer(session, data=request.data, partial=True)
+        serializer = AcademicSessionSerializer(session, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
-            logger.info("Session updated successfully")
+            logger.info(f"Session {session_id} updated for school: {school.name}")
             return Response(serializer.data)
         logger.error(f"Serializer errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, session_id):
         try:
-            session = AcademicSession.objects.get(id=session_id)
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            session = AcademicSession.objects.get(id=session_id, school=school)
         except AcademicSession.DoesNotExist:
-            return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+            logger.info(f"Session {session_id} not found for school: {school.name}")
+            return Response({"error": "Session not found or does not belong to your school"}, status=status.HTTP_404_NOT_FOUND)
+
         session.delete()
-        logger.info("Session deleted successfully")
+        logger.info(f"Session {session_id} deleted for school: {school.name}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class TermView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request, session_id):
-        terms = Term.objects.filter(session_id=session_id)
+        try:
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            AcademicSession.objects.get(id=session_id, school=school)
+        except AcademicSession.DoesNotExist:
+            logger.info(f"Session {session_id} not found for school: {school.name}")
+            return Response({"error": "Session not found or does not belong to your school"}, status=status.HTTP_404_NOT_FOUND)
+
+        terms = Term.objects.filter(session_id=session_id, school=school)
         serializer = TermSerializer(terms, many=True)
+        logger.info(f"Fetched {len(terms)} terms for session {session_id} in school: {school.name}")
         return Response(serializer.data)
 
     def post(self, request, session_id):
+        try:
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
         logger.info(f"POST term request data: {request.data}")
-        serializer = TermSerializer(data=request.data, context={'session_id': session_id})
+        serializer = TermSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
-            logger.info("Term created successfully")
+            logger.info(f"Term created for session {session_id} in school: {school.name}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         logger.error(f"Term serializer errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, session_id, term_id):
         try:
-            term = Term.objects.get(id=term_id, session_id=session_id)
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            term = Term.objects.get(id=term_id, session_id=session_id, school=school)
         except Term.DoesNotExist:
-            return Response({"error": "Term not found"}, status=status.HTTP_404_NOT_FOUND)
+            logger.info(f"Term {term_id} not found for session {session_id} in school: {school.name}")
+            return Response({"error": "Term not found or does not belong to your school"}, status=status.HTTP_404_NOT_FOUND)
+
         logger.info(f"PUT term request data: {request.data}")
-        serializer = TermSerializer(term, data=request.data, partial=True)
+        serializer = TermSerializer(term, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
-            logger.info("Term updated successfully")
+            logger.info(f"Term {term_id} updated for session {session_id} in school: {school.name}")
             return Response(serializer.data)
         logger.error(f"Term serializer errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, session_id, term_id):
         try:
-            term = Term.objects.get(id=term_id, session_id=session_id)
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            term = Term.objects.get(id=term_id, session_id=session_id, school=school)
         except Term.DoesNotExist:
-            return Response({"error": "Term not found"}, status=status.HTTP_404_NOT_FOUND)
+            logger.info(f"Term {term_id} not found for session {session_id} in school: {school.name}")
+            return Response({"error": "Term not found or does not belong to your school"}, status=status.HTTP_404_NOT_FOUND)
+
         term.is_active = False
         term.save()
-        logger.info("Term deactivated successfully")
+        logger.info(f"Term {term_id} deactivated for session {session_id} in school: {school.name}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class HolidayView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request, session_id):
-        holidays = Holiday.objects.filter(session_id=session_id)
+        try:
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            AcademicSession.objects.get(id=session_id, school=school)
+        except AcademicSession.DoesNotExist:
+            logger.info(f"Session {session_id} not found for school: {school.name}")
+            return Response({"error": "Session not found or does not belong to your school"}, status=status.HTTP_404_NOT_FOUND)
+
+        holidays = Holiday.objects.filter(session_id=session_id, school=school)
         serializer = HolidaySerializer(holidays, many=True)
+        logger.info(f"Fetched {len(holidays)} holidays for session {session_id} in school: {school.name}")
         return Response(serializer.data)
 
     def post(self, request, session_id):
+        try:
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
         logger.info(f"POST holiday request data: {request.data}")
-        serializer = HolidaySerializer(data=request.data, context={'session_id': session_id})
+        serializer = HolidaySerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
-            logger.info("Holiday created successfully")
+            logger.info(f"Holiday created for session {session_id} in school: {school.name}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         logger.error(f"Holiday serializer errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, session_id, holiday_id):
         try:
-            holiday = Holiday.objects.get(id=holiday_id, session_id=session_id)
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            holiday = Holiday.objects.get(id=holiday_id, session_id=session_id, school=school)
         except Holiday.DoesNotExist:
-            return Response({"error": "Holiday not found"}, status=status.HTTP_404_NOT_FOUND)
+            logger.info(f"Holiday {holiday_id} not found for session {session_id} in school: {school.name}")
+            return Response({"error": "Holiday not found or does not belong to your school"}, status=status.HTTP_404_NOT_FOUND)
+
         logger.info(f"PUT holiday request data: {request.data}")
-        serializer = HolidaySerializer(holiday, data=request.data, partial=True)
+        serializer = HolidaySerializer(holiday, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
-            logger.info("Holiday updated successfully")
+            logger.info(f"Holiday {holiday_id} updated for session {session_id} in school: {school.name}")
             return Response(serializer.data)
         logger.error(f"Holiday serializer errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, session_id, holiday_id):
         try:
-            holiday = Holiday.objects.get(id=holiday_id, session_id=session_id)
+            school = request.user.school
+            if not school:
+                logger.warning(f"No school associated with user: {request.user}")
+                return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            logger.warning(f"User {request.user} has no school attribute")
+            return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            holiday = Holiday.objects.get(id=holiday_id, session_id=session_id, school=school)
         except Holiday.DoesNotExist:
-            return Response({"error": "Holiday not found"}, status=status.HTTP_404_NOT_FOUND)
+            logger.info(f"Holiday {holiday_id} not found for session {session_id} in school: {school.name}")
+            return Response({"error": "Holiday not found or does not belong to your school"}, status=status.HTTP_404_NOT_FOUND)
+
         holiday.is_active = False
         holiday.save()
-        logger.info("Holiday deactivated successfully")
+        logger.info(f"Holiday {holiday_id} deactivated for session {session_id} in school: {school.name}")
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
+    
+    
 class GradingSettingsView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
         if not request.user.school:
@@ -221,7 +428,7 @@ class GradingSettingsView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class AttendanceSettingsView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
         if not request.user.school:
@@ -249,7 +456,7 @@ class AttendanceSettingsView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class FeeTypeView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
         if not request.user.school:
@@ -290,7 +497,7 @@ class FeeTypeView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class FeeSettingsView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
         if not request.user.school:
@@ -316,34 +523,33 @@ class FeeSettingsView(APIView):
         logger.error(f"Fee settings errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# core/views/admin/school_setting.py
 class NotificationSettingsView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
-        settings = NotificationSettings.objects.first()
-        if not settings:
-            return Response({
-                'smtp_host': '',
-                'smtp_port': None,
-                'smtp_username': '',
-                'smtp_password': '',
-                'smtp_encryption': 'none',
-                'from_email': '',
-                'from_name': '',
-                'sms_provider': 'none',
-                'sms_api_key': '',
-                'sms_sender_id': ''
-            })
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        settings, created = NotificationSettings.objects.get_or_create(school=request.user.school, defaults={
+            'smtp_host': '',
+            'smtp_port': None,
+            'smtp_username': '',
+            'smtp_password': '',
+            'smtp_encryption': 'none',
+            'from_email': None,
+            'from_name': '',
+            'sms_provider': 'none',
+            'sms_api_key': '',
+            'sms_sender_id': ''
+        })
         serializer = NotificationSettingsSerializer(settings)
         data = serializer.data
         data['smtp_password'] = ''  # Don't expose password
         return Response(data)
 
     def put(self, request):
-        settings = NotificationSettings.objects.first()
-        if not settings:
-            settings = NotificationSettings()
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        settings, created = NotificationSettings.objects.get_or_create(school=request.user.school)
         serializer = NotificationSettingsSerializer(settings, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -352,38 +558,51 @@ class NotificationSettingsView(APIView):
             return Response(data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# core/views/admin/school_setting.py
-import uuid
-
 class NotificationTemplateListView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
-        templates = NotificationTemplate.objects.all()
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        templates = NotificationTemplate.objects.filter(school=request.user.school)
         serializer = NotificationTemplateSerializer(templates, many=True)
         return Response(serializer.data)
 
     def post(self, request):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         data = request.data.copy()
         if not data.get('template_id'):
             data['template_id'] = f'template_{uuid.uuid4().hex[:8]}'
+        data['school'] = request.user.school.id
         serializer = NotificationTemplateSerializer(data=data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(school=request.user.school)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class NotificationTemplateDetailView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
-    def get_object(self, template_id):
+    def get_object(self, template_id, school):
         try:
-            return NotificationTemplate.objects.get(template_id=template_id)
+            return NotificationTemplate.objects.get(template_id=template_id, school=school)
         except NotificationTemplate.DoesNotExist:
             return None
 
+    def get(self, request, template_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        template = self.get_object(template_id, request.user.school)
+        if not template:
+            return Response({"error": "Template not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = NotificationTemplateSerializer(template)
+        return Response(serializer.data)
+
     def put(self, request, template_id):
-        template = self.get_object(template_id)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        template = self.get_object(template_id, request.user.school)
         if not template:
             return Response({"error": "Template not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = NotificationTemplateSerializer(template, data=request.data, partial=True)
@@ -393,7 +612,9 @@ class NotificationTemplateDetailView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, template_id):
-        template = self.get_object(template_id)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        template = self.get_object(template_id, request.user.school)
         if not template:
             return Response({"error": "Template not found"}, status=status.HTTP_404_NOT_FOUND)
         template.is_active = False
@@ -401,10 +622,12 @@ class NotificationTemplateDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class TestSMTPView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def post(self, request):
-        settings = NotificationSettings.objects.first()
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        settings = NotificationSettings.objects.filter(school=request.user.school).first()
         if not settings or not settings.smtp_host or not settings.smtp_port:
             return Response({"error": "SMTP settings incomplete"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -412,7 +635,7 @@ class TestSMTPView(APIView):
             msg = MIMEText("This is a test email from your school management system.")
             msg['Subject'] = 'Test SMTP Email'
             msg['From'] = settings.from_email or 'test@school.com'
-            msg['To'] = settings.from_email or 'test@example.com'  # Replace with a real email
+            msg['To'] = settings.from_email or 'test@testing.com'
 
             server = None
             if settings.smtp_encryption == 'ssl':
@@ -427,12 +650,15 @@ class TestSMTPView(APIView):
             
             server.send_message(msg)
             server.quit()
-            return Response({"status": "SMTP test successful"}, status=status.HTTP_200_OK)
+            return Response({"success": "SMTP test successful"}, status=status.HTTP_200_OK)
+        except SMTPException as e:
+            return Response({"error": f"SMTP error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
+            return Response({"error": f"Server error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
 class RolePermissionsView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
         roles = Group.objects.all()
@@ -448,26 +674,34 @@ class RolePermissionsView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class StaffRoleView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
-        roles = StaffRole.objects.filter(is_active=True)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        roles = StaffRole.objects.filter(school=request.user.school, is_active=True)
         serializer = StaffRoleSerializer(roles, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = StaffRoleSerializer(data=request.data, context={'request': request})
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        data['school'] = request.user.school.id
+        serializer = StaffRoleSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(school=request.user.school)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         logger.error(f"Create staff role error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, role_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            role = StaffRole.objects.get(id=role_id, is_active=True)
+            role = StaffRole.objects.get(id=role_id, school=request.user.school, is_active=True)
         except StaffRole.DoesNotExist:
-            logger.error(f"Staff role with id {role_id} not found")
+            logger.error(f"Staff role with id {role_id} not found for school {request.user.school}")
             return Response({"error": "Staff role not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = StaffRoleSerializer(role, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
@@ -477,10 +711,12 @@ class StaffRoleView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, role_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            role = StaffRole.objects.get(id=role_id, is_active=True)
+            role = StaffRole.objects.get(id=role_id, school=request.user.school, is_active=True)
         except StaffRole.DoesNotExist:
-            logger.error(f"Staff role with id {role_id} not found")
+            logger.error(f"Staff role with id {role_id} not found for school {request.user.school}")
             return Response({"error": "Staff role not found"}, status=status.HTTP_404_NOT_FOUND)
         role.is_active = False
         role.save()
@@ -488,26 +724,34 @@ class StaffRoleView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class LeaveTypeView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
-        leave_types = LeaveType.objects.filter(is_active=True)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        leave_types = LeaveType.objects.filter(school=request.user.school, is_active=True)
         serializer = LeaveTypeSerializer(leave_types, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = LeaveTypeSerializer(data=request.data, context={'request': request})
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        data['school'] = request.user.school.id
+        serializer = LeaveTypeSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(school=request.user.school)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         logger.error(f"Create leave type error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, leave_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            leave = LeaveType.objects.get(id=leave_id, is_active=True)
+            leave = LeaveType.objects.get(id=leave_id, school=request.user.school, is_active=True)
         except LeaveType.DoesNotExist:
-            logger.error(f"Leave type with id {leave_id} not found")
+            logger.error(f"Leave type with id {leave_id} not found for school {request.user.school}")
             return Response({"error": "Leave type not found"}, status=status.HTTP_404_NOT_FOUND)
         if leave.is_system_leave:
             logger.warning(f"Attempt to modify system leave type {leave_id} by user {request.user}")
@@ -520,10 +764,12 @@ class LeaveTypeView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, leave_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            leave = LeaveType.objects.get(id=leave_id, is_active=True)
+            leave = LeaveType.objects.get(id=leave_id, school=request.user.school, is_active=True)
         except LeaveType.DoesNotExist:
-            logger.error(f"Leave type with id {leave_id} not found")
+            logger.error(f"Leave type with id {leave_id} not found for school {request.user.school}")
             return Response({"error": "Leave type not found"}, status=status.HTTP_404_NOT_FOUND)
         if leave.is_system_leave:
             logger.warning(f"Attempt to delete system leave type {leave_id} by user {request.user}")
@@ -532,28 +778,36 @@ class LeaveTypeView(APIView):
         leave.save()
         logger.info(f"Leave type '{leave.name}' deactivated by user {request.user}")
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
+
 class DepartmentView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
-        departments = Department.objects.filter(is_active=True)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        departments = Department.objects.filter(school=request.user.school, is_active=True)
         serializer = DepartmentSerializer(departments, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = DepartmentSerializer(data=request.data, context={'request': request})
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        data['school'] = request.user.school.id
+        serializer = DepartmentSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(school=request.user.school)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         logger.error(f"Create department error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, dept_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            department = Department.objects.get(id=dept_id, is_active=True)
+            department = Department.objects.get(id=dept_id, school=request.user.school, is_active=True)
         except Department.DoesNotExist:
-            logger.error(f"Department with id {dept_id} not found")
+            logger.error(f"Department with id {dept_id} not found for school {request.user.school}")
             return Response({"error": "Department not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = DepartmentSerializer(department, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
@@ -563,18 +817,20 @@ class DepartmentView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, dept_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            department = Department.objects.get(id=dept_id, is_active=True)
+            department = Department.objects.get(id=dept_id, school=request.user.school, is_active=True)
         except Department.DoesNotExist:
-            logger.error(f"Department with id {dept_id} not found")
+            logger.error(f"Department with id {dept_id} not found for school {request.user.school}")
             return Response({"error": "Department not found"}, status=status.HTTP_404_NOT_FOUND)
         department.is_active = False
         department.save()
         logger.info(f"Department '{department.name}' deactivated by user {request.user}")
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
+        
 class BulkLeaveAssignmentView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def post(self, request):
         serializer = BulkLeaveAssignmentSerializer(data=request.data)
@@ -584,26 +840,34 @@ class BulkLeaveAssignmentView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ClassView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
-        classes = Class.objects.filter(is_active=True)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        classes = Class.objects.filter(school=request.user.school, is_active=True)
         serializer = ClassSerializer(classes, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = ClassSerializer(data=request.data, context={'request': request})
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        data['school'] = request.user.school.id
+        serializer = ClassSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(school=request.user.school)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         logger.error(f"Create class error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, class_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            class_obj = Class.objects.get(id=class_id, is_active=True)
+            class_obj = Class.objects.get(id=class_id, school=request.user.school, is_active=True)
         except Class.DoesNotExist:
-            logger.error(f"Class with id {class_id} not found")
+            logger.error(f"Class with id {class_id} not found for school {request.user.school}")
             return Response({"error": "Class not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = ClassSerializer(class_obj, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
@@ -613,10 +877,12 @@ class ClassView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, class_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            class_obj = Class.objects.get(id=class_id, is_active=True)
+            class_obj = Class.objects.get(id=class_id, school=request.user.school, is_active=True)
         except Class.DoesNotExist:
-            logger.error(f"Class with id {class_id} not found")
+            logger.error(f"Class with id {class_id} not found for school {request.user.school}")
             return Response({"error": "Class not found"}, status=status.HTTP_404_NOT_FOUND)
         if class_obj.sections.exists():
             logger.warning(f"Attempt to delete class {class_id} with sections by user {request.user}")
@@ -627,33 +893,45 @@ class ClassView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class SectionView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request, class_id):
-        sections = Section.objects.filter(class_id=class_id, is_active=True)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            class_obj = Class.objects.get(id=class_id, school=request.user.school, is_active=True)
+        except Class.DoesNotExist:
+            logger.error(f"Class with id {class_id} not found for school {request.user.school}")
+            return Response({"error": "Class not found"}, status=status.HTTP_404_NOT_FOUND)
+        sections = Section.objects.filter(class_id=class_obj, is_active=True)
         serializer = SectionSerializer(sections, many=True)
         return Response(serializer.data)
 
     def post(self, request, class_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            class_obj = Class.objects.get(id=class_id, is_active=True)
+            class_obj = Class.objects.get(id=class_id, school=request.user.school, is_active=True)
         except Class.DoesNotExist:
-            logger.error(f"Class with id {class_id} not found")
+            logger.error(f"Class with id {class_id} not found for school {request.user.school}")
             return Response({"error": "Class not found"}, status=status.HTTP_404_NOT_FOUND)
         data = request.data.copy()
         data['class_id'] = class_id
+        data['school'] = request.user.school.id
         serializer = SectionSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(school=request.user.school, class_id=class_obj)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         logger.error(f"Create section error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, class_id, section_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            section = Section.objects.get(id=section_id, class_id=class_id, is_active=True)
+            section = Section.objects.get(id=section_id, class_id=class_id, school=request.user.school, is_active=True)
         except Section.DoesNotExist:
-            logger.error(f"Section with id {section_id} not found")
+            logger.error(f"Section with id {section_id} not found for school {request.user.school}")
             return Response({"error": "Section not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = SectionSerializer(section, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
@@ -663,10 +941,12 @@ class SectionView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, class_id, section_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            section = Section.objects.get(id=section_id, class_id=class_id, is_active=True)
+            section = Section.objects.get(id=section_id, class_id=class_id, school=request.user.school, is_active=True)
         except Section.DoesNotExist:
-            logger.error(f"Section with id {section_id} not found")
+            logger.error(f"Section with id {section_id} not found for school {request.user.school}")
             return Response({"error": "Section not found"}, status=status.HTTP_404_NOT_FOUND)
         section.is_active = False
         section.save()
@@ -674,29 +954,37 @@ class SectionView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class SubjectView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
-        subjects = Subject.objects.filter(is_active=True)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        subjects = Subject.objects.filter(school=request.user.school, is_active=True)
         serializer = SubjectSerializer(subjects, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        if not Class.objects.filter(is_active=True).exists():
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        if not Class.objects.filter(school=request.user.school, is_active=True).exists():
             logger.error("Attempt to create subject with no active classes")
             return Response({"error": "At least one active class must exist before adding subjects"}, status=status.HTTP_400_BAD_REQUEST)
-        serializer = SubjectSerializer(data=request.data, context={'request': request})
+        data = request.data.copy()
+        data['school'] = request.user.school.id
+        serializer = SubjectSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(school=request.user.school)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         logger.error(f"Create subject error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, subject_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            subject = Subject.objects.get(id=subject_id, is_active=True)
+            subject = Subject.objects.get(id=subject_id, school=request.user.school, is_active=True)
         except Subject.DoesNotExist:
-            logger.error(f"Subject with id {subject_id} not found")
+            logger.error(f"Subject with id {subject_id} not found for school {request.user.school}")
             return Response({"error": "Subject not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = SubjectSerializer(subject, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
@@ -706,38 +994,47 @@ class SubjectView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, subject_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            subject = Subject.objects.get(id=subject_id, is_active=True)
+            subject = Subject.objects.get(id=subject_id, school=request.user.school, is_active=True)
         except Subject.DoesNotExist:
-            logger.error(f"Subject with id {subject_id} not found")
+            logger.error(f"Subject with id {subject_id} not found for school {request.user.school}")
             return Response({"error": "Subject not found"}, status=status.HTTP_404_NOT_FOUND)
         subject.is_active = False
         subject.save()
         logger.info(f"Subject '{subject.name}' deactivated by user {request.user}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-# Existing views for GradingScale, PromotionRules, and ClassCapacity remain unchanged
 class GradingScaleView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
-        scales = GradingScale.objects.filter(is_active=True)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        scales = GradingScale.objects.filter(school=request.user.school, is_active=True)
         serializer = GradingScaleSerializer(scales, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = GradingScaleSerializer(data=request.data, context={'request': request})
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        data['school'] = request.user.school.id
+        serializer = GradingScaleSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(school=request.user.school)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         logger.error(f"Create grading scale error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, scale_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            scale = GradingScale.objects.get(id=scale_id, is_active=True)
+            scale = GradingScale.objects.get(id=scale_id, school=request.user.school, is_active=True)
         except GradingScale.DoesNotExist:
-            logger.error(f"Grading scale with id {scale_id} not found")
+            logger.error(f"Grading scale with id {scale_id} not found for school {request.user.school}")
             return Response({"error": "Grading scale not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = GradingScaleSerializer(scale, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
@@ -747,10 +1044,12 @@ class GradingScaleView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, scale_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            scale = GradingScale.objects.get(id=scale_id, is_active=True)
+            scale = GradingScale.objects.get(id=scale_id, school=request.user.school, is_active=True)
         except GradingScale.DoesNotExist:
-            logger.error(f"Grading scale with id {scale_id} not found")
+            logger.error(f"Grading scale with id {scale_id} not found for school {request.user.school}")
             return Response({"error": "Grading scale not found"}, status=status.HTTP_404_NOT_FOUND)
         scale.is_active = False
         scale.save()
@@ -758,10 +1057,12 @@ class GradingScaleView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class PromotionRulesView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
-        rules = PromotionRules.objects.first()
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        rules = PromotionRules.objects.filter(school=request.user.school).first()
         if not rules:
             return Response({
                 'min_overall_percentage': 0,
@@ -772,22 +1073,29 @@ class PromotionRulesView(APIView):
         return Response(serializer.data)
 
     def put(self, request):
-        rules = PromotionRules.objects.first()
-        if not rules:
-            rules = PromotionRules()
-        serializer = PromotionRulesSerializer(rules, data=request.data, partial=True, context={'request': request})
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        rules = PromotionRules.objects.filter(school=request.user.school).first()
+        data = request.data.copy()
+        data['school'] = request.user.school.id
+        serializer = PromotionRulesSerializer(rules, data=data, partial=True, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
-            logger.info(f"Promotion rules updated by user {request.user}")
+            if not rules:
+                serializer.save(school=request.user.school)
+            else:
+                serializer.save()
+            logger.info(f"Promotion rules updated by user {request.user} for school {request.user.school}")
             return Response(serializer.data)
         logger.error(f"Update promotion rules error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ClassCapacityView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
-        capacity = ClassCapacity.objects.first()
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        capacity = ClassCapacity.objects.filter(school=request.user.school).first()
         if not capacity:
             return Response({
                 'max_students': 0,
@@ -797,133 +1105,254 @@ class ClassCapacityView(APIView):
         return Response(serializer.data)
 
     def put(self, request):
-        capacity = ClassCapacity.objects.first()
-        if not capacity:
-            capacity = ClassCapacity()
-        serializer = ClassCapacitySerializer(capacity, data=request.data, partial=True, context={'request': request})
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        capacity = ClassCapacity.objects.filter(school=request.user.school).first()
+        data = request.data.copy()
+        data['school'] = request.user.school.id
+        serializer = ClassCapacitySerializer(capacity, data=data, partial=True, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
-            logger.info(f"Class capacity updated by user {request.user}")
+            if not capacity:
+                serializer.save(school=request.user.school)
+            else:
+                serializer.save()
+            logger.info(f"Class capacity updated by user {request.user} for school {request.user.school}")
             return Response(serializer.data)
         logger.error(f"Update class capacity error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+            
 class CampusView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
-        campuses = Campus.objects.all()
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        campuses = Campus.objects.filter(school=request.user.school, is_active=True)
         serializer = CampusSerializer(campuses, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = CampusSerializer(data=request.data)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        data['school'] = request.user.school.id
+        serializer = CampusSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(school=request.user.school)
+            logger.info(f"Campus '{serializer.data['name']}' created by user {request.user}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        logger.error(f"Create campus error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, campus_id):
-        campus = Campus.objects.get(id=campus_id)
-        serializer = CampusSerializer(campus, data=request.data, partial=True)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            campus = Campus.objects.get(id=campus_id, school=request.user.school, is_active=True)
+        except Campus.DoesNotExist:
+            logger.error(f"Campus with id {campus_id} not found for school {request.user.school}")
+            return Response({"error": "Campus not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = CampusSerializer(campus, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
+            logger.info(f"Campus '{campus.name}' updated by user {request.user}")
             return Response(serializer.data)
+        logger.error(f"Update campus error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, campus_id):
-        campus = Campus.objects.get(id=campus_id)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            campus = Campus.objects.get(id=campus_id, school=request.user.school, is_active=True)
+        except Campus.DoesNotExist:
+            logger.error(f"Campus with id {campus_id} not found for school {request.user.school}")
+            return Response({"error": "Campus not found"}, status=status.HTTP_404_NOT_FOUND)
+        if campus.buildings.filter(is_active=True).exists():
+            logger.warning(f"Attempt to delete campus {campus_id} with active buildings by user {request.user}")
+            return Response({"error": "Cannot delete campus with active buildings"}, status=status.HTTP_400_BAD_REQUEST)
         campus.is_active = False
         campus.save()
+        logger.info(f"Campus '{campus.name}' deactivated by user {request.user}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class BuildingView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request, campus_id):
-        buildings = Building.objects.filter(campus_id=campus_id)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            campus = Campus.objects.get(id=campus_id, school=request.user.school, is_active=True)
+        except Campus.DoesNotExist:
+            logger.error(f"Campus with id {campus_id} not found for school {request.user.school}")
+            return Response({"error": "Campus not found"}, status=status.HTTP_404_NOT_FOUND)
+        buildings = Building.objects.filter(campus_id=campus, school=request.user.school, is_active=True)
         serializer = BuildingSerializer(buildings, many=True)
         return Response(serializer.data)
 
     def post(self, request, campus_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            campus = Campus.objects.get(id=campus_id, school=request.user.school, is_active=True)
+        except Campus.DoesNotExist:
+            logger.error(f"Campus with id {campus_id} not found for school {request.user.school}")
+            return Response({"error": "Campus not found"}, status=status.HTTP_404_NOT_FOUND)
         data = request.data.copy()
         data['campus'] = campus_id
-        serializer = BuildingSerializer(data=data)
+        data['school'] = request.user.school.id
+        serializer = BuildingSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(school=request.user.school, campus=campus)
+            logger.info(f"Building '{serializer.data['name']}' created by user {request.user}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        logger.error(f"Create building error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, campus_id, building_id):
-        building = Building.objects.get(id=building_id, campus_id=campus_id)
-        serializer = BuildingSerializer(building, data=request.data, partial=True)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            building = Building.objects.get(id=building_id, campus_id=campus_id, school=request.user.school, is_active=True)
+        except Building.DoesNotExist:
+            logger.error(f"Building with id {building_id} not found for campus {campus_id} and school {request.user.school}")
+            return Response({"error": "Building not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = BuildingSerializer(building, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
+            logger.info(f"Building '{building.name}' updated by user {request.user}")
             return Response(serializer.data)
+        logger.error(f"Update building error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, campus_id, building_id):
-        building = Building.objects.get(id=building_id, campus_id=campus_id)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            building = Building.objects.get(id=building_id, campus_id=campus_id, school=request.user.school, is_active=True)
+        except Building.DoesNotExist:
+            logger.error(f"Building with id {building_id} not found for campus {campus_id} and school {request.user.school}")
+            return Response({"error": "Building not found"}, status=status.HTTP_404_NOT_FOUND)
+        if building.rooms.filter(is_active=True).exists():
+            logger.warning(f"Attempt to delete building {building_id} with active rooms by user {request.user}")
+            return Response({"error": "Cannot delete building with active rooms"}, status=status.HTTP_400_BAD_REQUEST)
         building.is_active = False
         building.save()
+        logger.info(f"Building '{building.name}' deactivated by user {request.user}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class RoomView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request, building_id):
-        rooms = Room.objects.filter(building_id=building_id)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            building = Building.objects.get(id=building_id, school=request.user.school, is_active=True)
+        except Building.DoesNotExist:
+            logger.error(f"Building with id {building_id} not found for school {request.user.school}")
+            return Response({"error": "Building not found"}, status=status.HTTP_404_NOT_FOUND)
+        rooms = Room.objects.filter(building_id=building, school=request.user.school, is_active=True)
         serializer = RoomSerializer(rooms, many=True)
         return Response(serializer.data)
 
     def post(self, request, building_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            building = Building.objects.get(id=building_id, school=request.user.school, is_active=True)
+        except Building.DoesNotExist:
+            logger.error(f"Building with id {building_id} not found for school {request.user.school}")
+            return Response({"error": "Building not found"}, status=status.HTTP_404_NOT_FOUND)
         data = request.data.copy()
         data['building'] = building_id
-        serializer = RoomSerializer(data=data)
+        data['school'] = request.user.school.id
+        serializer = RoomSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(school=request.user.school, building=building)
+            logger.info(f"Room '{serializer.data['name']}' created by user {request.user}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        logger.error(f"Create room error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, building_id, room_id):
-        room = Room.objects.get(id=room_id, building_id=building_id)
-        serializer = RoomSerializer(room, data=request.data, partial=True)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            room = Room.objects.get(id=room_id, building_id=building_id, school=request.user.school, is_active=True)
+        except Room.DoesNotExist:
+            logger.error(f"Room with id {room_id} not found for building {building_id} and school {request.user.school}")
+            return Response({"error": "Room not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = RoomSerializer(room, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
+            logger.info(f"Room '{room.name}' updated by user {request.user}")
             return Response(serializer.data)
+        logger.error(f"Update room error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, building_id, room_id):
-        room = Room.objects.get(id=room_id, building_id=building_id)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            room = Room.objects.get(id=room_id, building_id=building_id, school=request.user.school, is_active=True)
+        except Room.DoesNotExist:
+            logger.error(f"Room with id {room_id} not found for building {building_id} and school {request.user.school}")
+            return Response({"error": "Room not found"}, status=status.HTTP_404_NOT_FOUND)
         room.is_active = False
         room.save()
+        logger.info(f"Room '{room.name}' deactivated by user {request.user}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ResourceView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     def get(self, request):
-        resources = Resource.objects.all()
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        resources = Resource.objects.filter(school=request.user.school, is_active=True)
         serializer = ResourceSerializer(resources, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = ResourceSerializer(data=request.data)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        data['school'] = request.user.school.id
+        serializer = ResourceSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(school=request.user.school)
+            logger.info(f"Resource '{serializer.data['name']}' created by user {request.user}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        logger.error(f"Create resource error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, resource_id):
-        resource = Resource.objects.get(id=resource_id)
-        serializer = ResourceSerializer(resource, data=request.data, partial=True)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            resource = Resource.objects.get(id=resource_id, school=request.user.school, is_active=True)
+        except Resource.DoesNotExist:
+            logger.error(f"Resource with id {resource_id} not found for school {request.user.school}")
+            return Response({"error": "Resource not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ResourceSerializer(resource, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
+            logger.info(f"Resource '{resource.name}' updated by user {request.user}")
             return Response(serializer.data)
+        logger.error(f"Update resource error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, resource_id):
-        resource = Resource.objects.get(id=resource_id)
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            resource = Resource.objects.get(id=resource_id, school=request.user.school, is_active=True)
+        except Resource.DoesNotExist:
+            logger.error(f"Resource with id {resource_id} not found for school {request.user.school}")
+            return Response({"error": "Resource not found"}, status=status.HTTP_404_NOT_FOUND)
         resource.is_active = False
         resource.save()
+        logger.info(f"Resource '{resource.name}' deactivated by user {request.user}")
         return Response(status=status.HTTP_204_NO_CONTENT)

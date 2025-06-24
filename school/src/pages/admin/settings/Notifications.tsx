@@ -8,6 +8,7 @@ import { Plus, Edit, Trash2, Save } from 'lucide-react';
 import Card from '../../../components/common/Card';
 import Button from '../../../components/common/Button';
 import api from '../../../api';
+import { AxiosError, AxiosResponse } from 'axios';
 
 interface NotificationSettings {
   smtp_host: string;
@@ -58,7 +59,7 @@ const Notifications: React.FC = () => {
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  // const [testSmtpLoading, setTestSmtpLoading] = useState(false);
+  const [testSmtpLoading, setTestSmtpLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAddTemplateModal, setShowAddTemplateModal] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
@@ -83,9 +84,10 @@ const Notifications: React.FC = () => {
       setNotificationSettings(settingsResponse.data);
       setTemplates(templatesResponse.data);
       reset({ notification_settings: settingsResponse.data });
-    } catch (err: any) {
-      console.error('Fetch error:', err);
-      if (err.response?.status === 404) {
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = 'Failed to load notification settings. Please try again.';
+      if (error.response?.status === 404) {
         setNotificationSettings({
           smtp_host: '',
           smtp_port: null,
@@ -113,13 +115,17 @@ const Notifications: React.FC = () => {
             sms_sender_id: ''
           }
         });
-      } else if (err.response?.status === 401) {
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || 'No school associated with your account.';
+      } else if (error.response?.status === 401) {
         navigate('/login');
-        toast.error('Session expired. Please log in again.');
-      } else {
-        setError('Failed to load notification settings.');
-        toast.error('Failed to load notification settings');
+        errorMessage = 'Session expired. Please log in again.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
       }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Fetch error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -132,10 +138,22 @@ const Notifications: React.FC = () => {
       await api.put('/school/settings/notification-settings/', data.notification_settings);
       await fetchNotificationData();
       toast.success('Notification settings updated successfully');
-    } catch (err: any) {
-      console.error('Save error:', err);
-      setError('Failed to update notification settings.');
-      toast.error('Failed to update notification settings');
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
+      let errorMessage = 'Failed to update notification settings.';
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || Object.entries(error.response?.data || {})
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join(', ');
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Save error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -150,39 +168,64 @@ const Notifications: React.FC = () => {
         content: data.template_content,
         is_active: data.is_active ?? true,
       };
+      let response: AxiosResponse<NotificationTemplate>;
       if (editingTemplateId) {
-        const response = await api.put(`/school/settings/notifications/templates/${editingTemplateId}/`, templateData);
+        response = await api.put(`/school/settings/notifications/templates/${editingTemplateId}/`, templateData);
         setTemplates(templates.map(t => t.template_id === editingTemplateId ? response.data : t));
         toast.success('Template updated successfully');
       } else {
-        const response = await api.post('/school/settings/notifications/templates/', templateData);
+        response = await api.post('/school/settings/notifications/templates/', templateData);
         setTemplates([...templates, response.data]);
         toast.success('Template added successfully');
       }
       setShowAddTemplateModal(false);
       setEditingTemplateId(null);
       reset({ template_name: '', template_content: '', is_active: true });
-    } catch (err: any) {
-      console.error('Template error:', err);
-      setError(`Failed to ${editingTemplateId ? 'update' : 'add'} template.`);
-      toast.error(`Failed to ${editingTemplateId ? 'update' : 'add'} template`);
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: string | string[] }>;
+      let errorMessage = `Failed to ${editingTemplateId ? 'update' : 'add'} template.`;
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || Object.entries(error.response?.data || {})
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join(', ');
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Template not found.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Template error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // const handleTestSMTP = async () => {
-  //   setTestSmtpLoading(true);
-  //   try {
-  //     await api.post('/school/settings/notification-settings/test-smtp/');
-  //     toast.success('SMTP test successful');
-  //   } catch (err: any) {
-  //     console.error('SMTP test error:', err);
-  //     toast.error('SMTP test failed');
-  //   } finally {
-  //     setTestSmtpLoading(false);
-  //   }
-  // };
+  const handleTestSMTP = async () => {
+    setTestSmtpLoading(true);
+    try {
+      await api.post('/school/settings/notification-settings/test-smtp/');
+      toast.success('SMTP test successful');
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = 'SMTP test failed.';
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || 'Invalid SMTP settings.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      toast.error(errorMessage);
+      console.error('SMTP test error:', error.response?.data);
+    } finally {
+      setTestSmtpLoading(false);
+    }
+  };
 
   const handleEditTemplate = (template: NotificationTemplate) => {
     setEditingTemplateId(template.template_id);
@@ -199,10 +242,20 @@ const Notifications: React.FC = () => {
       await api.delete(`/school/settings/notifications/templates/${templateId}/`);
       setTemplates(templates.filter(t => t.template_id !== templateId));
       toast.success('Template deleted successfully');
-    } catch (err: any) {
-      console.error('Delete error:', err);
-      setError('Failed to delete template.');
-      toast.error('Failed to delete template');
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string; [key: string]: any }>;
+      let errorMessage = 'Failed to delete template.';
+      if (error.response?.status === 404) {
+        errorMessage = 'Template not found.';
+      } else if (error.response?.status === 401) {
+        navigate('/login');
+        errorMessage = 'Session expired.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Delete error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -320,14 +373,14 @@ const Notifications: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-end space-x-3">
-              {/* <Button
+              <Button
                 type="button"
                 variant="outline"
                 onClick={handleTestSMTP}
                 disabled={testSmtpLoading || isLoading}
               >
                 {testSmtpLoading ? 'Testing...' : 'Test SMTP'}
-              </Button> */}
+              </Button>
               <Button
                 type="submit"
                 variant="primary"

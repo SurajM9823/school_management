@@ -1,3 +1,4 @@
+// TimezoneLocale.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -35,20 +36,22 @@ const TimezoneLocale: React.FC = () => {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<LocaleSettings>({
     defaultValues: {
-      timezone: '',
-      language: '',
-      date_format: '',
-      time_format: '',
-      currency_code: '',
-      currency_symbol: '',
-      first_day_of_week: '',
+      timezone: 'UTC',
+      language: 'en',
+      date_format: 'YYYY-MM-DD',
+      time_format: '24h',
+      currency_code: 'USD',
+      currency_symbol: '$',
+      first_day_of_week: 'Monday',
     },
   });
   const [localeData, setLocaleData] = useState<LocaleSettings | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasSettings, setHasSettings] = useState<boolean>(false);
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -66,17 +69,25 @@ const TimezoneLocale: React.FC = () => {
       const response = await api.get('/school/settings/locale/');
       const data = response.data;
       setLocaleData(data);
+      setHasSettings(true);
       reset(data);
     } catch (err: any) {
       if (err.response?.status === 401) {
         navigate('/login');
         toast.error('Session expired. Please log in again.');
       } else if (err.response?.status === 404) {
-        setError('Locale data not found. Please contact support.');
+        // No locale settings found, show form with default values
+        setLocaleData(null);
+        setHasSettings(false);
+        setError(null); // Clear error to show the form
+        logger.info('No locale settings found, showing form to create new settings');
       } else {
-        setError('Failed to load locale data. Please try again or contact support.');
+        setError(
+          err.response?.data?.message ||
+          'Failed to load locale data. Please try again or contact support.'
+        );
+        toast.error('Failed to load locale data');
       }
-      toast.error('Failed to load locale data');
     } finally {
       setIsLoading(false);
     }
@@ -86,19 +97,33 @@ const TimezoneLocale: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.put('/school/settings/locale/', data);
+      let response;
+      if (hasSettings) {
+        // Update existing settings
+        response = await api.put('/school/settings/locale/', data);
+      } else {
+        // Create new settings
+        response = await api.post('/school/settings/locale/', data);
+        setHasSettings(true);
+      }
       setLocaleData(response.data);
       reset(response.data);
-      toast.success('Locale settings updated successfully');
+      toast.success(
+        hasSettings ? 'Locale settings updated successfully' : 'Locale settings created successfully'
+      );
     } catch (err: any) {
-      const errorMessage = err.response?.data?.errors
-        ? Object.values(err.response.data.errors).join(', ')
-        : 'Failed to update locale settings. Please try again.';
-      setError(errorMessage);
-      toast.error(errorMessage);
       if (err.response?.status === 401) {
         navigate('/login');
         toast.error('Session expired. Please log in again.');
+      } else if (err.response?.status === 404) {
+        setError('No school associated with your account. Please contact support.');
+        toast.error('No school associated with your account.');
+      } else {
+        const errorMessage = err.response?.data?.errors
+          ? Object.values(err.response.data.errors).join(', ')
+          : 'Failed to save locale settings. Please try again.';
+        setError(errorMessage);
+        toast.error(errorMessage);
       }
     } finally {
       setIsLoading(false);
@@ -125,8 +150,8 @@ const TimezoneLocale: React.FC = () => {
       )}
 
       <Card title="Locale Settings">
-        {isLoading && <div className="text-center py-4">Loading...</div>}
-        {!isLoading && !error && localeData && (
+        {isLoading && <div className="text-center py-4 text-gray-500">Loading...</div>}
+        {!isLoading && (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
@@ -250,15 +275,10 @@ const TimezoneLocale: React.FC = () => {
                 icon={<Save size={16} />}
                 disabled={isLoading}
               >
-                {isLoading ? 'Saving...' : 'Update Settings'}
+                {isLoading ? 'Saving...' : hasSettings ? 'Update Settings' : 'Create Settings'}
               </Button>
             </div>
           </form>
-        )}
-        {!isLoading && !error && !localeData && (
-          <div className="text-center py-4 text-sm text-gray-500">
-            No locale data available. Please contact support.
-          </div>
         )}
       </Card>
     </div>

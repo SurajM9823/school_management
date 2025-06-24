@@ -6,9 +6,10 @@ import Layout from '../layout/Layout';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   roles: string[];
+  superuserOnly?: boolean;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles }) => {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles, superuserOnly}) => {
   const { user, isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
@@ -25,6 +26,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles }) => {
   if (!isAuthenticated || !user) {
     console.log('Not authenticated or no user, redirecting to /login');
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+    if (superuserOnly && !user.is_superuser) {
+    return <Navigate to="/login" replace />;
   }
 
   if (!roles.includes(user.role)) {

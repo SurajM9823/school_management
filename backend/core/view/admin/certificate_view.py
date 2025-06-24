@@ -8,12 +8,24 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from core.models import Certificate
 from core.serial.certificate_serial import CertificateSerializer
+from core.views import IsSchoolAdmin
+from django.shortcuts import get_object_or_404
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status, permissions
+from core.models import Student, StudentParent
+from core.views import IsSchoolAdmin
+from core.serial.admission_serial import StudentSerializer, ParentSerializer
+import logging
+
+logger = logging.getLogger(__name__)
+
 class CertificateViewSet(viewsets.ModelViewSet):
     queryset = Certificate.objects.all().select_related(
         'student_id', 'class_id', 'section_id', 'academic_session_id'
     )  # Optimize with select_related
     serializer_class = CertificateSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSchoolAdmin]
 
     def perform_create(self, serializer):
         certificate = serializer.save()
@@ -46,27 +58,87 @@ class CertificateViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+
+
+
+
 class StudentCredentialsView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsSchoolAdmin]
+
     def get(self, request, student_id):
         try:
-            student = Student.objects.get(id=student_id)
-            # Assuming Student has a OneToOneField to User
-            student_user = student.user  # Adjust based on your Student model
+            school_id = request.user.school.school_id
+            student = get_object_or_404(Student, id=student_id, school__school_id=school_id)
+            student_user = student.user
+
             credentials = {
                 "student": {
                     "email": student_user.email,
-                    "password": "******"  # Placeholder; adjust based on your needs
-                }
+                    "password": student_user.plaintext_password,
+                    "user_id": student_user.id
+                },
+                "parent": None
             }
-            # Fetch parent credentials if linked
-            parent = Parent.objects.filter(students=student).first()  # Adjust based on Parent-Student relationship
-            if parent and parent.user:
+
+            student_parent = StudentParent.objects.filter(student=student, parent__school__school_id=school_id).first()
+            if student_parent:
+                parent = student_parent.parent
                 credentials["parent"] = {
                     "email": parent.user.email,
-                    "password": "******"
+                    "password": parent.user.plaintext_password,
+                    "user_id": parent.user.id
                 }
+
+            logger.info(f"Fetched credentials for student {student_id} in school_id: {school_id}")
             return Response(credentials, status=status.HTTP_200_OK)
         except Student.DoesNotExist:
+            logger.error(f"Student {student_id} not found for school_id {school_id}")
             return Response({"detail": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
+            logger.error(f"Fetch credentials error: {str(e)}")
             return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def put(self, request, student_id):
+        try:
+            school_id = request.user.school.school_id
+            student = get_object_or_404(Student, id=student_id, school__school_id=school_id)
+            student_user = student.user
+            new_student_password = request.data.get('student_password')
+            new_parent_password = request.data.get('parent_password')
+
+            credentials = {
+                "student": {
+                    "email": student_user.email,
+                    "password": student_user.plaintext_password,
+                    "user_id": student_user.id
+                },
+                "parent": None
+            }
+
+            if new_student_password:
+                student_user.set_password(new_student_password)
+                student_user.plaintext_password = new_student_password
+                student_user.save()
+                credentials["student"]["password"] = new_student_password
+                logger.info(f"Password reset for student {student_id}")
+
+            student_parent = StudentParent.objects.filter(student=student, parent__school__school_id=school_id).first()
+            if student_parent and new_parent_password:
+                parent = student_parent.parent
+                parent.user.set_password(new_parent_password)
+                parent.user.plaintext_password = new_parent_password
+                parent.user.save()
+                credentials["parent"] = {
+                    "email": parent.user.email,
+                    "password": new_parent_password,
+                    "user_id": parent.user.id
+                }
+                logger.info(f"Password reset for parent of student {student_id}")
+
+            return Response(credentials, status=status.HTTP_200_OK)
+        except Student.DoesNotExist:
+            logger.error(f"Student {student_id} not found for school_id {school_id}")
+            return Response({"detail": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Change password error: {str(e)}")
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

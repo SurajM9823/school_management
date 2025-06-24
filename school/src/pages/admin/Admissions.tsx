@@ -5,7 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
-  UserPlus, Search, Filter, FileText, Users, Check, X, Eye, Download, Edit, Trash2, Upload, Image, Settings
+  UserPlus, Search, Filter, FileText, Users, Check, X, Eye, Download, Edit, Trash2, Upload, Image, Settings, ArrowUpCircle
 } from "lucide-react";
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -71,6 +71,7 @@ interface Parent {
   phone: string;
   students?: number[]; // Add to track linked students
 }
+
 
 interface AcademicSession {
   id: number;
@@ -146,9 +147,16 @@ interface CertificateForm {
   reason?: string;
   remarks?: string;
 }
+
+interface PromotionForm {
+  class_id: string;
+  section_id: string;
+  academic_session_id: string;
+}
+
 interface Credentials {
-  student: { email: string; password: string; user_id: number };
-  parent?: { email: string; password: string; user_id: number };
+  student: { email: string; password: string | null; user_id: number };
+  parent?: { email: string; password: string | null; user_id: number };
 }
 
 const Admissions: React.FC = () => {
@@ -161,7 +169,6 @@ const Admissions: React.FC = () => {
   const [sections, setSections] = useState<{ [key: number]: Section[] }>({});
   const [parents, setParents] = useState<Parent[]>([]);
   const [sessions, setSessions] = useState<AcademicSession[]>([]);
-  const [schoolId, setSchoolId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [classFilter, setClassFilter] = useState("all");
@@ -184,10 +191,11 @@ const Admissions: React.FC = () => {
   const [currentCertificate, setCurrentCertificate] = useState<Certificate | null>(null);
   const [previewCertificate, setPreviewCertificate] = useState<Certificate | null>(null);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
-  const [selectedCredentials, setSelectedCredentials] = useState<{
-      student: { username: string; password: string };
-      parent?: { username: string; password: string };
-    } | null>(null)
+  const [showPromotionModal, setShowPromotionModal] = useState(false);
+  const [selectedCredentials, setSelectedCredentials] = useState<Credentials | null>(null);
+  // **Addition**: State for password visibility toggles
+  const [showStudentPassword, setShowStudentPassword] = useState(false);
+  const [showParentPassword, setShowParentPassword] = useState(false);
   const [schoolInfo, setSchoolInfo] = useState<{
     name: string;
     address: string;
@@ -266,6 +274,24 @@ const {
   },
 });
 
+const {
+  register: registerPromotion,
+  handleSubmit: handleSubmitPromotion,
+  control: controlPromotion,
+  watch: watchPromotion,
+  setValue: setValuePromotion,
+  formState: { errors: errorsPromotion },
+  reset: resetPromotion,
+} = useForm<PromotionForm>({
+  mode: "onChange",
+  defaultValues: {
+    class_id: "",
+    section_id: "",
+    academic_session_id: "",
+  },
+});
+const promotionClassId = watchPromotion("class_id");
+
 const certificateClassId = watchCertificate("class_id");
 
   // Move fetchSections above useEffect hooks that use it
@@ -318,16 +344,15 @@ const certificateClassId = watchCertificate("class_id");
 useEffect(() => {
   const loadInitialData = async () => {
     try {
-      const [schoolRes, studentsRes, classesRes, parentsRes, sessionsRes] = await Promise.all([
-        api.get('/school/settings/'),
+      const [studentsRes, classesRes, parentsRes, sessionsRes, schoolRes] = await Promise.all([
         api.get('/students/'),
         api.get('/school/settings/classes/'),
         api.get('/parents/'),
         api.get('/school/settings/sessions/'),
+        api.get('/school/settings/'),
       ]);
-      console.log("Classes response:", classesRes.data); // Debug
+      console.log("Classes response:", classesRes.data);
       setSchoolInfo(schoolRes.data);
-      setSchoolId(schoolRes.data?.school_id || null);
       setStudents(studentsRes.data);
       setClasses(classesRes.data);
       setParents(parentsRes.data);
@@ -336,13 +361,14 @@ useEffect(() => {
       if (activeSession) {
         setValue('academicSessionId', activeSession.id.toString());
         setValueCertificate('academic_session_id', activeSession.id.toString());
+        setValuePromotion('academic_session_id', activeSession.id.toString()); // Added
       }
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Failed to load initial data');
     }
   };
   loadInitialData();
-}, [setValue, setValueCertificate]);
+}, [setValue, setValueCertificate, setValuePromotion]);
 
 
   useEffect(() => {
@@ -360,6 +386,14 @@ useEffect(() => {
       setValueEdit("section_id", "");
     }
   }, [editClassIdState, setValueEdit, fetchSections]);
+
+  useEffect(() => {
+  if (promotionClassId) {
+    fetchSections(parseInt(promotionClassId));
+  } else {
+    setValuePromotion("section_id", "");
+  }
+}, [promotionClassId, setValuePromotion, fetchSections]);
 
   const handleStatusChange = async (student: Student, certificateType: "graduation" | "leave") => {
     console.log("handleStatusChange called", { studentId: student.id, certificateType });
@@ -387,58 +421,109 @@ useEffect(() => {
       toast.error("Failed to delete student.");
     }
   };
-  const onSubmitCertificate = async (data: CertificateForm) => {
-    if (!selectedStudent || !schoolId) {
-      toast.error("Invalid student or school ID");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const payload = {
-        student_id: selectedStudent.id,
-        student_name: selectedStudent.user_name, // Include for backend consistency
-        certificate_type: data.certificate_type,
-        issue_date: data.issue_date,
-        class_id: parseInt(data.class_id),
-        class_name: classes.find((cls) => cls.id === parseInt(data.class_id))?.name || selectedStudent.class_name,
-        section_id: data.section_id ? parseInt(data.section_id) : null,
-        section_name: data.section_id
-          ? sections[parseInt(data.class_id)]?.find((sec) => sec.id === parseInt(data.section_id))?.name || selectedStudent.section_name
-          : null,
-        academic_session_id: parseInt(data.academic_session_id),
-        academic_session_name: sessions.find((s) => s.id === parseInt(data.academic_session_id))?.name || selectedStudent.academic_session_name,
-        completion_date: data.completion_date || null,
-        reason: data.reason || null,
-        remarks: data.remarks || null,
-      };
-      console.log("Certificate payload:", payload);
-      let response;
-      if (currentCertificate) {
-        response = await api.put(`/certificates/${currentCertificate.id}/`, payload);
-      } else {
-        response = await api.post('/certificates/', payload);
-      }
-      const certificate = response.data;
-      setPreviewCertificate(certificate);
-      setStudents(
-        students.map((s) =>
-          s.id === selectedStudent.id
-            ? {
-                ...s,
-                status: "alumni",
-                alumni_type: certificate.certificate_type === "graduation" ? "graduated" : "transferred",
-              }
-            : s
-        )
-      );
-      toast.success(currentCertificate ? "Certificate updated successfully!" : "Certificate created successfully!");
-    } catch (error: any) {
-      console.error("Certificate submission error:", error.response?.data || error);
-      toast.error(error.response?.data?.detail || "Failed to save certificate");
-    } finally {
-      setIsLoading(false);
-    }
+
+  const handlePromoteStudent = async (student: Student) => {
+    setSelectedStudent(student);
+    setValuePromotion("class_id", "");
+    setValuePromotion("section_id", "");
+    setValuePromotion("academic_session_id", sessions.find((s) => s.status === 'active')?.id.toString() || "");
+    setShowPromotionModal(true);
   };
+
+  const onSubmitPromotion = async (data: PromotionForm) => {
+  if (!selectedStudent) {
+    toast.error("Invalid student");
+    return;
+  }
+  setIsLoading(true);
+  try {
+    const payload = {
+      student_id: selectedStudent.id,
+      class_id: parseInt(data.class_id),
+      section_id: data.section_id ? parseInt(data.section_id) : null,
+      academic_session_id: parseInt(data.academic_session_id),
+    };
+    const response = await api.post(`/students/${selectedStudent.id}/promote/`, payload);
+    setStudents(
+      students.map((s) =>
+        s.id === selectedStudent.id
+          ? {
+              ...s,
+              class_id: response.data.class_id,
+              class_name: classes.find((cls) => cls.id === parseInt(data.class_id))?.name || s.class_name,
+              section_id: response.data.section_id,
+              section_name: data.section_id
+                ? sections[parseInt(data.class_id)]?.find((sec) => sec.id === parseInt(data.section_id))?.name || s.section_name
+                : null,
+              academic_session_id: response.data.academic_session_id,
+              academic_session_name: sessions.find((s) => s.id === parseInt(data.academic_session_id))?.name || s.academic_session_name,
+            }
+          : s
+      )
+    );
+    setShowPromotionModal(false);
+    resetPromotion();
+    toast.success("Student promoted successfully!");
+  } catch (error: any) {
+    toast.error(error.response?.data?.detail || "Failed to promote student.");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+  
+const onSubmitCertificate = async (data: CertificateForm) => {
+  if (!selectedStudent) {
+    toast.error("Invalid student");
+    return;
+  }
+  setIsLoading(true);
+  try {
+    const payload = {
+      student_id: selectedStudent.id,
+      student_name: selectedStudent.user_name, // Include for backend consistency
+      certificate_type: data.certificate_type,
+      issue_date: data.issue_date,
+      class_id: parseInt(data.class_id),
+      class_name: classes.find((cls) => cls.id === parseInt(data.class_id))?.name || selectedStudent.class_name,
+      section_id: data.section_id ? parseInt(data.section_id) : null,
+      section_name: data.section_id
+        ? sections[parseInt(data.class_id)]?.find((sec) => sec.id === parseInt(data.section_id))?.name || selectedStudent.section_name
+        : null,
+      academic_session_id: parseInt(data.academic_session_id),
+      academic_session_name: sessions.find((s) => s.id === parseInt(data.academic_session_id))?.name || selectedStudent.academic_session_name,
+      completion_date: data.completion_date || null,
+      reason: data.reason || null,
+      remarks: data.remarks || null,
+    };
+    console.log("Certificate payload:", payload);
+    let response;
+    if (currentCertificate) {
+      response = await api.put(`/certificates/${currentCertificate.id}/`, payload);
+    } else {
+      response = await api.post('/certificates/', payload);
+    }
+    const certificate = response.data;
+    setPreviewCertificate(certificate);
+    setStudents(
+      students.map((s) =>
+        s.id === selectedStudent.id
+          ? {
+              ...s,
+              status: "alumni",
+              alumni_type: certificate.certificate_type === "graduation" ? "graduated" : "transferred",
+            }
+          : s
+      )
+    );
+    toast.success(currentCertificate ? "Certificate updated successfully!" : "Certificate created successfully!");
+  } catch (error: any) {
+    console.error("Certificate submission error:", error.response?.data || error);
+    toast.error(error.response?.data?.detail || "Failed to save certificate");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleViewCertificate = async (student: Student) => {
       try {
@@ -467,47 +552,19 @@ useEffect(() => {
   };
   
   const handleViewCredentials = async (student: Student) => {
-    try {
-      setSelectedStudent(student);
-      setIsLoading(true);
-
-      // Prepare student credentials
-      let studentCredentials = {
-        email: student.user_email,
-        password: "",
-        user_id: student.user_id, // Add user_id
-      };
-
-      // Check if this student was recently added and has credentials
-      if (credentials && credentials.student.email === student.user_email) {
-        studentCredentials.password = credentials.student.password;
-        studentCredentials.user_id = credentials.student.user_id; // Ensure user_id is set
-      }
-
-      // Fetch parent for this student
-      let parentCredentials = null;
-      const parentResponse = await api.get(`/parents/`);
-      const parent = parentResponse.data.find((p: Parent) => p.students?.includes(student.id));
-      if (parent) {
-        parentCredentials = {
-          email: parent.email,
-          password: credentials && credentials.parent && credentials.parent.email === parent.email ? credentials.parent.password : "",
-          user_id: parent.user_id, // Add user_id
-        };
-      }
-
-      setSelectedCredentials({
-        student: studentCredentials,
-        parent: parentCredentials,
-      });
-      setShowCredentialsModal(true);
-    } catch (err: any) {
-      console.error("Error fetching credentials:", err);
-      toast.error(err.response?.data?.detail || "Failed to load credentials.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  try {
+    setSelectedStudent(student);
+    setIsLoading(true);
+    const response = await api.get(`/students/${student.id}/credentials/`);
+    setSelectedCredentials(response.data);
+    setShowCredentialsModal(true);
+  } catch (err: any) {
+    console.error("Error fetching credentials:", err);
+    toast.error(err.response?.data?.detail || "Failed to load credentials.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleEditStudent = async (student: Student) => {
       setSelectedStudent(student);
@@ -681,246 +738,248 @@ useEffect(() => {
   };
 
   const onSubmit = async (data: NewApplicationForm) => {
-    if (currentStep !== totalSteps) {
-      console.warn("Submission attempted before final step:", { currentStep, data });
-      toast.error("Please complete all steps before submitting");
+  if (currentStep !== totalSteps) {
+    console.warn("Submission attempted before final step:", { currentStep, data });
+    toast.error("Please complete all steps before submitting");
+    return;
+  }
+
+  // Validate required fields
+  const requiredFields = [
+    { key: 'studentEmail', label: 'Student Email' },
+    { key: 'studentName', label: 'Student Name' },
+    { key: 'class_id', label: 'Class ID' },
+    { key: 'academicSessionId', label: 'Academic Session ID' },
+    { key: 'admissionDate', label: 'Admission Date' },
+    { key: 'dob', label: 'Date of Birth' },
+    { key: 'gender', label: 'Gender' },
+    { key: 'address', label: 'Address' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'relationship', label: 'Relationship' },
+  ];
+
+  for (const field of requiredFields) {
+    if (!data[field.key as keyof NewApplicationForm]) {
+      toast.error(`${field.label} is required`);
       return;
     }
+  }
 
-    if (!schoolId) {
-      toast.error("School ID not found");
-      return;
+  if (data.parentOption === 'new' && (!data.parentEmail || !data.parentName || !data.parentPhone)) {
+    toast.error("Required parent fields are missing");
+    return;
+  }
+  if (data.parentOption === 'existing' && !data.existingParentId) {
+    toast.error("Existing parent ID is required");
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const formData = new FormData();
+    // Student data
+    formData.append('email', data.studentEmail.trim());
+    formData.append('name', data.studentName.trim());
+    formData.append('class_id', data.class_id);
+    if (data.section_id) formData.append('section_id', data.section_id);
+    formData.append('admission_date', data.admissionDate);
+    formData.append('academic_session_id', data.academicSessionId);
+    formData.append('status', 'active');
+    if (data.dob) formData.append('dob', data.dob);
+    if (data.gender) formData.append('gender', data.gender);
+    if (data.address) formData.append('address', data.address.trim());
+    if (data.phone) formData.append('phone', data.phone.trim());
+    if (data.previousSchool) formData.append('previous_school', data.previousSchool.trim());
+    if (data.profilePicture && data.profilePicture[0]) {
+      formData.append('profile_image', data.profilePicture[0]);
     }
 
-    // Validate required fields
-    const requiredFields = [
-      { key: 'studentEmail', label: 'Student Email' },
-      { key: 'studentName', label: 'Student Name' },
-      { key: 'class_id', label: 'Class ID' },
-      { key: 'academicSessionId', label: 'Academic Session ID' },
-      { key: 'admissionDate', label: 'Admission Date' },
-      { key: 'dob', label: 'Date of Birth' },
-      { key: 'gender', label: 'Gender' },
-      { key: 'address', label: 'Address' },
-      { key: 'phone', label: 'Phone' },
-      { key: 'relationship', label: 'Relationship' },
-    ];
-
-    for (const field of requiredFields) {
-      if (!data[field.key as keyof NewApplicationForm]) {
-        toast.error(`${field.label} is required`);
-        return;
-      }
+    // Parent data
+    formData.append('parent_option', data.parentOption);
+    if (data.parentOption === 'new') {
+      const parentData = {
+        input_email: data.parentEmail.trim(),
+        input_name: data.parentName.trim(),
+        phone: data.parentPhone.trim(),
+        address: data.address.trim(),
+        relationship: data.relationship,
+      };
+      formData.append('parent_data', JSON.stringify(parentData));
+    } else {
+      formData.append('parent_id', data.existingParentId);
+      formData.append('relationship', data.relationship);
     }
 
-    if (data.parentOption === 'new' && (!data.parentEmail || !data.parentName || !data.parentPhone)) {
-      toast.error("Required parent fields are missing");
-      return;
-    }
-    if (data.parentOption === 'existing' && !data.existingParentId) {
-      toast.error("Existing parent ID is required");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const formData = new FormData();
-      // Student data
-      formData.append('email', data.studentEmail.trim());
-      formData.append('name', data.studentName.trim());
-      formData.append('school_id', schoolId);
-      formData.append('class_id', data.class_id);
-      if (data.section_id) formData.append('section_id', data.section_id);
-      formData.append('admission_date', data.admissionDate);
-      formData.append('academic_session_id', data.academicSessionId);
-      formData.append('status', 'active');
-      if (data.dob) formData.append('dob', data.dob);
-      if (data.gender) formData.append('gender', data.gender);
-      if (data.address) formData.append('address', data.address.trim());
-      if (data.phone) formData.append('phone', data.phone.trim());
-      if (data.previousSchool) formData.append('previous_school', data.previousSchool.trim());
-      if (data.profilePicture && data.profilePicture[0]) {
-        formData.append('profile_image', data.profilePicture[0]);
-      }
-
-      // Parent data
-      formData.append('parent_option', data.parentOption);
-      if (data.parentOption === 'new') {
-        formData.append('parent_email', data.parentEmail.trim());
-        formData.append('parent_name', data.parentName.trim());
-        formData.append('parent_phone', data.parentPhone.trim());
-        formData.append('parent_address', data.address.trim());
-        formData.append('relationship', data.relationship);
-      } else {
-        formData.append('parent_id', data.existingParentId);
-        formData.append('relationship', data.relationship);
-      }
-
-      // Documents
-      if (data.documents) {
-        Array.from(data.documents).forEach((file) => {
-          formData.append('documents', file);
-        });
-      }
-
-      console.log('FormData being sent:', Object.fromEntries(formData.entries()));
-
-      const response = await api.post('/admissions/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+    // Documents
+    if (data.documents) {
+      Array.from(data.documents).forEach((file) => {
+        formData.append('documents', file);
       });
+    }
 
-      const studentsRes = await api.get('/students/');
-      setStudents(studentsRes.data);
-      setCredentials({
-        student: {
-          email: response.data.student_credentials.email,
-          password: response.data.student_credentials.password,
-          user_id: response.data.student_credentials.user_id,
-        },
-        parent: response.data.parent_credentials
-          ? {
-              email: response.data.parent_credentials.email,
-              password: response.data.parent_credentials.password,
-              user_id: response.data.parent_credentials.user_id,
-            }
-          : undefined,
+    console.log('FormData being sent:', Object.fromEntries(formData.entries()));
+
+    const response = await api.post('/admissions/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    const studentsRes = await api.get('/students/');
+    setStudents(studentsRes.data);
+    setCredentials({
+      student: {
+        email: response.data.student_credentials.email,
+        password: response.data.student_credentials.password,
+        user_id: response.data.student_credentials.user_id,
+      },
+      parent: response.data.parent_credentials
+        ? {
+            email: response.data.parent_credentials.email,
+            password: response.data.parent_credentials.password,
+            user_id: response.data.parent_credentials.user_id,
+          }
+        : undefined,
+    });
+    reset();
+    setShowNewApplicationForm(false);
+    setImagePreview(null);
+    setCurrentStep(1); // Reset to first step
+    toast.success('Application submitted successfully!');
+  } catch (error: any) {
+    console.error('Submission error:', error.response?.data || error.message);
+    const errorData = error.response?.data || { error: 'An unexpected error occurred' };
+    
+    // Handle different error formats
+    if (typeof errorData === 'string') {
+      toast.error(errorData);
+    } else if (errorData.student_errors) {
+      Object.entries(errorData.student_errors).forEach(([key, value]) => {
+        const message = Array.isArray(value) ? value.join(', ') : value;
+        toast.error(`Student ${key}: ${message}`);
       });
-      reset();
-      setShowNewApplicationForm(false);
-      setImagePreview(null);
-      toast.success('Application submitted successfully!');
-    } catch (error: any) {
-      console.error('Submission error:', error.response?.data || error.message);
-      const errorData = error.response?.data || { error: 'An unexpected error occurred' };
-      
-      // Handle different error formats
-      if (typeof errorData === 'string') {
-        toast.error(errorData);
-      } else if (errorData.student_errors) {
-        Object.entries(errorData.student_errors).forEach(([key, value]) => {
-          const message = Array.isArray(value) ? value.join(', ') : value;
-          toast.error(`Student ${key}: ${message}`);
-        });
-      } else if (errorData.parent_errors) {
-        Object.entries(errorData.parent_errors).forEach(([key, value]) => {
-          const message = Array.isArray(value) ? value.join(', ') : value;
-          toast.error(`Parent ${key}: ${message}`);
-        });
-      } else if (errorData.document_errors) {
-        Object.entries(errorData.document_errors).forEach(([key, value]) => {
-          const message = Array.isArray(value) ? value.join(', ') : value;
-          toast.error(`Document ${key}: ${message}`);
-        });
-      } else {
-        Object.entries(errorData).forEach(([key, value]) => {
-          const message = Array.isArray(value) ? value.join(', ') : String(value);
-          toast.error(`${key}: ${message}`);
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-    }; 
-
-  const onEditSubmit = async (data: EditStudentForm) => {
-    if (!selectedStudent || !schoolId) {
-      toast.error("Invalid student or school ID");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const formData = new FormData();
-      if (data.studentEmail) formData.append("email", data.studentEmail.trim());
-      if (data.studentName) formData.append("name", data.studentName.trim());
-      if (data.class_id) {
-        console.log("Raw class_id from form:", data.class_id, typeof data.class_id); // Debug
-        const classId = parseInt(data.class_id);
-        console.log("Parsed classId:", classId); // Debug
-        if (isNaN(classId)) {
-          toast.error("Invalid class selection");
-          throw new Error("Invalid class_id: " + JSON.stringify(data.class_id));
-        }
-        formData.append("class_id", classId.toString());
-      }
-      if (data.section_id) {
-        const sectionId = parseInt(data.section_id);
-        if (isNaN(sectionId)) {
-          toast.error("Invalid section selection");
-          throw new Error("Invalid section_id: " + data.section_id);
-        }
-        formData.append("section_id", sectionId.toString());
-      }
-      if (data.admissionDate) formData.append("admission_date", data.admissionDate);
-      if (data.academicSessionId) {
-        const sessionId = parseInt(data.academicSessionId);
-        if (isNaN(sessionId)) {
-          toast.error("Invalid academic session selection");
-          throw new Error("Invalid academic_session_id: " + data.academicSessionId);
-        }
-        formData.append("academic_session_id", sessionId.toString());
-      }
-      if (data.dob) formData.append("dob", data.dob);
-      if (data.gender) formData.append("gender", data.gender);
-      if (data.address) formData.append("address", data.address.trim());
-      if (data.phone) formData.append("phone", data.phone.trim());
-      if (data.previousSchool) formData.append("previous_school", data.previousSchool.trim());
-      if (data.profilePicture && data.profilePicture[0]) {
-        formData.append("profile_image", data.profilePicture[0]);
-      }
-      formData.append("school_id", schoolId);
-
-      console.log('Edit FormData being sent:', Object.fromEntries(formData.entries())); // Debug
-
-      const response = await api.put(`/students/${selectedStudent.id}/`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+    } else if (errorData.parent_errors) {
+      Object.entries(errorData.parent_errors).forEach(([key, value]) => {
+        const message = Array.isArray(value) ? value.join(', ') : value;
+        toast.error(`Parent ${key}: ${message}`);
       });
-      setStudents(
-        students.map((student) =>
-          student.id === selectedStudent.id ? response.data : student
-        )
-      );
-      setShowEditModal(false);
-      resetEdit();
-      setImagePreview(null);
-      setEditProfilePicture(null);
-      toast.success("Student updated successfully!");
-    } catch (error: any) {
-      console.error('Edit submission error:', error.response?.data || error.message);
-      if (error.response?.data?.errors) {
-        Object.entries(error.response.data.errors).forEach(([key, value]) => {
-          const message = Array.isArray(value) ? value.join(', ') : String(value);
-          toast.error(`${key}: ${message}`);
-        });
-      } else {
-        toast.error(error.response?.data?.error || error.message || "Failed to update student.");
+    } else if (errorData.document_errors) {
+      Object.entries(errorData.document_errors).forEach(([key, value]) => {
+        const message = Array.isArray(value) ? value.join(', ') : value;
+        toast.error(`Document ${key}: ${message}`);
+      });
+    } else {
+      Object.entries(errorData).forEach(([key, value]) => {
+        const message = Array.isArray(value) ? value.join(', ') : String(value);
+        toast.error(`${key}: ${message}`);
+      });
+    }
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+ const onEditSubmit = async (data: EditStudentForm) => {
+  if (!selectedStudent) {
+    toast.error("Invalid student");
+    return;
+  }
+  setIsLoading(true);
+  try {
+    const formData = new FormData();
+    if (data.studentEmail) formData.append("email", data.studentEmail.trim());
+    if (data.studentName) formData.append("name", data.studentName.trim());
+    if (data.class_id) {
+      console.log("Raw class_id from form:", data.class_id, typeof data.class_id); // Debug
+      const classId = parseInt(data.class_id);
+      console.log("Parsed classId:", classId); // Debug
+      if (isNaN(classId)) {
+        toast.error("Invalid class selection");
+        throw new Error("Invalid class_id: " + JSON.stringify(data.class_id));
       }
-    } finally {
-      setIsLoading(false);
+      formData.append("class_id", classId.toString());
     }
-  };
-
-
-const handleChangePassword = async (userId: number, newPassword: string, type: 'student' | 'parent') => {
-    if (!newPassword.trim() || newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters long.');
-      return;
+    if (data.section_id) {
+      const sectionId = parseInt(data.section_id);
+      if (isNaN(sectionId)) {
+        toast.error("Invalid section selection");
+        throw new Error("Invalid section_id: " + data.section_id);
+      }
+      formData.append("section_id", sectionId.toString());
     }
+    if (data.admissionDate) formData.append("admission_date", data.admissionDate);
+    if (data.academicSessionId) {
+      const sessionId = parseInt(data.academicSessionId);
+      if (isNaN(sessionId)) {
+        toast.error("Invalid academic session selection");
+        throw new Error("Invalid academic_session_id: " + data.academicSessionId);
+      }
+      formData.append("academic_session_id", sessionId.toString());
+    }
+    if (data.dob) formData.append("dob", data.dob);
+    if (data.gender) formData.append("gender", data.gender);
+    if (data.address) formData.append("address", data.address.trim());
+    if (data.phone) formData.append("phone", data.phone.trim());
+    if (data.previousSchool) formData.append("previous_school", data.previousSchool.trim());
+    if (data.profilePicture && data.profilePicture[0]) {
+      formData.append("profile_image", data.profilePicture[0]);
+    }
+
+    console.log('Edit FormData being sent:', Object.fromEntries(formData.entries())); // Debug
+
+    const response = await api.put(`/students/${selectedStudent.id}/`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    setStudents(
+      students.map((student) =>
+        student.id === selectedStudent.id ? response.data : student
+      )
+    );
+    setShowEditModal(false);
+    resetEdit();
+    setImagePreview(null);
+    setEditProfilePicture(null);
+    toast.success("Student updated successfully!");
+  } catch (error: any) {
+    console.error('Edit submission error:', error.response?.data || error.message);
+    if (error.response?.data?.errors) {
+      Object.entries(error.response.data.errors).forEach(([key, value]) => {
+        const message = Array.isArray(value) ? value.join(', ') : String(value);
+        toast.error(`${key}: ${message}`);
+      });
+    } else {
+      toast.error(error.response?.data?.error || error.message || "Failed to update student.");
+    }
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const handleChangePassword = async (studentId: number, studentPassword: string, parentPassword: string) => {
+  // Validate passwords
+  if (studentPassword && studentPassword.length < 8) {
+    toast.error("Student password must be at least 8 characters long.");
+    return;
+  }
+  if (parentPassword && parentPassword.length < 8) {
+    toast.error("Parent password must be at least 8 characters long.");
+    return;
+  }
+
+  try {
     setIsLoading(true);
-    try {
-      await api.put(`/users/${userId}/change-password/`, { new_password: newPassword });
-      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} password changed successfully.`);
-      if (type === 'student') {
-        setNewStudentPassword('');
-      } else {
-        setNewParentPassword('');
-      }
-    } catch (err: any) {
-      console.error(`Error changing ${type} password:`, err);
-      toast.error(err.response?.data?.error || `Failed to change ${type} password.`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const response = await api.put(`/students/${studentId}/credentials/`, {
+      student_password: studentPassword || undefined,
+      parent_password: parentPassword || undefined,
+    });
+    setSelectedCredentials(response.data);
+    setNewStudentPassword('');
+    setNewParentPassword('');
+    toast.success("Passwords updated successfully!");
+  } catch (error: any) {
+    toast.error(error.response?.data?.detail || "Failed to update passwords.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const filteredStudents = students.filter((student) => {
     const matchesSearch =
@@ -1220,7 +1279,7 @@ const handleChangePassword = async (userId: number, newPassword: string, type: '
                       <option value="">Select Parent</option>
                       {parents.map((parent) => (
                         <option key={parent.id} value={parent.id}>
-                          {parent.name} ({parent.email})
+                          {parent.name} ({parent.student_name})
                         </option>
                       ))}
                     </select>
@@ -2170,42 +2229,51 @@ const handleChangePassword = async (userId: number, newPassword: string, type: '
             </div>
           </form>
           {credentials && (
-          <div className="mt-4 p-4 bg-green-100 rounded-md">
-            <h3 className="text-lg font-medium">Generated Credentials</h3>
-            <p>
-              Student: Email: {credentials.student.email}, Password: {credentials.student.password}
-            </p>
-            {credentials.parent && (
-              <p>
-                Parent: Email: {credentials.parent.email}, Password: {credentials.parent.password}
-              </p>
-            )}
-            <Button
-              variant="outline"
-              className="mt-2"
-              onClick={() => {
-                const text = `
-                  Student Credentials:
-                  Email: ${credentials.student.email}
-                  Password: ${credentials.student.password}
-                  ${
-                    credentials.parent
-                      ? `
-                        Parent Credentials:
-                        Email: ${credentials.parent.email}
-                        Password: ${credentials.parent.password}
-                      `
-                      : ""
-                  }
-                `;
-                navigator.clipboard.writeText(text);
-                toast.success("Credentials copied to clipboard");
-              }}
-            >
-              Copy Credentials
-            </Button>
-          </div>
-        )}        </Card>
+            <div className="mt-4 p-4 bg-green-100 rounded-md">
+              <h3 className="text-lg font-medium">Generated Credentials</h3>
+              <p>Student: Email: {credentials.student.email}, Password: {credentials.student.password || "Not set"}</p>
+              {credentials.parent && (
+                <p>Parent: Email: {credentials.parent.email}, Password: {credentials.parent.password || "Not set"}</p>
+              )}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const studentPassword = e.target.studentPassword.value;
+                  const parentPassword = e.target.parentPassword.value;
+                  handleChangePassword(selectedStudent.id, studentPassword, parentPassword);
+                }}
+              >
+                <input type="text" name="studentPassword" placeholder="New Student Password" />
+                <input type="text" name="parentPassword" placeholder="New Parent Password" />
+                <Button type="submit">Change Passwords</Button>
+              </form>
+              <Button
+                variant="outline"
+                className="mt-2"
+                onClick={() => {
+                  const text = `
+                    Student Credentials:
+                    Email: ${credentials.student.email}
+                    Password: ${credentials.student.password || "Not set"}
+                    ${
+                      credentials.parent
+                        ? `
+                          Parent Credentials:
+                          Email: ${credentials.parent.email}
+                          Password: ${credentials.parent.password || "Not set"}
+                        `
+                        : ""
+                    }
+                  `;
+                  navigator.clipboard.writeText(text);
+                  toast.success("Credentials copied to clipboard");
+                }}
+              >
+                Copy Credentials
+              </Button>
+            </div>
+          )}        
+        </Card>
       )}
 
       {showEditModal && (
@@ -2410,113 +2478,273 @@ const handleChangePassword = async (userId: number, newPassword: string, type: '
         </Modal>
     )}
   
-    {showCredentialsModal && selectedStudent && (
-      <Modal
-        title={`Credentials for ${selectedStudent.user_name}`}
-        isOpen={showCredentialsModal}
-        onClose={() => {
-          setShowCredentialsModal(false);
-          setSelectedCredentials(null);
-          setSelectedStudent(null);
-          setNewStudentPassword('');
-          setNewParentPassword('');
+{showCredentialsModal && selectedStudent && (
+  <Modal
+    title={`Credentials for ${selectedStudent.user_name}`}
+    isOpen={showCredentialsModal}
+    onClose={() => {
+      setShowCredentialsModal(false);
+      setSelectedCredentials(null);
+      setSelectedStudent(null);
+      setNewStudentPassword('');
+      setNewParentPassword('');
+    }}
+  >
+    {selectedCredentials ? (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleChangePassword(selectedStudent.id, newStudentPassword, newParentPassword);
         }}
+        className="space-y-4"
       >
-        {selectedCredentials ? (
-          <div className="space-y-4">
-            <div className="p-4 bg-green-100 rounded-md">
-              <h3 className="text-lg font-medium">Credentials</h3>
-              <div className="mt-2">
-                <p className="text-sm font-medium">Student</p>
-                <p>Email: {selectedCredentials.student.email}</p>
-                <p>Password: {selectedCredentials.student.password || "Not available"}</p>
-                <div className="mt-2 flex items-center space-x-2">
-                  <input
-                    type="text"
-                    placeholder="Enter new student password"
-                    value={newStudentPassword}
-                    onChange={(e) => setNewStudentPassword(e.target.value)}
-                    className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => handleChangePassword(selectedCredentials.student.user_id, newStudentPassword, 'student')}
-                    disabled={isLoading || !newStudentPassword.trim()}
-                  >
-                    Change Password
-                  </Button>
-                </div>
+        <div className="p-4 bg-green-100 rounded-md">
+          <h3 className="text-lg font-medium">Credentials</h3>
+          <div className="mt-2">
+            <p className="text-sm font-medium">Student</p>
+            <p>Email: {selectedCredentials.student.email}</p>
+            <div className="flex items-center space-x-2">
+              <div className="relative flex-1">
+                <input
+                  type={showStudentPassword ? "text" : "password"}
+                  value={selectedCredentials.student.password || "Not set"}
+                  readOnly
+                  className="border border-gray-300 rounded-md px-2 py-1 text-sm w-full pr-10 bg-gray-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowStudentPassword(!showStudentPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  <Eye size={16} className="text-gray-500" />
+                </button>
               </div>
-              {selectedCredentials.parent && (
-                <div className="mt-4">
-                  <p className="text-sm font-medium">Parent</p>
-                  <p>Email: {selectedCredentials.parent.email}</p>
-                  <p>Password: {selectedCredentials.parent.password || "Not available"}</p>
-                  <div className="mt-2 flex items-center space-x-2">
-                    <input
-                      type="text"
-                      placeholder="Enter new parent password"
-                      value={newParentPassword}
-                      onChange={(e) => setNewParentPassword(e.target.value)}
-                      className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleChangePassword(selectedCredentials.parent.user_id, newParentPassword, 'parent')}
-                      disabled={isLoading || !newParentPassword.trim()}
-                    >
-                      Change Password
-                    </Button>
-                  </div>
-                </div>
-              )}
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => {
-                  const text = `
-                    Student Credentials:
-                    Email: ${selectedCredentials.student.email}
-                    Password: ${selectedCredentials.student.password || "Not available"}
-                    ${
-                      selectedCredentials.parent
-                        ? `
-                          Parent Credentials:
-                          Email: ${selectedCredentials.parent.email}
-                          Password: ${selectedCredentials.parent.password || "Not available"}
-                        `
-                        : ""
-                    }
-                  `;
-                  navigator.clipboard.writeText(text);
-                  toast.success("Credentials copied to clipboard");
-                }}
-              >
-                Copy Credentials
-              </Button>
             </div>
-            <div className="flex justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowCredentialsModal(false);
-                  setSelectedCredentials(null);
-                  setSelectedStudent(null);
-                  setNewStudentPassword('');
-                  setNewParentPassword('');
-                }}
-              >
-                Close
-              </Button>
+            <div className="flex items-center space-x-2 mt-2">
+              <div className="relative flex-1">
+                <input
+                  type={showStudentPassword ? "text" : "password"}
+                  value={newStudentPassword}
+                  onChange={(e) => setNewStudentPassword(e.target.value)}
+                  placeholder="Enter new student password"
+                  className="border border-gray-300 rounded-md px-2 py-1 text-sm w-full pr-10 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowStudentPassword(!showStudentPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  <Eye size={16} className="text-gray-500" />
+                </button>
+              </div>
             </div>
           </div>
-        ) : (
-          <p className="text-sm text-gray-500">No credentials available.</p>
-        )}
-      </Modal>
+          {selectedCredentials.parent && (
+            <div className="mt-4">
+              <p className="text-sm font-medium">Parent</p>
+              <p>Email: {selectedCredentials.parent.email}</p>
+              <div className="flex items-center space-x-2">
+                <div className="relative flex-1">
+                  <input
+                    type={showParentPassword ? "text" : "password"}
+                    value={selectedCredentials.parent.password || "Not set"}
+                    readOnly
+                    className="border border-gray-300 rounded-md px-2 py-1 text-sm w-full pr-10 bg-gray-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowParentPassword(!showParentPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <Eye size={16} className="text-gray-500" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2 mt-2">
+                <div className="relative flex-1">
+                  <input
+                    type={showParentPassword ? "text" : "password"}
+                    value={newParentPassword}
+                    onChange={(e) => setNewParentPassword(e.target.value)}
+                    placeholder="Enter new parent password"
+                    className="border border-gray-300 rounded-md px-2 py-1 text-sm w-full pr-10 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowParentPassword(!showParentPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <Eye size={16} className="text-gray-500" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            className="mt-4"
+            onClick={() => {
+              const text = `
+                Student Credentials:
+                Email: ${selectedCredentials.student.email}
+                Password: ${selectedCredentials.student.password || "Not set"}
+                ${
+                  selectedCredentials.parent
+                    ? `
+                      Parent Credentials:
+                      Email: ${selectedCredentials.parent.email}
+                      Password: ${selectedCredentials.parent.password || "Not set"}
+                    `
+                    : ""
+                }
+              `;
+              navigator.clipboard.writeText(text);
+              toast.success("Credentials copied to clipboard");
+            }}
+          >
+            Copy Credentials
+          </Button>
+        </div>
+        <div className="flex justify-end space-x-4">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowCredentialsModal(false);
+              setSelectedCredentials(null);
+              setSelectedStudent(null);
+              setNewStudentPassword('');
+              setNewParentPassword('');
+            }}
+          >
+            Close
+          </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={isLoading || (!newStudentPassword && !newParentPassword)}
+          >
+            {isLoading ? "Changing..." : "Change Password"}
+          </Button>
+        </div>
+      </form>
+    ) : (
+      <p className="text-sm text-gray-500">No credentials available.</p>
     )}
+  </Modal>
+)}
+
+    {showPromotionModal && selectedStudent && (
+  <Modal
+    title={`Promote ${selectedStudent.user_name}`}
+    isOpen={showPromotionModal}
+    onClose={() => {
+      setShowPromotionModal(false);
+      resetPromotion();
+      setSelectedStudent(null);
+    }}
+  >
+    <form onSubmit={handleSubmitPromotion(onSubmitPromotion)} className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div>
+        <label htmlFor="promotion_class_id" className="block text-sm font-medium text-gray-700">
+          Class
+        </label>
+        <Controller
+          name="class_id"
+          control={controlPromotion}
+          rules={{ required: "Class is required" }}
+          render={({ field }) => (
+            <select
+              id="promotion_class_id"
+              {...field}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select Class</option>
+              {classes.map((cls) => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name}
+                </option>
+              ))}
+            </select>
+          )}
+        />
+        {errorsPromotion.class_id && (
+          <p className="mt-1 text-sm text-red-600">{errorsPromotion.class_id.message}</p>
+        )}
+      </div>
+      <div>
+        <label htmlFor="promotion_section_id" className="block text-sm font-medium text-gray-700">
+          Section
+        </label>
+        <Controller
+          name="section_id"
+          control={controlPromotion}
+          render={({ field }) => (
+            <select
+              id="promotion_section_id"
+              {...field}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+              disabled={!promotionClassId}
+            >
+              <option value="">Select Section</option>
+              {(sections[parseInt(promotionClassId) || 0] || []).map((section) => (
+                <option key={section.id} value={section.id}>
+                  {section.name}
+                </option>
+              ))}
+            </select>
+          )}
+        />
+      </div>
+      <div>
+        <label htmlFor="promotion_academic_session_id" className="block text-sm font-medium text-gray-700">
+          Academic Session
+        </label>
+        <Controller
+          name="academic_session_id"
+          control={controlPromotion}
+          rules={{ required: "Academic session is required" }}
+          render={({ field }) => (
+            <select
+              id="promotion_academic_session_id"
+              {...field}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select Session</option>
+              {sessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  {session.name} ({session.status})
+                </option>
+              ))}
+            </select>
+          )}
+        />
+        {errorsPromotion.academic_session_id && (
+          <p className="mt-1 text-sm text-red-600">{errorsPromotion.academic_session_id.message}</p>
+        )}
+      </div>
+      <div className="sm:col-span-2 flex justify-end space-x-4">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setShowPromotionModal(false);
+            resetPromotion();
+            setSelectedStudent(null);
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          type="submit"
+          disabled={isLoading}
+        >
+          {isLoading ? "Promoting..." : "Promote Student"}
+        </Button>
+      </div>
+    </form>
+  </Modal>
+)}
+
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <div className="bg-white rounded-lg shadow-sm p-6">
@@ -2776,17 +3004,25 @@ const handleChangePassword = async (userId: number, newPassword: string, type: '
                                 </button>
                                 <button
                                   className="p-1 hover:bg-gray-100 rounded"
-                                  onClick={() => handleViewCredentials(student)}
-                                  title="View Credentials"
+                                  onClick={() => handlePromoteStudent(student)} // Added
+                                  title="Promote Student"
                                 >
-                                  <Settings size={18} />
+                                  <ArrowUpCircle size={18} />
                                 </button>
+                               
                               </>
                             )
                           )}
                         </div>
                         {/* Second row: Edit and Delete */}
                         <div className="flex space-x-2 mt-2">
+                           <button
+                                  className="p-1 hover:bg-gray-100 rounded"
+                                  onClick={() => handleViewCredentials(student)}
+                                  title="View Credentials"
+                                >
+                                  <Settings size={18} />
+                            </button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -2804,6 +3040,7 @@ const handleChangePassword = async (userId: number, newPassword: string, type: '
                         </div>
                       </div>
                     </td>
+
                   </tr>
                 ))
               )}

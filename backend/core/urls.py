@@ -16,6 +16,7 @@ from core.view.admin.admissions import (
 from core.view.admin.certificate_view import CertificateViewSet, StudentCredentialsView
 from core.view.admin.staff_views import StaffViewSet, StaffProfileImageView
 from core.view.admin.staff_management.StaffLeaveView import StaffLeaveCreateView
+from core.view.superuser.SuperuserView import SuperuserView, SuperuserAdminView, SuperuserSubscriptionView, SuperuserSchoolCreateView
 
 # Register StudentView with a router to handle document endpoints
 router = DefaultRouter()
@@ -27,6 +28,12 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('school/settings/current-user/', CurrentUserView.as_view(), name='current-user'),
     path('users/<int:pk>/change-password/', UserView.as_view(), name='user-change-password'),
+
+    #Superuser URLs
+    path('superadmin/schools/', SuperuserView.as_view(), name='superuser-schools'),
+    path('superadmin/schools/create/', SuperuserSchoolCreateView.as_view(), name='superuser-school-create'),
+    path('superadmin/admins/', SuperuserAdminView.as_view(), name='superuser-admins'),
+    path('superadmin/subscriptions/<uuid:school_id>/', SuperuserSubscriptionView.as_view(), name='superuser-subscriptions'),
 
     # Admin Dashboard URLs
     path('school/settings/', SchoolSettingsView.as_view(), name='school-settings'),
