@@ -1,3 +1,4 @@
+# core/serial/admin/staffmanagement/StaffLeaveSerializer.py
 from rest_framework import serializers
 from core.models import StaffLeave, LeaveType, AcademicSession
 import logging
@@ -5,8 +6,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 class StaffLeaveSerializer(serializers.ModelSerializer):
-    leave_type = serializers.StringRelatedField(read_only=True)  # Returns leave_type.name
-    academic_session = serializers.StringRelatedField(read_only=True)  # Returns academic_session.name
+    leave_type = serializers.StringRelatedField(read_only=True)
+    academic_session = serializers.StringRelatedField(read_only=True)
 
     class Meta:
         model = StaffLeave
@@ -16,6 +17,13 @@ class StaffLeaveSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, data):
+        logger.info(f"Validating staff leave data: {data}")
+        school_id = data.get('school')
+        request = self.context.get('request')
+        # Normalize school_id
+        normalized_school_id = str(school_id).replace('-', '') if school_id else None
+        if request and normalized_school_id != str(request.user.school.school_id).replace('-', ''):
+            raise serializers.ValidationError({"school": "Leave must be associated with the user's school."})
         if data.get('end_date') and data['start_date'] > data['end_date']:
             raise serializers.ValidationError("Start date must be before end date.")
         if data['days'] <= 0:
@@ -26,6 +34,8 @@ class StaffLeaveSerializer(serializers.ModelSerializer):
         staff = data['staff']
         if leave_type.applicable_gender != 'any' and staff.gender != leave_type.applicable_gender:
             raise serializers.ValidationError("Leave type is not applicable to staff's gender.")
+        # Update school_id in validated data
+        data['school'] = normalized_school_id
         return data
 
     def create(self, validated_data):

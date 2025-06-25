@@ -1,8 +1,9 @@
+# core/serial/admin/staffmanagement/StaffSerializer.py
 import logging
 from rest_framework import serializers
-from core.serial.admin.staffmanagement.StaffLeaveSerializer import StaffLeaveSerializer
 from core.serializers import ClassSerializer, DepartmentSerializer, SchoolSerializer, StaffRoleSerializer, SubjectSerializer
 from core.models import Staff, User, School, StaffRole, Department, Class, Subject
+from core.serial.admin.staffmanagement.StaffLeaveSerializer import StaffLeaveSerializer
 from uuid import UUID
 from datetime import date
 
@@ -42,7 +43,7 @@ class StaffSerializer(serializers.ModelSerializer):
         write_only=True,
         source='subjects'
     )
-    school_id = serializers.UUIDField(required=True, write_only=True)
+    school_id = serializers.CharField(required=True, write_only=True)  # Changed to CharField
     profile_image = serializers.SerializerMethodField()
     user_email = serializers.EmailField(write_only=True, required=True, source='user.email')
     user_name = serializers.CharField(write_only=True, required=True, source='user.name')
@@ -78,9 +79,13 @@ class StaffSerializer(serializers.ModelSerializer):
         if not school_id:
             raise serializers.ValidationError({"school_id": "School ID is required."})
         try:
-            UUID(str(school_id))
-            School.objects.get(school_id=school_id)
-            logger.info(f"Found school with school_id: {school_id}")
+            # Normalize school_id by removing hyphens
+            normalized_school_id = str(school_id).replace('-', '')
+            UUID(normalized_school_id)  # Validate UUID format
+            School.objects.get(school_id=normalized_school_id)
+            logger.info(f"Found school with normalized school_id: {normalized_school_id}")
+            # Store normalized school_id in validated data
+            data['school_id'] = normalized_school_id
         except School.DoesNotExist:
             raise serializers.ValidationError({"school_id": f"Invalid school ID: {school_id}"})
         except ValueError:
@@ -90,7 +95,7 @@ class StaffSerializer(serializers.ModelSerializer):
         if hire_date and hire_date > date.today():
             raise serializers.ValidationError({"hire_date": "Hire date cannot be in the future."})
 
-        valid_statuses = ['active', 'inactive', 'on_leave', 'terminated']
+        valid_statuses = ['active', 'on_leave', 'terminated']
         if data.get('status') and data['status'] not in valid_statuses:
             raise serializers.ValidationError({"status": f"Invalid status. Must be one of: {valid_statuses}"})
         
@@ -106,15 +111,6 @@ class StaffSerializer(serializers.ModelSerializer):
 
         return data
 
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation['user_name'] = instance.user.name
-        representation['user_email'] = instance.user.email
-        representation['user_role'] = instance.user.role
-        representation['department_name'] = instance.department.name if instance.department else ''
-        representation['subjects_names'] = [subject['name'] for subject in representation['subjects']] if representation['subjects'] else []
-        return representation
-
     def create(self, validated_data):
         logger.info(f"Creating staff with validated data: {validated_data}")
         try:
@@ -129,7 +125,8 @@ class StaffSerializer(serializers.ModelSerializer):
                 email=user_data['email'],
                 name=user_data['name'],
                 role=user_data['role'],
-                password=Staff.generate_credentials()
+                password=Staff.generate_credentials(),
+                school=School.objects.get(school_id=school_id)  # Set user.school
             )
             logger.info(f"Created user: {user.email}")
 

@@ -1,4 +1,3 @@
-import logging
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -11,18 +10,23 @@ from django.core.files.storage import default_storage
 from django.conf import settings
 import os
 from django.shortcuts import get_object_or_404
+from core.views import IsSchoolAdmin
+import logging
 
 logger = logging.getLogger(__name__)
 
+
 class StaffViewSet(viewsets.ModelViewSet):
     serializer_class = StaffSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSchoolAdmin]
 
     def get_queryset(self):
         logger.info(f"Fetching staff queryset for user: {self.request.user.email}")
+        school_id = self.get_user_school_id(self.request.user)
         return Staff.objects.filter(
             user__email__isnull=False,
-            user__name__isnull=False
+            user__name__isnull=False,
+            school_id=school_id
         ).select_related(
             'user', 'school', 'staff_role', 'department'
         ).prefetch_related('classes', 'subjects', 'leaves')
@@ -36,10 +40,12 @@ class StaffViewSet(viewsets.ModelViewSet):
         logger.info(f"Fetching school_id for user: {user.email}")
         # Check User.school_id (UUID in core_user)
         if user.school_id:
-            logger.info(f"Found User.school_id: {user.school_id}")
             try:
-                school = School.objects.get(school_id=user.school_id)
-                return str(school.school_id)
+                # Normalize school_id by removing hyphens
+                normalized_school_id = str(user.school_id).replace('-', '')
+                school = School.objects.get(school_id=normalized_school_id)
+                logger.info(f"Found User.school_id: {normalized_school_id}")
+                return normalized_school_id
             except School.DoesNotExist:
                 logger.error(f"School does not exist for school_id: {user.school_id}")
                 raise ValidationError({"detail": f"School does not exist for user {user.email}"})
@@ -49,12 +55,13 @@ class StaffViewSet(viewsets.ModelViewSet):
         # Fallback to Staff record
         try:
             staff = Staff.objects.get(user=user)
-            logger.info(f"Found Staff record with school_id: {staff.school.school_id}")
-            return str(staff.school.school_id)
+            normalized_school_id = str(staff.school.school_id).replace('-', '')
+            logger.info(f"Found Staff record with school_id: {normalized_school_id}")
+            return normalized_school_id
         except Staff.DoesNotExist:
             logger.error(f"No Staff record found for user: {user.email}")
             raise ValidationError({"detail": f"User is not associated with a school."})
-    
+
     def create(self, request, *args, **kwargs):
         logger.info(f"Received staff creation request with data: {request.data}")
         try:
@@ -135,12 +142,12 @@ class StaffViewSet(viewsets.ModelViewSet):
         logger.info(f"Resetting password for staff ID: {pk}")
         try:
             staff = self.get_object()
-            new_password = request.data.get('new_password')  # Use the password provided by the frontend
+            new_password = request.data.get('new_password')
             if not new_password:
                 return Response({'detail': 'New password is required'}, status=status.HTTP_400_BAD_REQUEST)
             
             staff.user.set_password(new_password)
-            staff.generated_password = new_password  # Store the plain-text password
+            staff.generated_password = new_password
             staff.user.save()
             staff.save()
             logger.info(f"Password reset for staff ID: {staff.id}, Email: {staff.user.email}")
@@ -159,13 +166,15 @@ class StaffViewSet(viewsets.ModelViewSet):
             staff = self.get_object()
             return Response({
                 'email': staff.user.email,
-                'password': staff.generated_password or ''  # Ensure we don't return None
+                'password': staff.generated_password or ''
             }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Error fetching credentials: {str(e)}")
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
+
 class StaffProfileImageView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsSchoolAdmin]
+
     def post(self, request, pk):
         staff = get_object_or_404(Staff, pk=pk, school_id=request.user.school.school_id)
         if 'profile_image' not in request.FILES:

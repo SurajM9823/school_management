@@ -46,7 +46,7 @@ interface StaffMember {
   pension_plan_number?: string;
   provident_fund_number?: string;
   generated_password?: string;
-  profile_image?: string | null; // Added
+  profile_image?: string | null;
 }
 
 interface School {
@@ -118,7 +118,7 @@ interface StaffFormData {
   health_insurance_number: string;
   pension_plan_number: string;
   provident_fund_number: string;
-  status: 'active' | 'on_leave' | 'terminated'; // Add status field
+  status: 'active' | 'on_leave' | 'terminated';
 }
 
 interface LeaveFormData {
@@ -207,40 +207,45 @@ const StaffManagement: React.FC = () => {
   const selectedRole = watch('role');
   const employmentType = watch('employment_type');
 
-useEffect(() => {
+
+  useEffect(() => {
   const source = axios.CancelToken.source();
-  if (!user || user.role !== 'admin') {
-    navigate('/login');
-    toast.error('Unauthorized access. Please log in as admin.');
+  if (!user || user.role !== 'admin' || !user.school_id) {
+    if (user && user.role !== 'admin') {
+      navigate('/login');
+      toast.error('Unauthorized access. Please log in as admin.');
+    }
     return;
   }
   fetchData(source.token);
   return () => source.cancel('Request canceled due to component unmount');
 }, [user, navigate]);
 
-useEffect(() => {
-  console.log('Current staffRoles:', staffRoles);
-  console.log('Current departments:', departments);
-  if (showForm && !editingStaff && staffRoles.length > 0 && !watch('staff_role_id')) {
-    setValue('staff_role_id', staffRoles[0].id);
-  }
-  if (showForm && !editingStaff && departments.length > 0 && !watch('department_id')) {
-    setValue('department_id', departments[0].id);
-  }
-  if (leaveTypes.length > 0 && showLeaveModal) {
-    leaveForm.setValue('leave_type_id', leaveTypes[0].id);
-  }
-  if (academicSessions.length > 0 && showLeaveModal) {
-    const activeSession = academicSessions.find(s => s.name.includes('2024-2025')) || academicSessions[0];
-    leaveForm.setValue('academic_session_id', activeSession.id);
-  }
-}, [staffRoles, departments, leaveTypes, academicSessions, editingStaff, showForm, showLeaveModal, setValue, leaveForm, watch]);
+  useEffect(() => {
+    console.log('Current staffRoles:', staffRoles);
+    console.log('Current departments:', departments);
+    if (showForm && !editingStaff && staffRoles.length > 0 && !watch('staff_role_id')) {
+      setValue('staff_role_id', staffRoles[0].id);
+    }
+    if (showForm && !editingStaff && departments.length > 0 && !watch('department_id')) {
+      setValue('department_id', departments[0].id);
+    }
+    if (leaveTypes.length > 0 && showLeaveModal) {
+      leaveForm.setValue('leave_type_id', leaveTypes[0].id);
+    }
+    if (academicSessions.length > 0 && showLeaveModal) {
+      const activeSession = academicSessions.find(s => s.name.includes('2024-2025')) || academicSessions[0];
+      leaveForm.setValue('academic_session_id', activeSession.id);
+    }
+  }, [staffRoles, departments, leaveTypes, academicSessions, editingStaff, showForm, showLeaveModal, setValue, leaveForm, watch]);
 
-
-const fetchData = async (cancelToken?: any) => {
+  const fetchData = async (cancelToken?: any) => {
   setIsLoading(true);
   setError(null);
   try {
+    if (!user?.school_id) {
+      throw new Error('User school ID not found');
+    }
     const [
       staffResponse,
       schoolResponse,
@@ -251,29 +256,25 @@ const fetchData = async (cancelToken?: any) => {
       leaveTypeResponse,
       sessionResponse,
     ] = await Promise.all([
-      api.get('/school/settings/staff/', { cancelToken }),
-      api.get('/school/settings/', { cancelToken }),
-      api.get('/school/settings/staff-roles/', { cancelToken }),
-      api.get('/school/settings/departments/', { cancelToken }),
-      api.get('/school/settings/classes/', { cancelToken }),
-      api.get('/school/settings/subjects/', { cancelToken }),
-      api.get('/school/settings/leave-types/', {
-        cancelToken,
-        params: { leave_for: 'staff' },
-      }),
-      api.get('/school/settings/sessions/', { cancelToken }),
+      api.get('/school/settings/staff/', { cancelToken }), // Remove schoolId
+      api.get('/school/settings/', { cancelToken }), // Remove schoolId
+      api.get('/school/settings/staff-roles/', { cancelToken }), // Remove schoolId
+      api.get('/school/settings/departments/', { cancelToken }), // Remove schoolId
+      api.get('/school/settings/classes/', { cancelToken }), // Remove schoolId
+      api.get('/school/settings/subjects/', { cancelToken }), // Remove schoolId
+      api.get('/school/settings/leave-types/', { cancelToken, params: { leave_for: 'staff' } }), // Remove schoolId
+      api.get('/school/settings/sessions/', { cancelToken }), // Remove schoolId
     ]);
 
-    // Console log the responses for staff roles and departments
+    console.log('Staff Response:', staffResponse.data);
+    console.log('School Response:', schoolResponse.data);
     console.log('Staff Roles Response:', roleResponse.data);
     console.log('Departments Response:', deptResponse.data);
-    console.log('School Response:', schoolResponse.data); // Debug school data
+    console.log('Classes Response:', classResponse.data);
+    console.log('Subjects Response:', subjectResponse.data);
+    console.log('Leave Types Response:', leaveTypeResponse.data);
+    console.log('Sessions Response:', sessionResponse.data);
 
-    // Set state for staff roles and departments
-    setStaffRoles(roleResponse.data);
-    setDepartments(deptResponse.data);
-
-    // Set state for staff list
     setStaffList(
       staffResponse.data.map((staff: any) => ({
         id: staff.id,
@@ -313,9 +314,9 @@ const fetchData = async (cancelToken?: any) => {
         profile_image: staff.profile_image || null,
       }))
     );
-
-    // Set other states (unchanged)
-    setSchools(schoolResponse.data || []); // Ensure schools is always an array
+    setSchools(schoolResponse.data || []);
+    setStaffRoles(roleResponse.data);
+    setDepartments(deptResponse.data);
     setClasses(classResponse.data);
     setSubjects(subjectResponse.data);
     setLeaveTypes(leaveTypeResponse.data);
@@ -326,8 +327,9 @@ const fetchData = async (cancelToken?: any) => {
       return;
     }
     console.error('Fetch data error:', err.response?.data || err.message);
-    setError(err.response?.data?.message || 'Failed to load data.');
-    toast.error('Failed to load data');
+    const errorMessage = err.response?.data?.detail || err.response?.data?.message || 'Failed to load data';
+    setError(errorMessage);
+    toast.error(errorMessage);
   } finally {
     setIsLoading(false);
   }
@@ -336,248 +338,261 @@ const fetchData = async (cancelToken?: any) => {
   const filteredStaff = useMemo(() => {
     return staffList
       .filter(staff =>
-        (staff.user_name.toLowerCase().includes(searchTerm.toLowerCase()) || staff.user_email.toLowerCase().includes(searchTerm.toLowerCase())) &&
+        (staff?.user_name?.toLowerCase()?.includes(searchTerm.toLowerCase()) || false) ||
+        (staff?.user_email?.toLowerCase()?.includes(searchTerm.toLowerCase()) || false) &&
         (roleFilter === 'all' || staff.user_role === roleFilter) &&
         (statusFilter === 'all' || staff.status === statusFilter)
       )
-      .sort((a, b) => a.user_name.localeCompare(b.user_name));
+      .sort((a, b) => (a.user_name || '').localeCompare(b.user_name || ''));
   }, [staffList, searchTerm, roleFilter, statusFilter]);
 
   const onSubmit = async (data: StaffFormData) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      let response;
-      const payload = {
-        user_email: data.email,
-        user_role: data.role,
-        user_name: data.name,
-        staff_role_id: data.staff_role_id,
-        department_id: data.department_id,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        date_of_birth: data.date_of_birth || null,
-        gender: data.gender || '',
-        address: data.address || '',
-        phone: data.phone || '',
-        emergency_contact_name: data.emergency_contact_name || '',
-        emergency_contact_phone: data.emergency_contact_phone || '',
-        hire_date: data.hire_date,
-        employment_type: data.employment_type,
-        contract_end_date: data.contract_end_date || null,
-        classes_ids: data.classes.filter(id => id) || [],
-        subjects_ids: data.subjects.filter(id => id) || [],
-        base_salary: data.base_salary,
-        pay_frequency: data.pay_frequency,
-        tax_status: data.tax_status,
-        allowances: data.allowances || {},
-        deductions: data.deductions || {},
-        bank_account_number: data.bank_account || '',
-        bank_name: data.bank_name || '',
-        bank_branch: data.bank_branch || '',
-        health_insurance_number: data.health_insurance_number || '',
-        pension_plan_number: data.pension_plan_number || '',
-        provident_fund_number: data.provident_fund_number || '',
-        status: data.status || 'active',
-      };
-      if (editingStaff) {
-        response = await api.put(`/school/settings/staff/${editingStaff.id}/`, payload);
-        setStaffList(prev =>
-          prev.map(s =>
-            s.id === editingStaff.id
-              ? {
-                  ...s,
-                  user_name: response.data.user_name,
-                  user_email: response.data.user_email,
-                  phone: response.data.phone,
-                  user_role: response.data.user_role,
-                  department_name: response.data.department_name,
-                  subjects_names: response.data.subjects_names,
-                  hire_date: response.data.hire_date,
-                  status: response.data.status,
-                  first_name: response.data.first_name,
-                  last_name: response.data.last_name,
-                  staff_role_id: response.data.staff_role_id,
-                  department_id: response.data.department_id,
-                  date_of_birth: response.data.date_of_birth,
-                  gender: response.data.gender,
-                  address: response.data.address,
-                  emergency_contact_name: response.data.emergency_contact_name,
-                  emergency_contact_phone: response.data.emergency_contact_phone,
-                  employment_type: response.data.employment_type,
-                  contract_end_date: response.data.contract_end_date,
-                  classes_ids: response.data.classes_ids || [],
-                  subjects_ids: response.data.subjects_ids || [],
-                  base_salary: response.data.base_salary,
-                  pay_frequency: response.data.pay_frequency,
-                  tax_status: response.data.tax_status,
-                  allowances: response.data.allowances || {},
-                  deductions: response.data.deductions || {},
-                  bank_account_number: response.data.bank_account_number || '',
-                  bank_name: response.data.bank_name || '',
-                  bank_branch: response.data.bank_branch || '',
-                  health_insurance_number: response.data.health_insurance_number || '',
-                  pension_plan_number: response.data.pension_plan_number || '',
-                  provident_fund_number: response.data.provident_fund_number || '',
-                }
-              : s
-          )
-        );
-        toast.success('Staff member updated successfully');
-      } else {
-        response = await api.post('/school/settings/staff/', payload);
-        setStaffList(prev => [
-          {
-            id: response.data.id,
-            user_name: response.data.user_name,
-            user_email: response.data.user_email,
-            phone: response.data.phone,
-            user_role: response.data.user_role,
-            department_name: response.data.department_name,
-            subjects_names: response.data.subjects_names,
-            hire_date: response.data.hire_date,
-            status: response.data.status,
-            first_name: response.data.first_name,
-            last_name: response.data.last_name,
-            staff_role_id: response.data.staff_role_id,
-            department_id: response.data.department_id,
-            date_of_birth: response.data.date_of_birth,
-            gender: response.data.gender,
-            address: response.data.address,
-            emergency_contact_name: response.data.emergency_contact_name,
-            emergency_contact_phone: response.data.emergency_contact_phone,
-            employment_type: response.data.employment_type,
-            contract_end_date: response.data.contract_end_date,
-            classes_ids: response.data.classes_ids || [],
-            subjects_ids: response.data.subjects_ids || [],
-            base_salary: response.data.base_salary,
-            pay_frequency: response.data.pay_frequency,
-            tax_status: response.data.tax_status,
-            allowances: response.data.allowances || {},
-            deductions: response.data.deductions || {},
-            bank_account_number: response.data.bank_account_number || '',
-            bank_name: response.data.bank_name || '',
-            bank_branch: response.data.bank_branch || '',
-            health_insurance_number: response.data.health_insurance_number || '',
-            pension_plan_number: response.data.pension_plan_number || '',
-            provident_fund_number: response.data.provident_fund_number || '',
-            generated_password: response.data.generated_password || '',
-          },
-          ...prev,
-        ]);
-        setCredentials({
-          email: response.data.user_email,
-          password: response.data.generated_password,
-          id: response.data.id,
-        });
-        toast.success('Staff member added successfully');
-      }
-      setShowForm(false);
-      setEditingStaff(null);
-      reset();
-    } catch (err: any) {
-      console.error('Staff submission error:', err);
-      const errorMessage = err.response?.data?.detail ||
-                          Object.entries(err.response?.data || {})
-                            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
-                            .join('; ') ||
-                          `Failed to ${editingStaff ? 'update' : 'add'} staff`;
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setIsLoading(false);
+  setIsLoading(true);
+  setError(null);
+  try {
+    if (!user?.school_id) {
+      throw new Error('User school ID not found');
     }
-  };
-const handleEditStaff = (staff: StaffMember) => {
-  setEditingStaff(staff);
-  setCredentials(null);
-  setValue('name', staff.user_name);
-  setValue('email', staff.user_email);
-  setValue('role', staff.user_role);
-  // Validate staff_role_id
-  const selectedRole = staffRoles.find(role => role.id === Number(staff.staff_role_id));
-  setValue('staff_role_id', selectedRole ? Number(staff.staff_role_id) : (staffRoles.length > 0 ? staffRoles[0].id : 0));
-  // Validate department_id
-  const selectedDept = departments.find(dept => dept.id === Number(staff.department_id));
-  setValue('department_id', selectedDept ? Number(staff.department_id) : (departments.length > 0 ? departments[0].id : 0));
-  setValue('first_name', staff.first_name);
-  setValue('last_name', staff.last_name);
-  setValue('date_of_birth', staff.date_of_birth || null);
-  setValue('gender', staff.gender || '');
-  setValue('address', staff.address || '');
-  setValue('phone', staff.phone || '');
-  setValue('emergency_contact_name', staff.emergency_contact_name || '');
-  setValue('emergency_contact_phone', staff.emergency_contact_phone || '');
-  setValue('hire_date', staff.hire_date);
-  setValue('employment_type', staff.employment_type);
-  setValue('contract_end_date', staff.contract_end_date || null);
-  setValue('classes', staff.classes_ids || []);
-  setValue('subjects', staff.subjects_ids || []);
-  setValue('base_salary', staff.base_salary);
-  setValue('pay_frequency', staff.pay_frequency);
-  setValue('tax_status', staff.tax_status);
-  setValue('allowances', staff.allowances || {});
-  setValue('deductions', staff.deductions || {});
-  setValue('bank_account', staff.bank_account_number || '');
-  setValue('bank_name', staff.bank_name || '');
-  setValue('bank_branch', staff.bank_branch || '');
-  setValue('health_insurance_number', staff.health_insurance_number || '');
-  setValue('pension_plan_number', staff.pension_plan_number || '');
-  setValue('provident_fund_number', staff.provident_fund_number || '');
-  console.log('Editing staff_role_id:', staff.staff_role_id, 'Selected:', watch('staff_role_id'));
-  console.log('Editing department_id:', staff.department_id, 'Selected:', watch('department_id'));
-  setShowForm(true);
-};
-
-  const handleDeleteStaff = async (staffId: string) => {
-    if (!window.confirm('Are you sure you want to delete this staff member? This action cannot be undone.')) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      await api.delete(`/school/settings/staff/${staffId}/`);
-      setStaffList(prev => prev.filter(s => s.id !== staffId));
-      toast.success('Staff member deleted successfully');
-    } catch (err: any) {
-      console.error('Delete staff error:', err);
-      setError(err.response?.data?.message || 'Failed to delete staff member');
-      toast.error(err.response?.data?.message || 'Failed to delete staff member');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const toggleStaffStatus = async (staffId: string, currentStatus: 'active' | 'on_leave' | 'terminated') => {
-    const newStatus = currentStatus === 'active' ? 'on_leave' : currentStatus === 'on_leave' ? 'terminated' : 'active';
-    if (newStatus === 'on_leave') {
-      const staff = staffList.find(s => s.id === staffId);
-      if (staff) {
-        setShowLeaveModal(staff);
-      }
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const response = await api.put(`/school/settings/staff/${staffId}/`, { status: newStatus });
+    let response;
+    const payload = {
+      user_email: data.email,
+      user_role: data.role,
+      user_name: data.name,
+      staff_role_id: data.staff_role_id,
+      department_id: data.department_id,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      date_of_birth: data.date_of_birth || null,
+      gender: data.gender || '',
+      address: data.address || '',
+      phone: data.phone || '',
+      emergency_contact_name: data.emergency_contact_name || '',
+      emergency_contact_phone: data.emergency_contact_phone || '',
+      hire_date: data.hire_date,
+      employment_type: data.employment_type,
+      contract_end_date: data.contract_end_date || null,
+      classes_ids: data.classes.filter(id => id) || [],
+      subjects_ids: data.subjects.filter(id => id) || [],
+      base_salary: data.base_salary,
+      pay_frequency: data.pay_frequency,
+      tax_status: data.tax_status,
+      allowances: data.allowances || {},
+      deductions: data.deductions || {},
+      bank_account_number: data.bank_account || '',
+      bank_name: data.bank_name || '',
+      bank_branch: data.bank_branch || '',
+      health_insurance_number: data.health_insurance_number || '',
+      pension_plan_number: data.pension_plan_number || '',
+      provident_fund_number: data.provident_fund_number || '',
+      status: data.status || 'active',
+    };
+    if (editingStaff) {
+      response = await api.put(`/school/settings/staff/${editingStaff.id}/`, payload);
       setStaffList(prev =>
         prev.map(s =>
-          s.id === staffId ? { ...s, status: response.data.status } : s
+          s.id === editingStaff.id
+            ? {
+                ...s,
+                user_name: response.data.user.name, // Map user.name to user_name
+                user_email: response.data.user.email, // Map user.email to user_email
+                phone: response.data.phone,
+                user_role: response.data.user.role, // Map user.role to user_role
+                department_name: response.data.department.name,
+                subjects_names: response.data.subjects.map((s: any) => s.name),
+                hire_date: response.data.hire_date,
+                status: response.data.status,
+                first_name: response.data.first_name,
+                last_name: response.data.last_name,
+                staff_role_id: response.data.staff_role.id,
+                department_id: response.data.department.id,
+                date_of_birth: response.data.date_of_birth,
+                gender: response.data.gender,
+                address: response.data.address,
+                emergency_contact_name: response.data.emergency_contact_name,
+                emergency_contact_phone: response.data.emergency_contact_phone,
+                employment_type: response.data.employment_type,
+                contract_end_date: response.data.contract_end_date,
+                classes_ids: response.data.classes.map((c: any) => c.id) || [],
+                subjects_ids: response.data.subjects.map((s: any) => s.id) || [],
+                base_salary: response.data.base_salary,
+                pay_frequency: response.data.pay_frequency,
+                tax_status: response.data.tax_status,
+                allowances: response.data.allowances || {},
+                deductions: response.data.deductions || {},
+                bank_account_number: response.data.bank_account_number || '',
+                bank_name: response.data.bank_name || '',
+                bank_branch: response.data.bank_branch || '',
+                health_insurance_number: response.data.health_insurance_number || '',
+                pension_plan_number: response.data.pension_plan_number || '',
+                provident_fund_number: response.data.provident_fund_number || '',
+              }
+            : s
         )
       );
-      toast.success('Staff status updated successfully');
-    } catch (err: any) {
-      console.error('Update staff status error:', err);
-      setError(err.response?.data?.message || 'Failed to update staff status');
-      toast.error(err.response?.data?.message || 'Failed to update staff status');
-    } finally {
-      setIsLoading(false);
+      toast.success('Staff member updated successfully');
+    } else {
+      response = await api.post('/school/settings/staff/', payload);
+      setStaffList(prev => [
+        {
+          id: response.data.id,
+          user_name: response.data.user.name, // Map user.name to user_name
+          user_email: response.data.user.email, // Map user.email to user_email
+          phone: response.data.phone,
+          user_role: response.data.user.role, // Map user.role to user_role
+          department_name: response.data.department.name,
+          subjects_names: response.data.subjects.map((s: any) => s.name),
+          hire_date: response.data.hire_date,
+          status: response.data.status,
+          first_name: response.data.first_name,
+          last_name: response.data.last_name,
+          staff_role_id: response.data.staff_role.id,
+          department_id: response.data.department.id,
+          date_of_birth: response.data.date_of_birth,
+          gender: response.data.gender,
+          address: response.data.address,
+          emergency_contact_name: response.data.emergency_contact_name,
+          emergency_contact_phone: response.data.emergency_contact_phone,
+          employment_type: response.data.employment_type,
+          contract_end_date: response.data.contract_end_date,
+          classes_ids: response.data.classes.map((c: any) => c.id) || [],
+          subjects_ids: response.data.subjects.map((s: any) => s.id) || [],
+          base_salary: response.data.base_salary,
+          pay_frequency: response.data.pay_frequency,
+          tax_status: response.data.tax_status,
+          allowances: response.data.allowances || {},
+          deductions: response.data.deductions || {},
+          bank_account_number: response.data.bank_account_number || '',
+          bank_name: response.data.bank_name || '',
+          bank_branch: response.data.bank_branch || '',
+          health_insurance_number: response.data.health_insurance_number || '',
+          pension_plan_number: response.data.pension_plan_number || '',
+          provident_fund_number: response.data.provident_fund_number || '',
+          generated_password: response.data.generated_password || '',
+          profile_image: response.data.profile_image || null,
+        },
+        ...prev,
+      ]);
+      setCredentials({
+        email: response.data.user.email, // Map user.email
+        password: response.data.generated_password,
+        id: response.data.id,
+      });
+      toast.success('Staff member added successfully');
     }
+    setShowForm(false);
+    setEditingStaff(null);
+    reset();
+  } catch (err: any) {
+    console.error('Staff submission error:', err);
+    const errorMessage =
+      err.response?.data?.detail ||
+      Object.entries(err.response?.data || {})
+        .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+        .join('; ') ||
+      `Failed to ${editingStaff ? 'update' : 'add'} staff`;
+    setError(errorMessage);
+    toast.error(errorMessage);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+  const handleEditStaff = (staff: StaffMember) => {
+    setEditingStaff(staff);
+    setCredentials(null);
+    setValue('name', staff.user_name);
+    setValue('email', staff.user_email);
+    setValue('role', staff.user_role);
+    const selectedRole = staffRoles.find(role => role.id === Number(staff.staff_role_id));
+    setValue('staff_role_id', selectedRole ? Number(staff.staff_role_id) : (staffRoles.length > 0 ? staffRoles[0].id : 0));
+    const selectedDept = departments.find(dept => dept.id === Number(staff.department_id));
+    setValue('department_id', selectedDept ? Number(staff.department_id) : (departments.length > 0 ? departments[0].id : 0));
+    setValue('first_name', staff.first_name);
+    setValue('last_name', staff.last_name);
+    setValue('date_of_birth', staff.date_of_birth || null);
+    setValue('gender', staff.gender || '');
+    setValue('address', staff.address || '');
+    setValue('phone', staff.phone || '');
+    setValue('emergency_contact_name', staff.emergency_contact_name || '');
+    setValue('emergency_contact_phone', staff.emergency_contact_phone || '');
+    setValue('hire_date', staff.hire_date);
+    setValue('employment_type', staff.employment_type);
+    setValue('contract_end_date', staff.contract_end_date || null);
+    setValue('classes', staff.classes_ids || []);
+    setValue('subjects', staff.subjects_ids || []);
+    setValue('base_salary', staff.base_salary);
+    setValue('pay_frequency', staff.pay_frequency);
+    setValue('tax_status', staff.tax_status);
+    setValue('allowances', staff.allowances || {});
+    setValue('deductions', staff.deductions || {});
+    setValue('bank_account', staff.bank_account_number || '');
+    setValue('bank_name', staff.bank_name || '');
+    setValue('bank_branch', staff.bank_branch || '');
+    setValue('health_insurance_number', staff.health_insurance_number || '');
+    setValue('pension_plan_number', staff.pension_plan_number || '');
+    setValue('provident_fund_number', staff.provident_fund_number || '');
+    setValue('status', staff.status);
+    console.log('Editing staff_role_id:', staff.staff_role_id, 'Selected:', watch('staff_role_id'));
+    console.log('Editing department_id:', staff.department_id, 'Selected:', watch('department_id'));
+    setShowForm(true);
   };
 
-  const handleSubmitLeave = async (data: LeaveFormData) => {
-  if (!showLeaveModal) return;
-  if (!schools.length) {
-    toast.error('No school data available. Please try again later.');
-    setError('No school data available.');
+const handleDeleteStaff = async (staffId: string) => {
+  if (!window.confirm('Are you sure you want to delete this staff member? This action cannot be undone.')) return;
+  setIsLoading(true);
+  setError(null);
+  try {
+    if (!user?.school_id) {
+      throw new Error('User school ID not found');
+    }
+    await api.delete(`/school/settings/staff/${staffId}/`);
+    setStaffList(prev => prev.filter(s => s.id !== staffId));
+    toast.success('Staff member deleted successfully');
+  } catch (err: any) {
+    console.error('Delete staff error:', err);
+    const errorMessage = err.response?.data?.message || err.response?.data?.detail || 'Failed to delete staff member';
+    setError(errorMessage);
+    toast.error(errorMessage);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const toggleStaffStatus = async (staffId: string, currentStatus: 'active' | 'on_leave' | 'terminated') => {
+  const newStatus = currentStatus === 'active' ? 'on_leave' : currentStatus === 'on_leave' ? 'terminated' : 'active';
+  if (newStatus === 'on_leave') {
+    const staff = staffList.find(s => s.id === staffId);
+    if (staff) {
+      setShowLeaveModal(staff);
+    }
+    return;
+  }
+  setIsLoading(true);
+  try {
+    if (!user?.school_id) {
+      throw new Error('User school ID not found');
+    }
+    const response = await api.put(`/school/settings/staff/${staffId}/`, { status: newStatus });
+    setStaffList(prev =>
+      prev.map(s =>
+        s.id === staffId ? { ...s, status: response.data.status } : s
+      )
+    );
+    toast.success('Staff status updated successfully');
+  } catch (err: any) {
+    console.error('Update staff status error:', err);
+    const errorMessage = err.response?.data?.message || err.response?.data?.detail || 'Failed to update staff status';
+    setError(errorMessage);
+    toast.error(errorMessage);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+ const handleSubmitLeave = async (data: LeaveFormData) => {
+  if (!showLeaveModal || !user?.school_id) {
+    toast.error('User school ID or staff not found');
+    setError('User school ID or staff not found');
     return;
   }
   setIsLoading(true);
@@ -590,9 +605,8 @@ const handleEditStaff = (staff: StaffMember) => {
       days: data.days,
       reason: data.reason,
       staff: showLeaveModal.id,
-      school: schools[0].id, // Safe now since we checked schools.length
     };
-    const response = await api.post(`/school/settings/staff/${showLeaveModal.id}/leave/`, payload);
+    const response = await api.post(`/school/settings/staff/${showLeaveModal.id}/leave`, payload);
     setStaffList(prev =>
       prev.map(s =>
         s.id === showLeaveModal.id ? { ...s, status: 'on_leave' } : s
@@ -621,13 +635,16 @@ const handleEditStaff = (staff: StaffMember) => {
     setNewPassword(staff.generated_password || '');
   };
 
-const handleUpdatePassword = async (staffId: string) => {
+  const handleUpdatePassword = async (staffId: string) => {
   if (!newPassword) {
     toast.error('Password cannot be empty');
     return;
   }
   setIsLoading(true);
   try {
+    if (!user?.school_id) {
+      throw new Error('User school ID not found');
+    }
     const response = await api.post(`/school/settings/staff/${staffId}/reset-password/`, { new_password: newPassword });
     setStaffList(prev =>
       prev.map(s =>
@@ -635,12 +652,13 @@ const handleUpdatePassword = async (staffId: string) => {
       )
     );
     setShowCredentialsModal(prev => (prev ? { ...prev, generated_password: response.data.new_password } : null));
-    setNewPassword(response.data.new_password); // Ensure the input reflects the updated password
+    setNewPassword(response.data.new_password);
     toast.success('Password updated successfully');
   } catch (err: any) {
     console.error('Update password error:', err);
-    setError(err.response?.data?.detail || 'Failed to update password');
-    toast.error(err.response?.data?.detail || 'Failed to update password');
+    const errorMessage = err.response?.data?.detail || err.response?.data?.message || 'Failed to update password';
+    setError(errorMessage);
+    toast.error(errorMessage);
   } finally {
     setIsLoading(false);
   }
@@ -650,7 +668,6 @@ const handleUpdatePassword = async (staffId: string) => {
     navigate(`/admin/staff/${staffId}`);
   };
 
-  
   return (
     <div className="space-y-6">
       <ToastContainer position="top-right" autoClose={3000} />
@@ -728,43 +745,44 @@ const handleUpdatePassword = async (staffId: string) => {
                   {errors.role && <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>}
                 </div>
                 <div>
-  <label htmlFor="staff_role_id" className="block text-sm font-medium text-gray-700">Staff Role*</label>
-  <select
-    {...register('staff_role_id', { required: editingStaff ? false : 'Staff role is required', valueAsNumber: true })}
-    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
-  >
-    {staffRoles.length === 0 ? (
-      <option value="">Loading Staff Roles...</option>
-    ) : (
-      <>
-        {!watch('staff_role_id') && <option value="">Select Staff Role</option>}
-        {staffRoles.map(role => (
-          <option key={role.id} value={role.id}>{role.name}</option>
-        ))}
-      </>
-    )}
-  </select>
-  {errors.staff_role_id && <p className="mt-1 text-sm text-red-600">{errors.staff_role_id.message}</p>}
-</div>
-<div>
-  <label htmlFor="department_id" className="block text-sm font-medium text-gray-700">Department*</label>
-  <select
-    {...register('department_id', { required: editingStaff ? false : 'Department is required', valueAsNumber: true })}
-    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
-  >
-    {departments.length === 0 ? (
-      <option value="">Loading Departments...</option>
-    ) : (
-      <>
-        {!watch('department_id') && <option value="">Select Department</option>}
-        {departments.map(dept => (
-          <option key={dept.id} value={dept.id}>{dept.name}</option>
-        ))}
-      </>
-    )}
-  </select>
-  {errors.department_id && <p className="mt-1 text-sm text-red-600">{errors.department_id.message}</p>}
-</div>              </div>
+                  <label htmlFor="staff_role_id" className="block text-sm font-medium text-gray-700">Staff Role*</label>
+                  <select
+                    {...register('staff_role_id', { required: editingStaff ? false : 'Staff role is required', valueAsNumber: true })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                  >
+                    {staffRoles.length === 0 ? (
+                      <option value="">Loading Staff Roles...</option>
+                    ) : (
+                      <>
+                        {!watch('staff_role_id') && <option value="">Select Staff Role</option>}
+                        {staffRoles.map(role => (
+                          <option key={role.id} value={role.id}>{role.name}</option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                  {errors.staff_role_id && <p className="mt-1 text-sm text-red-600">{errors.staff_role_id.message}</p>}
+                </div>
+                <div>
+                  <label htmlFor="department_id" className="block text-sm font-medium text-gray-700">Department*</label>
+                  <select
+                    {...register('department_id', { required: editingStaff ? false : 'Department is required', valueAsNumber: true })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                  >
+                    {departments.length === 0 ? (
+                      <option value="">Loading Departments...</option>
+                    ) : (
+                      <>
+                        {!watch('department_id') && <option value="">Select Department</option>}
+                        {departments.map(dept => (
+                          <option key={dept.id} value={dept.id}>{dept.name}</option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                  {errors.department_id && <p className="mt-1 text-sm text-red-600">{errors.department_id.message}</p>}
+                </div>
+              </div>
 
               <h4 className="text-md font-medium text-gray-900">Personal Information</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -895,10 +913,7 @@ const handleUpdatePassword = async (staffId: string) => {
                       <select
                         multiple
                         {...register('classes', { 
-                          setValueAs: (value) => {
-                            const result = Array.isArray(value) ? value.map(Number).filter(id => id) : [Number(value)].filter(id => id);
-                            return result;
-                          }
+                          setValueAs: (value) => Array.isArray(value) ? value.map(Number).filter(id => id) : [Number(value)].filter(id => id)
                         })}
                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
                       >
@@ -912,10 +927,7 @@ const handleUpdatePassword = async (staffId: string) => {
                       <select
                         multiple
                         {...register('subjects', { 
-                          setValueAs: (value) => {
-                            const result = Array.isArray(value) ? value.map(Number).filter(id => id) : [Number(value)].filter(id => id);
-                            return result;
-                          }
+                          setValueAs: (value) => Array.isArray(value) ? value.map(Number).filter(id => id) : [Number(value)].filter(id => id)
                         })}
                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
                       >
@@ -1276,27 +1288,28 @@ const handleUpdatePassword = async (staffId: string) => {
                 {filteredStaff.map((staff) => (
                   <tr key={staff.id}>
                     <td className="sm:px-4 sm:py-3 sm:whitespace-nowrap">
-                    <div className="sm:flex sm:items-center">
-                      <img
-                        src={staff.profile_image || 'https://img.icons8.com/ios-filled/32/user.png'}
-                        alt={`${staff.user_name}'s profile`}
-                        className="sm:h-8 sm:w-8 sm:rounded-full sm:object-cover sm:mr-2"
-                      />
-                      <div>
-                        <div
-                          className="sm:text-sm sm:font-medium sm:text-blue-600 sm:hover:underline sm:cursor-pointer"
-                          onClick={() => handleNameClick(staff.id)}
-                        >
-                          {staff.user_name}
-                        </div>
-                        <div className="sm:text-xs sm:text-gray-500">
-                          {staff.subjects_names && staff.subjects_names.length > 0
-                            ? `Teaches: ${staff.subjects_names.join(', ')}`
-                            : `Joined: ${format(parseISO(staff.hire_date), 'MMM dd, yyyy')}`}
+                      <div className="sm:flex sm:items-center">
+                        <img
+                          src={staff.profile_image || 'https://img.icons8.com/ios-filled/32/user.png'}
+                          alt={`${staff.user_name}'s profile`}
+                          className="sm:h-8 sm:w-8 sm:rounded-full sm:object-cover sm:mr-2"
+                        />
+                        <div>
+                          <div
+                            className="sm:text-sm sm:font-medium sm:text-blue-600 sm:hover:underline sm:cursor-pointer"
+                            onClick={() => handleNameClick(staff.id)}
+                          >
+                            {staff.user_name}
+                          </div>
+                          <div className="sm:text-xs sm:text-gray-500">
+                            {staff.subjects_names && staff.subjects_names.length > 0
+                              ? `Teaches: ${staff.subjects_names.join(', ')}`
+                              : `Joined: ${format(parseISO(staff.hire_date), 'MMM dd, yyyy')}`}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>                    <td className="sm:px-4 sm:py-3 sm:whitespace-nowrap sm:text-sm sm:text-gray-500">
+                    </td>
+                    <td className="sm:px-4 sm:py-3 sm:whitespace-nowrap sm:text-sm sm:text-gray-500">
                       <div className="sm:flex sm:items-center">
                         <Mail size={13} className="sm:mr-1.5 sm:text-gray-400" />
                         {staff.user_email}
