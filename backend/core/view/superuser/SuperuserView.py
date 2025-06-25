@@ -61,8 +61,8 @@ class SuperuserSchoolCreateView(APIView):
             'school': school,
             'start_date': school_data.get('start_date', '2025-01-01'),  # Default start date
             'end_date': school_data.get('end_date', '2025-12-31'),  # Default end date
-            'status': 'pending',
-            'fulfillment_status': 'pending'
+            'status': 'active',
+            'fulfillment_status': 'fulfilled'
         }
         subscription = Subscription.objects.create(**subscription_data)
         logger.info(f"Subscription created for school {school.name}")
