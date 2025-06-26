@@ -17,10 +17,12 @@ from core.view.admin.certificate_view import CertificateViewSet, StudentCredenti
 from core.view.admin.staff_views import StaffViewSet, StaffProfileImageView
 from core.view.admin.staff_management.StaffLeaveView import StaffLeaveCreateView
 from core.view.superuser.SuperuserView import SuperuserView, SuperuserAdminView, SuperuserSubscriptionView, SuperuserSchoolCreateView
+from core.view.admin.teacher_views import TeacherViewSet
 
-# Register StudentView with a router to handle document endpoints
+# Register StudentView and TeacherViewSet with a router to handle document endpoints
 router = DefaultRouter()
 router.register(r'students', StudentView, basename='student')
+router.register(r'teachers', TeacherViewSet, basename='teacher')
 
 urlpatterns = [
     # Authentication URLs

@@ -368,7 +368,7 @@ class LeaveType(models.Model):
     ]
 
     school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='leavetypes', to_field='school_id', null=True)
-    name = models.CharField(max_length=100, unique=True)  # Enforce unique names
+    name = models.CharField(max_length=100)  # Enforce unique names
     default_days = models.IntegerField()
     unit = models.CharField(max_length=20, choices=UNIT_CHOICES)
     allow_carry_over = models.BooleanField(default=False)

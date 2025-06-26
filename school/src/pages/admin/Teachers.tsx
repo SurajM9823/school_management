@@ -1,4 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../../api';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { 
   UserPlus, 
   Search, 
@@ -16,10 +20,13 @@ import {
   Phone,
   DollarSign, // For financial info
   CalendarDays, // For leave info
-  FilePlus // For document uploads in new section
+  FilePlus, // For document uploads in new section
+  Trash2, // For delete actions
+  PlusCircle // For adding items
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import TeacherAssignments from './TeacherAssignments';
 import { format } from 'date-fns';
 
 // Mock data for teachers
@@ -76,10 +83,89 @@ interface Teacher {
 }
 
 const Teachers: React.FC = () => {
+  const navigate = useNavigate();
   const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [subjectFilter, setSubjectFilter] = useState('all');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // State for available classes, sections, and subjects
+  const [classes, setClasses] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [subjectsList, setSubjectsList] = useState([]);
+  
+  // Function to fetch classes and subjects
+  const fetchClassesAndSubjects = async () => {
+    try {
+      const [classesResponse, subjectsResponse] = await Promise.all([
+        api.get('/school/settings/classes/'),
+        api.get('/school/settings/subjects/')
+      ]);
+      
+      setClasses(classesResponse.data);
+      setSubjectsList(subjectsResponse.data);
+    } catch (err) {
+      console.error('Error fetching classes and subjects:', err);
+      toast.error('Failed to load classes and subjects');
+    }
+  };
+  
+  // Function to fetch sections for a specific class
+  const fetchSections = async (classId) => {
+    if (!classId) {
+      setSections([]);
+      return;
+    }
+    
+    try {
+      const response = await api.get(`/school/settings/classes/${classId}/sections/`);
+      setSections(response.data);
+    } catch (err) {
+      console.error('Error fetching sections:', err);
+      toast.error('Failed to load sections');
+    }
+  };
+  
+  // Function to fetch teachers from API
+  const fetchTeachers = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await api.get('/teachers/');
+        console.log('API teachers response:', response.data);
+        
+        // Map API response to Teacher interface
+        const mappedTeachers = response.data.map((teacher: any) => ({
+          id: teacher.id,
+          name: teacher.staff?.user?.name || '',
+          email: teacher.staff?.user?.email || '',
+          phone: teacher.staff?.phone || '',
+          subject: teacher.primary_subject?.name || 'Not assigned',
+          qualification: teacher.qualification || '',
+          status: teacher.staff?.status || 'active',
+          joiningDate: teacher.staff?.hire_date || '',
+          experience: teacher.experience || '',
+          address: teacher.staff?.address || ''
+        }));
+        
+        setTeachers(mappedTeachers);
+      } catch (err) {
+        console.error('Error fetching teachers:', err);
+        setError('Failed to load teachers. Please try again later.');
+        // Keep the mock data for now
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+  // Fetch teachers and other data on component mount
+  useEffect(() => {
+    console.log('Initializing Teachers component');
+    fetchTeachers();
+    fetchClassesAndSubjects();
+  }, []);
   const [showNewTeacherForm, setShowNewTeacherForm] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [newTeacher, setNewTeacher] = useState({
@@ -108,6 +194,10 @@ const Teachers: React.FC = () => {
     providentFundContributionEmployee: 0, // Percentage or amount
     providentFundContributionEmployer: 0, // Percentage or amount
     otherDeductions: [{ name: '', amount: 0 }],
+    // Teaching Assignments
+    assignments: [
+      { class_id: 0, section_id: 0, subject_id: 0, is_primary: false, hours_per_week: 0 }
+    ],
   });
 
   // Filter teachers
@@ -121,39 +211,114 @@ const Teachers: React.FC = () => {
     return matchesSearch && matchesStatus && matchesSubject;
   });
 
-  const handleCreateTeacher = () => {
-    // In a real app, this would submit the form data to the server
-    console.log('New Teacher Data:', newTeacher);
-    // Add the new teacher to the list (mock implementation)
-    setTeachers([...teachers, { ...newTeacher, id: teachers.length + 1, status: 'active' }]);
-    setShowNewTeacherForm(false);
-    setCurrentStep(1);
-    // Reset form fields
-    setNewTeacher({
-      name: '',
-      email: '',
-      phone: '',
-      subject: 'Mathematics',
-      qualification: '',
-      joiningDate: '',
-      experience: '',
-      address: '',
-      gender: 'male',
-      dob: '',
-      salary: '',
-      panNumber: '',
-      bankAccountNumber: '',
-      bankName: '',
-      ifscCode: '',
-      initialSickLeave: 12,
-      initialCasualLeave: 0,
-      taxDeductionPercentage: 0,
-      providentFundNumber: '',
-      providentFundContributionEmployee: 0,
-      providentFundContributionEmployer: 0,
-      otherDeductions: [{ name: '', amount: 0 }],
-    });
-    };
+  const handleCreateTeacher = async () => {
+    try {
+      // Prepare data for API call - combining staff and teacher data
+      const teacherData = {
+        // Staff fields
+        user_email: newTeacher.email,
+        user_role: 'teacher',  // Always 'teacher' for this form
+        user_name: newTeacher.name,
+        staff_role_id: 1,  // Default to a teacher role ID - should be dynamic in production
+        department_id: 1,  // Default to a department ID - should be dynamic in production
+        first_name: newTeacher.name || '',
+        last_name: 'Teacher', // Default last name to avoid validation error
+        date_of_birth: newTeacher.dob || null,
+        gender: newTeacher.gender || '',
+        address: newTeacher.address || '',
+        phone: newTeacher.phone || '',
+        emergency_contact_name: '',
+        emergency_contact_phone: '',
+        hire_date: newTeacher.joiningDate || new Date().toISOString().split('T')[0],
+        employment_type: 'full_time',
+        contract_end_date: null,
+        classes_ids: [],
+        subjects_ids: [],
+        base_salary: parseFloat(newTeacher.salary) || 0,
+        pay_frequency: 'monthly',
+        tax_status: 'non_exempt',
+        bank_account_number: newTeacher.bankAccountNumber || '',
+        bank_name: newTeacher.bankName || '',
+        bank_branch: '',
+        health_insurance_number: '',
+        pension_plan_number: '',
+        provident_fund_number: newTeacher.providentFundNumber || '',
+        status: 'active',
+        
+        // Teacher-specific fields
+        qualification: newTeacher.qualification || '',
+        experience: newTeacher.experience || '',
+        primary_subject_id: 1,  // Default to a subject ID - should be dynamic in production
+        pan_number: newTeacher.panNumber || '',
+        ifsc_code: newTeacher.ifscCode || '',
+        sick_leave_balance: newTeacher.initialSickLeave || 12,
+        casual_leave_balance: newTeacher.initialCasualLeave || 0,
+        tax_deduction_percentage: newTeacher.taxDeductionPercentage || 0,
+        pf_employee_contribution: newTeacher.providentFundContributionEmployee || 0,
+        pf_employer_contribution: newTeacher.providentFundContributionEmployer || 0,
+        other_deductions: newTeacher.otherDeductions || []
+      };
+      
+      console.log('Sending teacher data to API:', teacherData);
+      
+      // Make API call
+      const response = await api.post('/teachers/', teacherData);
+      console.log('API response:', response.data);
+      
+      // Add the new teacher to the list
+      const newTeacherData = {
+        id: response.data.id,
+        name: response.data.staff?.user?.name || newTeacher.name,
+        email: response.data.staff?.user?.email || newTeacher.email,
+        phone: response.data.staff?.phone || newTeacher.phone,
+        subject: response.data.primary_subject?.name || newTeacher.subject,
+        qualification: response.data.qualification || newTeacher.qualification,
+        status: response.data.staff?.status || 'active',
+        joiningDate: response.data.staff?.hire_date || newTeacher.joiningDate,
+        experience: response.data.experience || newTeacher.experience,
+        address: response.data.staff?.address || newTeacher.address
+      };
+      
+      setTeachers([...teachers, newTeacherData]);
+      setShowNewTeacherForm(false);
+      setCurrentStep(1);
+      
+      // Show success notification
+      toast.success('Teacher added successfully!');
+      
+      // Refresh the teacher list
+      fetchTeachers();
+      
+      // Reset form fields
+      setNewTeacher({
+        name: '',
+        email: '',
+        phone: '',
+        subject: 'Mathematics',
+        qualification: '',
+        joiningDate: '',
+        experience: '',
+        address: '',
+        gender: 'male',
+        dob: '',
+        salary: '',
+        panNumber: '',
+        bankAccountNumber: '',
+        bankName: '',
+        ifscCode: '',
+        initialSickLeave: 12,
+        initialCasualLeave: 0,
+        taxDeductionPercentage: 0,
+        providentFundNumber: '',
+        providentFundContributionEmployee: 0,
+        providentFundContributionEmployer: 0,
+        otherDeductions: [{ name: '', amount: 0 }],
+      });
+    } catch (error) {
+      console.error('Error creating teacher:', error);
+      toast.error('Failed to create teacher. Please try again.');
+    }
+  };
   
     const handleOtherDeductionChange = (index: number, field: 'name' | 'amount', value: string) => {
       const updatedDeductions = [...newTeacher.otherDeductions];
@@ -173,6 +338,73 @@ const Teachers: React.FC = () => {
       const updatedDeductions = newTeacher.otherDeductions.filter((_, i) => i !== index);
       setNewTeacher({ ...newTeacher, otherDeductions: updatedDeductions });
     };
+    
+  // Handle assignment changes
+  const handleAssignmentChange = (index: number, field: string, value: any) => {
+    const updatedAssignments = [...newTeacher.assignments];
+    updatedAssignments[index][field] = value;
+    
+    // If class changed, fetch sections for that class
+    if (field === 'class_id' && value) {
+      fetchSections(value);
+    }
+    
+    setNewTeacher({ ...newTeacher, assignments: updatedAssignments });
+  };
+  
+  // Add a new assignment
+  const addAssignment = () => {
+    setNewTeacher({
+      ...newTeacher,
+      assignments: [
+        ...newTeacher.assignments,
+        { class_id: 0, section_id: 0, subject_id: 0, is_primary: false, hours_per_week: 0 }
+      ]
+    });
+  };
+  
+  // Remove an assignment
+  const removeAssignment = (index: number) => {
+    const updatedAssignments = newTeacher.assignments.filter((_, i) => i !== index);
+    setNewTeacher({ ...newTeacher, assignments: updatedAssignments });
+  };
+    
+  const handleEditTeacher = (teacher: Teacher) => {
+    // In a real implementation, you would fetch the teacher details and populate the form
+    toast.info('Edit functionality will be implemented soon');
+  };
+  
+  const handleDeleteTeacher = async (teacherId: number) => {
+    if (!window.confirm('Are you sure you want to delete this teacher?')) {
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      await api.delete(`/teachers/${teacherId}/`);
+      toast.success('Teacher deleted successfully!');
+      fetchTeachers(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting teacher:', error);
+      toast.error('Failed to delete teacher. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleViewCredentials = async (teacherId: number) => {
+    setIsLoading(true);
+    try {
+      const response = await api.get(`/teachers/${teacherId}/get_credentials/`);
+      toast.success('Credentials retrieved successfully');
+      alert(`Email: ${response.data.email}\nPassword: ${response.data.password}`);
+    } catch (error) {
+      console.error('Error fetching credentials:', error);
+      toast.error('Failed to fetch credentials. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   
     const renderTeacherForm = () => {
@@ -352,17 +584,30 @@ const Teachers: React.FC = () => {
               </div>
             </div>
           );
+        case 5:
+          return (
+            <TeacherAssignments
+              assignments={newTeacher.assignments}
+              classes={classes}
+              sections={sections}
+              subjects={subjectsList}
+              onAssignmentChange={handleAssignmentChange}
+              onAddAssignment={addAssignment}
+              onRemoveAssignment={removeAssignment}
+            />
+          );
         default:
           return null;
       }
     };
   
-    const totalSteps = 4;
+    const totalSteps = 5;
   
     const uniqueSubjects = Array.from(new Set(teachers.map(teacher => teacher.subject)));
 
   return (
     <div className="space-y-6">
+      <ToastContainer position="top-right" autoClose={3000} />
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Manage Teachers</h1>
@@ -406,7 +651,11 @@ const Teachers: React.FC = () => {
                         {isCompleted ? <Check className="h-5 w-5" /> : <span>{stepNum}</span>}
                       </div>
                       <span className="mt-2 text-xs text-gray-500 text-center">
-                        {stepNum === 1 ? 'Basic Info' : stepNum === 2 ? 'Contact & Academic' : stepNum === 3 ? 'Employment' : 'Financial & Leave'}
+                        {stepNum === 1 ? 'Basic Info' : 
+                         stepNum === 2 ? 'Contact & Academic' : 
+                         stepNum === 3 ? 'Employment' : 
+                         stepNum === 4 ? 'Financial & Leave' : 
+                         'Teaching Assignments'}
                       </span>
                     </div>
                   );
@@ -540,7 +789,7 @@ const Teachers: React.FC = () => {
                         <span className="text-sm font-medium text-blue-700">{teacher.name.split(' ').map(n => n[0]).join('')}</span>
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{teacher.name}</div>
+                        <div className="text-sm font-medium text-gray-900 hover:text-blue-600 cursor-pointer" onClick={() => navigate(`/admin/teachers/${teacher.id}`)}>{teacher.name}</div>
                         <div className="text-xs text-gray-500">{teacher.qualification}</div>
                       </div>
                     </div>
@@ -571,10 +820,9 @@ const Teachers: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900" title="View Details"><Eye size={16} /></button>
-                      <button className="text-yellow-600 hover:text-yellow-900" title="Edit Teacher"><Edit size={16} /></button>
-                      <button className="text-gray-500 hover:text-gray-700" title="Download Profile"><Download size={16} /></button>
-                      {/* Add more actions like deactivate/activate */}
+                      <button className="text-blue-600 hover:text-blue-900" title="View Details" onClick={() => handleViewCredentials(teacher.id)}><Eye size={16} /></button>
+                      <button className="text-yellow-600 hover:text-yellow-900" title="Edit Teacher" onClick={() => handleEditTeacher(teacher)}><Edit size={16} /></button>
+                      <button className="text-red-600 hover:text-red-900" title="Delete Teacher" onClick={() => handleDeleteTeacher(teacher.id)}><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>

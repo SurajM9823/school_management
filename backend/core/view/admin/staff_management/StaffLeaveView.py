@@ -8,13 +8,22 @@ from django.shortcuts import get_object_or_404
 
 class StaffLeaveCreateView(APIView):
     def post(self, request, staff_id):
-        # Normalize school_id
-        school_id = str(request.user.school.school_id).replace('-', '')
-        staff = get_object_or_404(Staff, id=staff_id, school_id=school_id)
+        # Get the staff member without filtering by school
+        staff = get_object_or_404(Staff, id=staff_id)
+        
+        # Debug logging
+        print(f"Received leave request for staff ID: {staff_id}")
+        print(f"Request data: {request.data}")
+        print(f"Staff school: {staff.school.school_id if staff.school else 'None'}")
+        
         data = request.data.copy()
         data['staff'] = staff.id
-        data['school'] = school_id
-        serializer = StaffLeaveSerializer(data=data)
+        data['school'] = staff.school.school_id if staff.school else None
+        
+        # Debug logging
+        print(f"Modified data for serializer: {data}")
+        
+        serializer = StaffLeaveSerializer(data=data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             staff.status = 'on_leave'

@@ -382,6 +382,9 @@ const StaffManagement: React.FC = () => {
       throw new Error('User school ID not found');
     }
     let response;
+    
+    // Check if this is a teacher role
+    const isTeacher = data.role === 'teacher';
     const payload = {
       user_email: data.email,
       user_role: data.role,
@@ -414,8 +417,28 @@ const StaffManagement: React.FC = () => {
       provident_fund_number: data.provident_fund_number || '',
       status: data.status || 'active',
     };
+    // Choose the appropriate endpoint based on role
+    const endpoint = isTeacher ? '/teachers/' : '/school/settings/staff/';
+    
+    // Add teacher-specific fields if needed
+    if (isTeacher) {
+      // Add default teacher fields
+      Object.assign(payload, {
+        qualification: '',
+        experience: '',
+        primary_subject_id: data.subjects.length > 0 ? data.subjects[0] : null,
+        sick_leave_balance: 12,
+        casual_leave_balance: 0,
+        tax_deduction_percentage: 0,
+        pf_employee_contribution: 0,
+        pf_employer_contribution: 0,
+        other_deductions: []
+      });
+    }
+    
     if (editingStaff) {
-      response = await api.put(`/school/settings/staff/${editingStaff.id}/`, payload);
+      const editEndpoint = isTeacher ? `/teachers/${editingStaff.id}/` : `/school/settings/staff/${editingStaff.id}/`;
+      response = await api.put(editEndpoint, payload);
       setStaffList(prev =>
         prev.map(s =>
           s.id === editingStaff.id
@@ -459,7 +482,7 @@ const StaffManagement: React.FC = () => {
       );
       toast.success('Staff member updated successfully');
     } else {
-      response = await api.post('/school/settings/staff/', payload);
+      response = await api.post(endpoint, payload);
       setStaffList(prev => [
         {
           id: response.data.id,
@@ -586,9 +609,12 @@ const handleDeleteStaff = async (staffId: string) => {
   }
 };
 
-const toggleStaffStatus = async (staffId: string, currentStatus: 'active' | 'on_leave' | 'terminated') => {
-  const newStatus = currentStatus === 'active' ? 'on_leave' : currentStatus === 'on_leave' ? 'terminated' : 'active';
-  if (newStatus === 'on_leave') {
+const toggleStaffStatus = async (staffId: string, currentStatus: 'active' | 'on_leave' | 'terminated', newStatus?: 'active' | 'on_leave' | 'terminated') => {
+  // If newStatus is provided, use it directly, otherwise calculate based on current status
+  const targetStatus = newStatus || (currentStatus === 'active' ? 'on_leave' : currentStatus === 'on_leave' ? 'terminated' : 'active');
+  
+  // Special handling for on_leave status - show leave modal
+  if (targetStatus === 'on_leave' && !newStatus) { // Only show modal if changing to on_leave naturally
     const staff = staffList.find(s => s.id === staffId);
     if (staff) {
       setShowLeaveModal(staff);
@@ -631,10 +657,17 @@ const toggleStaffStatus = async (staffId: string, currentStatus: 'active' | 'on_
       start_date: data.start_date,
       end_date: data.end_date || null,
       days: data.days,
-      reason: data.reason,
-      staff: showLeaveModal.id,
+      reason: data.reason || '',
+      // staff is automatically added by the backend
     };
-    const response = await api.post(`/school/settings/staff/${showLeaveModal.id}/leave`, payload);
+    
+    // Log the payload for debugging
+    console.log('Leave payload:', payload);
+    
+    console.log('Submitting leave with payload:', payload);
+    console.log('For staff ID:', showLeaveModal.id);
+    
+    const response = await api.post(`/school/settings/staff/${showLeaveModal.id}/leave/`, payload);
     setStaffList(prev =>
       prev.map(s =>
         s.id === showLeaveModal.id ? { ...s, status: 'on_leave' } : s
@@ -645,12 +678,23 @@ const toggleStaffStatus = async (staffId: string, currentStatus: 'active' | 'on_
     leaveForm.reset();
   } catch (err: any) {
     console.error('Apply leave error:', err);
-    const errorMessage =
-      err.response?.data?.detail ||
-      Object.entries(err.response?.data || {})
-        .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
-        .join('; ') ||
-      'Failed to apply leave';
+    console.error('Error response:', err.response?.data);
+    
+    let errorMessage = 'Failed to apply leave';
+    
+    if (err.response?.data) {
+      if (typeof err.response.data === 'string') {
+        errorMessage = err.response.data;
+      } else if (err.response.data.detail) {
+        errorMessage = err.response.data.detail;
+      } else {
+        // Handle nested error objects
+        errorMessage = Object.entries(err.response.data)
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join('; ');
+      }
+    }
+    
     setError(errorMessage);
     toast.error(errorMessage);
   } finally {
@@ -1360,7 +1404,7 @@ const toggleStaffStatus = async (staffId: string, currentStatus: 'active' | 'on_
                               name={`status-${staff.id}`}
                               value={status}
                               checked={staff.status === status}
-                              onChange={() => toggleStaffStatus(staff.id, staff.status)}
+                              onChange={() => toggleStaffStatus(staff.id, staff.status, status as 'active' | 'on_leave' | 'terminated')}
                               className="sm:mr-1"
                               disabled={isLoading}
                             />

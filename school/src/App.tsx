@@ -21,6 +21,7 @@ import AcademicSettings from "./pages/admin/settings/AcademicSettings";
 import CampusSettings from "./pages/admin/settings/CampusSettings";
 import AdmissionFees from "./pages/admin/settings/AdmissionFees";
 import Teachers from "./pages/admin/Teachers";
+import TeacherDetail from "./pages/admin/TeacherDetail";
 import Classes from "./pages/admin/Classes";
 import Exams from "./pages/admin/Exams";
 import Scholarships from "./pages/admin/Scholarships";
@@ -161,6 +162,14 @@ function App() {
             element={
               <ProtectedRoute roles={["admin"]}>
                 <Teachers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/teachers/:id"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <TeacherDetail />
               </ProtectedRoute>
             }
           />

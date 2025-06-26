@@ -12,10 +12,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
-      <div
-        className="bg-white rounded-lg shadow-lg w-full max-w-2xl mx-4 p-6 relative flex flex-col"
-        style={{ maxHeight: '90vh' }}
-      >
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl mx-4 p-6 relative flex flex-col max-h-[90vh]">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -33,7 +30,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
         )}
 
         {/* Content */}
-        <div className="overflow-y-auto" style={{ maxHeight: '65vh' }}>
+        <div className="overflow-y-auto flex-1">
           {children}
         </div>
       </div>
