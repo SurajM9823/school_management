@@ -61,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: response.data.role,
             avatar: response.data.avatar || undefined,
             is_superuser: response.data.is_superuser ?? false,
-            school_id: response.data.school || undefined, // Parse school field
+            school_id: response.data.school?.school_id || response.data.school || undefined, // Try to get school_id from nested object or direct field
           };
           console.log('Parsed user data:', userData);
           setUser(userData);
@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   role: user.role,
                   avatar: user.avatar || undefined,
                   is_superuser: user.is_superuser ?? false,
-                  school_id: user.school || undefined, // Parse school field
+                  school_id: user.school?.school_id || user.school || undefined, // Try to get school_id from nested object or direct field
                 };
                 localStorage.setItem('accessToken', access);
                 localStorage.setItem('user', JSON.stringify(userData));
@@ -139,7 +139,7 @@ const login = async (email: string, password: string) => {
       role: user.role,
       avatar: user.avatar || undefined,
       is_superuser: user.is_superuser ?? false,
-      school_id: user.school || undefined, // Parse school field
+      school_id: user.school?.school_id || user.school || undefined, // Try to get school_id from nested object or direct field
     };
     localStorage.setItem('accessToken', access);
     localStorage.setItem('refreshToken', refresh);

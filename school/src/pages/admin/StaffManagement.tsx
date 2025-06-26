@@ -210,13 +210,23 @@ const StaffManagement: React.FC = () => {
 
   useEffect(() => {
   const source = axios.CancelToken.source();
-  if (!user || user.role !== 'admin' || !user.school_id) {
-    if (user && user.role !== 'admin') {
-      navigate('/login');
-      toast.error('Unauthorized access. Please log in as admin.');
-    }
+  console.log('StaffManagement useEffect - user:', user);
+  if (!user) {
+    console.log('No user found, waiting for authentication');
     return;
   }
+  if (user.role !== 'admin') {
+    console.log('User is not admin, redirecting to login');
+    navigate('/login');
+    toast.error('Unauthorized access. Please log in as admin.');
+    return;
+  }
+  if (!user.school_id) {
+    console.log('User has no school_id:', user);
+    toast.error('Your account is not associated with a school. Please contact support.');
+    return;
+  }
+  console.log('Fetching staff data with school_id:', user.school_id);
   fetchData(source.token);
   return () => source.cancel('Request canceled due to component unmount');
 }, [user, navigate]);
@@ -275,33 +285,36 @@ const StaffManagement: React.FC = () => {
     console.log('Leave Types Response:', leaveTypeResponse.data);
     console.log('Sessions Response:', sessionResponse.data);
 
-    setStaffList(
-      staffResponse.data.map((staff: any) => ({
+    console.log('Raw staff data:', staffResponse.data);
+    const mappedStaff = staffResponse.data.map((staff: any) => {
+      // Extract user data from nested user object
+      const userData = staff.user || {};
+      return {
         id: staff.id,
-        user_name: staff.user_name,
-        user_email: staff.user_email,
-        phone: staff.phone,
-        user_role: staff.user_role,
-        department_name: staff.department_name,
-        subjects_names: staff.subjects_names,
-        hire_date: staff.hire_date,
-        status: staff.status,
-        first_name: staff.first_name,
-        last_name: staff.last_name,
-        staff_role_id: staff.staff_role_id,
-        department_id: staff.department_id,
-        date_of_birth: staff.date_of_birth,
-        gender: staff.gender,
-        address: staff.address,
-        emergency_contact_name: staff.emergency_contact_name,
-        emergency_contact_phone: staff.emergency_contact_phone,
-        employment_type: staff.employment_type,
-        contract_end_date: staff.contract_end_date,
-        classes_ids: staff.classes_ids || [],
-        subjects_ids: staff.subjects_ids || [],
-        base_salary: staff.base_salary,
-        pay_frequency: staff.pay_frequency,
-        tax_status: staff.tax_status,
+        user_name: userData.name || '',
+        user_email: userData.email || '',
+        phone: staff.phone || '',
+        user_role: userData.role || '',
+        department_name: staff.department?.name || '',
+        subjects_names: staff.subjects?.map((s: any) => s.name) || [],
+        hire_date: staff.hire_date || '',
+        status: staff.status || 'active',
+        first_name: staff.first_name || '',
+        last_name: staff.last_name || '',
+        staff_role_id: staff.staff_role?.id || 0,
+        department_id: staff.department?.id || 0,
+        date_of_birth: staff.date_of_birth || null,
+        gender: staff.gender || '',
+        address: staff.address || '',
+        emergency_contact_name: staff.emergency_contact_name || '',
+        emergency_contact_phone: staff.emergency_contact_phone || '',
+        employment_type: staff.employment_type || 'full_time',
+        contract_end_date: staff.contract_end_date || null,
+        classes_ids: staff.classes?.map((c: any) => c.id) || [],
+        subjects_ids: staff.subjects?.map((s: any) => s.id) || [],
+        base_salary: staff.base_salary || 0,
+        pay_frequency: staff.pay_frequency || 'monthly',
+        tax_status: staff.tax_status || 'non_exempt',
         allowances: staff.allowances || {},
         deductions: staff.deductions || {},
         bank_account_number: staff.bank_account_number || '',
@@ -312,8 +325,10 @@ const StaffManagement: React.FC = () => {
         provident_fund_number: staff.provident_fund_number || '',
         generated_password: staff.generated_password || '',
         profile_image: staff.profile_image || null,
-      }))
-    );
+      };
+    });
+    console.log('Mapped staff data:', mappedStaff);
+    setStaffList(mappedStaff);
     setSchools(schoolResponse.data || []);
     setStaffRoles(roleResponse.data);
     setDepartments(deptResponse.data);
@@ -336,13 +351,26 @@ const StaffManagement: React.FC = () => {
 };
 
   const filteredStaff = useMemo(() => {
+    console.log('Filtering staff list:', staffList);
     return staffList
-      .filter(staff =>
-        (staff?.user_name?.toLowerCase()?.includes(searchTerm.toLowerCase()) || false) ||
-        (staff?.user_email?.toLowerCase()?.includes(searchTerm.toLowerCase()) || false) &&
-        (roleFilter === 'all' || staff.user_role === roleFilter) &&
-        (statusFilter === 'all' || staff.status === statusFilter)
-      )
+      .filter(staff => {
+        // First check if staff has the required fields
+        if (!staff || !staff.user_name || !staff.user_email) {
+          console.log('Skipping staff with missing fields:', staff);
+          return false;
+        }
+        
+        // Search term filter (name OR email)
+        const matchesSearch = searchTerm === '' || 
+          staff.user_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+          staff.user_email.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        // Role and status filters
+        const matchesRole = roleFilter === 'all' || staff.user_role === roleFilter;
+        const matchesStatus = statusFilter === 'all' || staff.status === statusFilter;
+        
+        return matchesSearch && matchesRole && matchesStatus;
+      })
       .sort((a, b) => (a.user_name || '').localeCompare(b.user_name || ''));
   }, [staffList, searchTerm, roleFilter, statusFilter]);
 

@@ -79,15 +79,31 @@ class StaffSerializer(serializers.ModelSerializer):
         if not school_id:
             raise serializers.ValidationError({"school_id": "School ID is required."})
         try:
-            # Normalize school_id by removing hyphens
-            normalized_school_id = str(school_id).replace('-', '')
-            UUID(normalized_school_id)  # Validate UUID format
-            School.objects.get(school_id=normalized_school_id)
-            logger.info(f"Found school with normalized school_id: {normalized_school_id}")
+            # Handle both hyphenated and non-hyphenated UUID formats
+            try:
+                # First try to parse as a valid UUID (with hyphens)
+                uuid_obj = UUID(str(school_id))
+                normalized_school_id = str(uuid_obj)
+            except ValueError:
+                # If that fails, try removing hyphens and parsing
+                normalized_school_id = str(school_id).replace('-', '')
+                uuid_obj = UUID(normalized_school_id)
+                normalized_school_id = str(uuid_obj)
+            
+            # Try to find the school with this ID
+            try:
+                School.objects.get(school_id=normalized_school_id)
+                logger.info(f"Found school with normalized school_id: {normalized_school_id}")
+            except School.DoesNotExist:
+                # Try with the original format as well
+                School.objects.get(school_id=str(school_id))
+                logger.info(f"Found school with original school_id: {school_id}")
+                normalized_school_id = str(school_id)
+            
             # Store normalized school_id in validated data
             data['school_id'] = normalized_school_id
         except School.DoesNotExist:
-            raise serializers.ValidationError({"school_id": f"Invalid school ID: {school_id}"})
+            raise serializers.ValidationError({"school_id": f"Invalid school ID: {school_id}. No school found with this ID."})
         except ValueError:
             raise serializers.ValidationError({"school_id": f"Invalid UUID format: {school_id}"})
 
@@ -121,16 +137,35 @@ class StaffSerializer(serializers.ModelSerializer):
             staff_role = validated_data.pop('staff_role', None)
             department = validated_data.pop('department', None)
 
+            # Log the school_id we're using
+            logger.info(f"Looking up school with ID: {school_id}")
+            
+            # Try to find the school with different formats of the UUID
+            try:
+                school = School.objects.get(school_id=school_id)
+                logger.info(f"Found school with exact ID match: {school.name}")
+            except School.DoesNotExist:
+                try:
+                    # Try with normalized UUID (no hyphens)
+                    normalized_id = str(school_id).replace('-', '')
+                    school = School.objects.get(school_id=normalized_id)
+                    logger.info(f"Found school with normalized ID: {school.name}")
+                except School.DoesNotExist:
+                    # Try with UUID with hyphens
+                    if len(str(school_id)) == 32:  # If it's a UUID without hyphens
+                        formatted_id = f"{school_id[:8]}-{school_id[8:12]}-{school_id[12:16]}-{school_id[16:20]}-{school_id[20:]}"
+                        school = School.objects.get(school_id=formatted_id)
+                        logger.info(f"Found school with formatted ID: {school.name}")
+
             user = User.objects.create_user(
                 email=user_data['email'],
                 name=user_data['name'],
                 role=user_data['role'],
                 password=Staff.generate_credentials(),
-                school=School.objects.get(school_id=school_id)  # Set user.school
+                school=school  # Set user.school
             )
             logger.info(f"Created user: {user.email}")
 
-            school = School.objects.get(school_id=school_id)
             staff = Staff.objects.create(
                 user=user,
                 school=school,
@@ -170,8 +205,27 @@ class StaffSerializer(serializers.ModelSerializer):
             department = validated_data.pop('department', None)
 
             if school_id:
-                instance.school = School.objects.get(school_id=school_id)
-                logger.info(f"Updated school: {school_id}")
+                # Try to find the school with different formats of the UUID
+                try:
+                    school = School.objects.get(school_id=school_id)
+                    logger.info(f"Found school with exact ID match: {school.name}")
+                except School.DoesNotExist:
+                    try:
+                        # Try with normalized UUID (no hyphens)
+                        normalized_id = str(school_id).replace('-', '')
+                        school = School.objects.get(school_id=normalized_id)
+                        logger.info(f"Found school with normalized ID: {school.name}")
+                    except School.DoesNotExist:
+                        # Try with UUID with hyphens
+                        if len(str(school_id)) == 32:  # If it's a UUID without hyphens
+                            formatted_id = f"{school_id[:8]}-{school_id[8:12]}-{school_id[12:16]}-{school_id[16:20]}-{school_id[20:]}"
+                            school = School.objects.get(school_id=formatted_id)
+                            logger.info(f"Found school with formatted ID: {school.name}")
+                
+                instance.school = school
+                instance.user.school = school
+                instance.user.save()
+                logger.info(f"Updated school: {school.name} ({school.school_id})")
 
             if staff_role:
                 instance.staff_role = staff_role

@@ -23,13 +23,25 @@ class StaffViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         logger.info(f"Fetching staff queryset for user: {self.request.user.email}")
         school_id = self.get_user_school_id(self.request.user)
-        return Staff.objects.filter(
+        logger.info(f"Using school_id: {school_id} for staff query")
+        queryset = Staff.objects.filter(
             user__email__isnull=False,
             user__name__isnull=False,
-            school_id=school_id
+            school__school_id=school_id  # Changed from school_id to school__school_id
         ).select_related(
             'user', 'school', 'staff_role', 'department'
         ).prefetch_related('classes', 'subjects', 'leaves')
+        
+        # Log the query results for debugging
+        staff_count = queryset.count()
+        logger.info(f"Found {staff_count} staff members for school_id: {school_id}")
+        if staff_count > 0:
+            for staff in queryset:
+                logger.info(f"Staff: ID={staff.id}, Name={staff.user.name}, Email={staff.user.email}")
+        else:
+            logger.warning(f"No staff found for school_id: {school_id}")
+            
+        return queryset
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -38,26 +50,27 @@ class StaffViewSet(viewsets.ModelViewSet):
 
     def get_user_school_id(self, user):
         logger.info(f"Fetching school_id for user: {user.email}")
-        # Check User.school_id (UUID in core_user)
-        if user.school_id:
+        # Check User.school (ForeignKey to School in core_user)
+        if user.school:
             try:
-                # Normalize school_id by removing hyphens
-                normalized_school_id = str(user.school_id).replace('-', '')
-                school = School.objects.get(school_id=normalized_school_id)
-                logger.info(f"Found User.school_id: {normalized_school_id}")
+                # Get the school_id from the related School object
+                school_id = user.school.school_id
+                normalized_school_id = str(school_id)
+                logger.info(f"Found User.school.school_id: {normalized_school_id}")
                 return normalized_school_id
-            except School.DoesNotExist:
-                logger.error(f"School does not exist for school_id: {user.school_id}")
-                raise ValidationError({"detail": f"School does not exist for user {user.email}"})
-            except ValueError:
-                logger.error(f"Invalid UUID format for school_id: {user.school_id}")
-                raise ValidationError({"detail": f"Invalid school ID format: {user.school_id}"})
+            except Exception as e:
+                logger.error(f"Error accessing school_id: {str(e)}")
+                raise ValidationError({"detail": f"Error accessing school for user {user.email}: {str(e)}"})
         # Fallback to Staff record
         try:
             staff = Staff.objects.get(user=user)
-            normalized_school_id = str(staff.school.school_id).replace('-', '')
-            logger.info(f"Found Staff record with school_id: {normalized_school_id}")
-            return normalized_school_id
+            if staff.school:
+                normalized_school_id = str(staff.school.school_id)
+                logger.info(f"Found Staff record with school_id: {normalized_school_id}")
+                return normalized_school_id
+            else:
+                logger.error(f"Staff record exists but has no school: {user.email}")
+                raise ValidationError({"detail": f"Staff record exists but has no associated school."})
         except Staff.DoesNotExist:
             logger.error(f"No Staff record found for user: {user.email}")
             raise ValidationError({"detail": f"User is not associated with a school."})
@@ -76,8 +89,12 @@ class StaffViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Error determining user's school."}, status=status.HTTP_400_BAD_REQUEST)
 
         mutable_data = request.data.copy()
-        mutable_data['school_id'] = school_id
-        logger.info(f"Updated request data with school_id: {mutable_data}")
+        # Format the school_id properly with hyphens for UUID format
+        formatted_school_id = str(school_id)
+        if len(formatted_school_id) == 32:  # If it's a UUID without hyphens
+            formatted_school_id = f"{formatted_school_id[:8]}-{formatted_school_id[8:12]}-{formatted_school_id[12:16]}-{formatted_school_id[16:20]}-{formatted_school_id[20:]}"
+        mutable_data['school_id'] = formatted_school_id
+        logger.info(f"Updated request data with school_id: {mutable_data['school_id']}")
 
         serializer = self.get_serializer(data=mutable_data)
         if serializer.is_valid():
@@ -112,8 +129,12 @@ class StaffViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Error determining user's school."}, status=status.HTTP_400_BAD_REQUEST)
 
         mutable_data = request.data.copy()
-        mutable_data['school_id'] = school_id
-        logger.info(f"Updated request data with school_id: {mutable_data}")
+        # Format the school_id properly with hyphens for UUID format
+        formatted_school_id = str(school_id)
+        if len(formatted_school_id) == 32:  # If it's a UUID without hyphens
+            formatted_school_id = f"{formatted_school_id[:8]}-{formatted_school_id[8:12]}-{formatted_school_id[12:16]}-{formatted_school_id[16:20]}-{formatted_school_id[20:]}"
+        mutable_data['school_id'] = formatted_school_id
+        logger.info(f"Updated request data with school_id: {mutable_data['school_id']}")
 
         serializer = self.get_serializer(self.get_object(), data=mutable_data, partial=True)
         if serializer.is_valid():
