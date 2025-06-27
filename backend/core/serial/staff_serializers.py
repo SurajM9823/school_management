@@ -189,6 +189,7 @@ class StaffSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         logger.info(f"Updating staff ID: {instance.id} with validated_data: {validated_data}")
+        logger.info(f"Current staff data before update: {instance.__dict__}")
         try:
             user_data = validated_data.pop('user', None)
             if user_data:
@@ -243,6 +244,7 @@ class StaffSerializer(serializers.ModelSerializer):
 
             instance.save()
             logger.info(f"Staff updated: ID={instance.id}")
+            logger.info(f"Staff data after update: {instance.__dict__}")
             return instance
         except Exception as e:
             logger.exception(f"Error updating staff: {str(e)}")

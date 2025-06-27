@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from core.domain.teacher import Teacher
 from core.domain.teacher_assignment import TeacherAssignment
-from core.models import Staff
+from core.models import Staff, Subject, Class, Section
 from core.serial.admin.teacher_assignment_serializer import TeacherAssignmentSerializer
 from core.serial.admin.teacher_serializer import TeacherSerializer
 import logging
@@ -34,6 +34,16 @@ class TeacherViewSet(viewsets.ModelViewSet):
             'staff', 'staff__user', 'staff__school', 'staff__staff_role', 'staff__department', 'primary_subject'
         )
         
+        # Log that we're returning all teachers regardless of status
+        logger.info("Returning all teachers regardless of status")
+        
+        return queryset
+        
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+        
         # Log the query results for debugging
         teacher_count = queryset.count()
         logger.info(f"Found {teacher_count} teachers for school_id: {school_id}")
@@ -62,6 +72,24 @@ class TeacherViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         logger.info(f"Updating teacher {instance.id} with data: {request.data}")
         
+        # Ensure user_role is set to 'teacher'
+        if 'user_role' not in request.data:
+            request.data['user_role'] = 'teacher'
+            
+        # Ensure last_name is not blank
+        if 'last_name' in request.data and not request.data['last_name']:
+            request.data['last_name'] = 'Teacher'
+            
+        # Ensure user_name is set if first_name and last_name are provided
+        if 'first_name' in request.data and 'user_name' not in request.data:
+            first_name = request.data.get('first_name', '')
+            last_name = request.data.get('last_name', 'Teacher')
+            request.data['user_name'] = f"{first_name} {last_name}".strip()
+            
+        # Ensure tax_status is set
+        if 'tax_status' not in request.data:
+            request.data['tax_status'] = 'non_exempt'
+        
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         if serializer.is_valid():
             teacher = serializer.save()
@@ -69,6 +97,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         
         logger.error(f"Teacher update failed: {serializer.errors}")
+        logger.error(f"Request data: {request.data}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=True, methods=['post'])
@@ -132,6 +161,51 @@ class TeacherViewSet(viewsets.ModelViewSet):
         serializer = TeacherAssignmentSerializer(assignments, many=True)
         
         return Response(serializer.data)
+        
+    @action(detail=True, methods=['put'])
+    def update_assignment(self, request, pk=None):
+        """
+        Update an existing assignment for a teacher.
+        """
+        teacher = self.get_object()
+        assignment_id = request.data.get('id')
+        
+        if not assignment_id:
+            return Response({"detail": "Assignment ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            assignment = TeacherAssignment.objects.get(id=assignment_id, teacher=teacher)
+        except TeacherAssignment.DoesNotExist:
+            return Response({"detail": "Assignment not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = TeacherAssignmentSerializer(assignment, data=request.data, partial=True)
+        if serializer.is_valid():
+            updated_assignment = serializer.save()
+            logger.info(f"Assignment updated successfully: {updated_assignment}")
+            return Response(serializer.data)
+        
+        logger.error(f"Assignment update failed: {serializer.errors}")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+    @action(detail=True, methods=['delete'])
+    def delete_assignment(self, request, pk=None):
+        """
+        Delete an assignment for a teacher.
+        """
+        teacher = self.get_object()
+        assignment_id = request.query_params.get('assignment_id')
+        
+        if not assignment_id:
+            return Response({"detail": "Assignment ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            assignment = TeacherAssignment.objects.get(id=assignment_id, teacher=teacher)
+        except TeacherAssignment.DoesNotExist:
+            return Response({"detail": "Assignment not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        assignment.delete()
+        logger.info(f"Assignment deleted successfully: {assignment_id}")
+        return Response({"detail": "Assignment deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
     
     @action(detail=True, methods=['post'])
     def add_assignment(self, request, pk=None):
@@ -145,6 +219,32 @@ class TeacherViewSet(viewsets.ModelViewSet):
         data = request.data.copy()
         data['teacher'] = teacher.id
         
+        # Validate class, section, and subject
+        class_id = data.get('class_obj')
+        section_id = data.get('section')
+        subject_id = data.get('subject')
+        
+        try:
+            class_obj = Class.objects.get(id=class_id)
+            section = Section.objects.get(id=section_id)
+            subject = Subject.objects.get(id=subject_id)
+        except (Class.DoesNotExist, Section.DoesNotExist, Subject.DoesNotExist) as e:
+            logger.error(f"Invalid class, section, or subject: {e}")
+            return Response({"detail": "Invalid class, section, or subject"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if assignment already exists
+        existing = TeacherAssignment.objects.filter(
+            teacher=teacher,
+            class_obj=class_obj,
+            section=section,
+            subject=subject
+        ).first()
+        
+        if existing:
+            logger.warning(f"Assignment already exists: {existing}")
+            return Response({"detail": "This assignment already exists"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Create the assignment
         serializer = TeacherAssignmentSerializer(data=data)
         if serializer.is_valid():
             assignment = serializer.save()

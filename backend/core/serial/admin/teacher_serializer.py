@@ -52,6 +52,17 @@ class TeacherSerializer(serializers.ModelSerializer):
     
     # Read-only fields for displaying staff and teacher data
     staff = StaffSerializer(read_only=True)
+    primary_subject = serializers.SerializerMethodField()
+    profile_image = serializers.SerializerMethodField()
+    
+    def get_primary_subject(self, obj):
+        if obj.primary_subject:
+            return {
+                'id': obj.primary_subject.id,
+                'name': obj.primary_subject.name,
+                'code': obj.primary_subject.code
+            }
+        return None
     
     class Meta:
         model = Teacher
@@ -66,15 +77,15 @@ class TeacherSerializer(serializers.ModelSerializer):
             'pension_plan_number', 'provident_fund_number', 'status',
             
             # Teacher fields
-            'id', 'qualification', 'experience', 'primary_subject_id',
+            'id', 'qualification', 'experience', 'primary_subject_id', 'primary_subject',
             'pan_number', 'ifsc_code', 'sick_leave_balance', 'casual_leave_balance',
             'tax_deduction_percentage', 'pf_employee_contribution',
             'pf_employer_contribution', 'other_deductions',
             
             # Read-only fields
-            'staff', 'created_at', 'updated_at'
+            'staff', 'created_at', 'updated_at', 'profile_image'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'primary_subject']
     
     def create(self, validated_data):
         logger.info(f"Creating teacher with data: {validated_data}")
@@ -128,6 +139,7 @@ class TeacherSerializer(serializers.ModelSerializer):
         if primary_subject_id:
             try:
                 primary_subject = Subject.objects.get(id=primary_subject_id)
+                logger.info(f"Setting primary subject to: {primary_subject}")
             except Subject.DoesNotExist:
                 logger.warning(f"Subject with ID {primary_subject_id} not found")
         
@@ -162,6 +174,13 @@ class TeacherSerializer(serializers.ModelSerializer):
         
         # Update staff if staff_data is not empty
         if staff_data:
+            # Add school_id to staff_data
+            staff_data['school_id'] = str(self.context['request'].user.school.school_id)
+            
+            # Handle last_name if it's blank
+            if 'last_name' in staff_data and not staff_data['last_name']:
+                staff_data['last_name'] = 'Teacher'  # Default value
+                
             staff_serializer = StaffSerializer(instance.staff, data=staff_data, partial=True, context=self.context)
             if staff_serializer.is_valid():
                 staff_serializer.save()
@@ -174,7 +193,9 @@ class TeacherSerializer(serializers.ModelSerializer):
         primary_subject_id = validated_data.pop('primary_subject_id', None)
         if primary_subject_id is not None:
             try:
-                instance.primary_subject = Subject.objects.get(id=primary_subject_id)
+                subject = Subject.objects.get(id=primary_subject_id)
+                instance.primary_subject = subject
+                logger.info(f"Updated primary subject to: {subject.name} (ID: {subject.id})")
             except Subject.DoesNotExist:
                 logger.warning(f"Subject with ID {primary_subject_id} not found")
                 instance.primary_subject = None
@@ -183,7 +204,15 @@ class TeacherSerializer(serializers.ModelSerializer):
         for field, value in validated_data.items():
             setattr(instance, field, value)
         
+        # Save the instance to ensure primary_subject is updated
         instance.save()
         logger.info(f"Updated teacher: {instance}")
+        logger.info(f"Teacher primary_subject after save: {instance.primary_subject}")
         
         return instance
+    def get_profile_image(self, obj):
+        if obj.staff and obj.staff.profile_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.staff.profile_image.url)
+        return None

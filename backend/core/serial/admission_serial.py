@@ -420,7 +420,7 @@ class AdmissionFeeSerializer(serializers.ModelSerializer):
             self.fields['section'].queryset = Section.objects.filter(school__school_id=school_id, is_active=True)
 
     def validate(self, data):
-        school_id = self.context.get('school_id') or (self.context.get('request').user.school_id if self.context.get('request') else None)
+        school_id = self.context.get('school_id') or (self.context.get('request').user.school.school_id if self.context.get('request') else None)
         if not school_id:
             raise serializers.ValidationError({"error": "No school_id provided."})
         
@@ -459,24 +459,39 @@ class AdmissionFeeSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        school_id = self.context.get('school_id')
+        school_id = self.context.get('school_id') or (self.context.get('request').user.school.school_id if self.context.get('request') else None)
         if not school_id:
             raise serializers.ValidationError("No school_id provided.")
-        validated_data['school_id'] = school_id
-        fee = super().create(validated_data)
-        section_str = fee.section.name if fee.section else 'All Sections'
-        logger.info(f"Created admission fee {fee.id} for class {fee.class_id.name}, section {section_str} in school_id: {school_id}")
-        return fee
+            
+        # Get the School instance
+        try:
+            school = School.objects.get(school_id=school_id)
+            validated_data['school'] = school
+            fee = super().create(validated_data)
+            section_str = fee.section.name if fee.section else 'All Sections'
+            logger.info(f"Created admission fee {fee.id} for class {fee.class_id.name}, section {section_str} in school_id: {school_id}")
+            return fee
+        except School.DoesNotExist:
+            raise serializers.ValidationError(f"School with school_id {school_id} does not exist")
 
     def update(self, instance, validated_data):
-        school_id = self.context.get('school_id')
-        if not school_id or instance.school_id != school_id:
-            logger.error(f"Invalid school_id {school_id} for updating admission fee {instance.id}")
-            raise serializers.ValidationError("Invalid school_id.")
-        fee = super().update(instance, validated_data)
-        section_str = fee.section.name if fee.section else 'All Sections'
-        logger.info(f"Updated admission fee {fee.id} for class {fee.class_id.name}, section {section_str} in school_id: {school_id}")
-        return fee
+        school_id = self.context.get('school_id') or (self.context.get('request').user.school.school_id if self.context.get('request') else None)
+        if not school_id:
+            raise serializers.ValidationError("No school_id provided.")
+            
+        try:
+            school = School.objects.get(school_id=school_id)
+            if instance.school.school_id != school_id:
+                logger.error(f"Invalid school_id {school_id} for updating admission fee {instance.id}")
+                raise serializers.ValidationError("Invalid school_id.")
+                
+            validated_data['school'] = school
+            fee = super().update(instance, validated_data)
+            section_str = fee.section.name if fee.section else 'All Sections'
+            logger.info(f"Updated admission fee {fee.id} for class {fee.class_id.name}, section {section_str} in school_id: {school_id}")
+            return fee
+        except School.DoesNotExist:
+            raise serializers.ValidationError(f"School with school_id {school_id} does not exist")
 class StudentFeeSerializer(serializers.ModelSerializer):
     student = serializers.PrimaryKeyRelatedField(queryset=Student.objects.all(), required=True)
     admission_fee = serializers.PrimaryKeyRelatedField(queryset=AdmissionFee.objects.all(), required=True)

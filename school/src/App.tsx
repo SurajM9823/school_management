@@ -22,6 +22,7 @@ import CampusSettings from "./pages/admin/settings/CampusSettings";
 import AdmissionFees from "./pages/admin/settings/AdmissionFees";
 import Teachers from "./pages/admin/Teachers";
 import TeacherDetail from "./pages/admin/TeacherDetail";
+import TeacherEditSimple from "./pages/admin/TeacherEditSimple";
 import Classes from "./pages/admin/Classes";
 import Exams from "./pages/admin/Exams";
 import Scholarships from "./pages/admin/Scholarships";
@@ -162,6 +163,14 @@ function App() {
             element={
               <ProtectedRoute roles={["admin"]}>
                 <Teachers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/teachers/edit/:id"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <TeacherEditSimple />
               </ProtectedRoute>
             }
           />

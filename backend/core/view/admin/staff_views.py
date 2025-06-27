@@ -11,6 +11,7 @@ from django.conf import settings
 import os
 from django.shortcuts import get_object_or_404
 from core.views import IsSchoolAdmin
+from django.utils import timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -192,6 +193,74 @@ class StaffViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.error(f"Error fetching credentials: {str(e)}")
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            
+    @action(detail=True, methods=['get', 'post', 'options'], url_path='upload-documents')
+    def upload_documents(self, request, pk=None):
+        logger.info(f"Handling documents for staff ID: {pk}")
+        staff = self.get_object()
+        
+        # GET request - list documents
+        if request.method == 'GET':
+            try:
+                # Use a simpler approach - scan the media directory for files
+                import os
+                from django.conf import settings
+                
+                staff_doc_dir = os.path.join(settings.MEDIA_ROOT, f'staff_documents/{staff.employee_id}')
+                documents = []
+                
+                # Check if directory exists
+                if os.path.exists(staff_doc_dir):
+                    for filename in os.listdir(staff_doc_dir):
+                        file_path = os.path.join(staff_doc_dir, filename)
+                        if os.path.isfile(file_path):
+                            # Extract document type from filename
+                            parts = filename.split('_', 1)
+                            doc_type = parts[0] if len(parts) > 1 else 'Other'
+                            doc_name = parts[1] if len(parts) > 1 else filename
+                            
+                            # Get file stats
+                            file_stats = os.stat(file_path)
+                            
+                            documents.append({
+                                'id': filename,  # Use filename as ID
+                                'document_type': doc_type,
+                                'description': doc_name,
+                                'file_url': request.build_absolute_uri(f'{settings.MEDIA_URL}staff_documents/{staff.employee_id}/{filename}'),
+                                'uploaded_at': timezone.datetime.fromtimestamp(file_stats.st_mtime).isoformat()
+                            })
+                
+                return Response(documents, status=status.HTTP_200_OK)
+            except Exception as e:
+                logger.error(f"Error fetching documents: {str(e)}")
+                return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # POST request - upload new document
+        if 'file' not in request.FILES:
+            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        file = request.FILES['file']
+        document_type = request.data.get('document_type', 'Other')
+        description = request.data.get('description', '')
+        
+        # Create directory if it doesn't exist
+        import os
+        from django.conf import settings
+        staff_doc_dir = os.path.join(settings.MEDIA_ROOT, f'staff_documents/{staff.employee_id}')
+        os.makedirs(staff_doc_dir, exist_ok=True)
+        
+        # Save file with document type prefix
+        file_name = f"staff_documents/{staff.employee_id}/{document_type}_{file.name}"
+        file_path = default_storage.save(file_name, file)
+        
+        return Response({
+            "detail": "Document uploaded successfully",
+            "id": file.name,
+            "file_url": request.build_absolute_uri(f'{settings.MEDIA_URL}{file_path}'),
+            "document_type": document_type,
+            "description": description,
+            "uploaded_at": timezone.now().isoformat()
+        }, status=status.HTTP_201_CREATED)
 
 class StaffProfileImageView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsSchoolAdmin]

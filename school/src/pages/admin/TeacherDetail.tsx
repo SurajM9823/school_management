@@ -34,6 +34,7 @@ const TeacherDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [currentAssignment, setCurrentAssignment] = useState<any>(null);
   const [classes, setClasses] = useState([]);
@@ -42,21 +43,26 @@ const TeacherDetail: React.FC = () => {
 
   // Fetch teacher details
   useEffect(() => {
+    // Add timestamp to prevent caching
+    const timestamp = new Date().getTime();
+    console.log('Fetching teacher details with timestamp:', timestamp);
+    
     const fetchTeacherDetails = async () => {
       setIsLoading(true);
       setError(null);
       try {
         const [teacherResponse, assignmentsResponse, classesResponse, subjectsResponse] = await Promise.all([
-          api.get(`/teachers/${id}/`),
-          api.get(`/teachers/${id}/assignments/`),
+          api.get(`/teachers/${id}/?t=${timestamp}`),
+          api.get(`/teachers/${id}/assignments/?t=${timestamp}`),
           api.get('/school/settings/classes/'),
           api.get('/school/settings/subjects/')
         ]);
         
+        console.log('Teacher data received:', teacherResponse.data);
         setTeacher(teacherResponse.data);
         setAssignments(assignmentsResponse.data);
         setClasses(classesResponse.data);
-        setSubjects(subjectsResponse.data);
+        setSubjects(subjectsResponse.data || []);
       } catch (err) {
         console.error('Error fetching teacher details:', err);
         setError('Failed to load teacher details. Please try again later.');
@@ -66,7 +72,7 @@ const TeacherDetail: React.FC = () => {
     };
     
     fetchTeacherDetails();
-  }, [id]);
+  }, [id, window.location.search]); // Add search params to dependencies to force refresh when URL changes
 
   // Fetch sections for a specific class
   const fetchSections = async (classId: number) => {
@@ -97,7 +103,7 @@ const TeacherDetail: React.FC = () => {
     try {
       if (currentAssignment.id) {
         // Update existing assignment
-        await api.put(`/teachers/${id}/assignments/${currentAssignment.id}/`, currentAssignment);
+        await api.put(`/teachers/${id}/update_assignment/`, currentAssignment);
         toast.success('Assignment updated successfully');
       } else {
         // Add new assignment
@@ -126,7 +132,7 @@ const TeacherDetail: React.FC = () => {
     }
     
     try {
-      await api.delete(`/teachers/${id}/assignments/${assignmentId}/`);
+      await api.delete(`/teachers/${id}/delete_assignment/?assignment_id=${assignmentId}`);
       toast.success('Assignment deleted successfully');
       
       // Refresh assignments
@@ -187,7 +193,16 @@ const TeacherDetail: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowPasswordModal(true)}
+            onClick={async () => {
+              try {
+                const response = await api.get(`/teachers/${id}/get_credentials/`);
+                setCurrentPassword(response.data.password);
+                setShowPasswordModal(true);
+              } catch (err) {
+                console.error('Error fetching credentials:', err);
+                toast.error('Failed to fetch credentials');
+              }
+            }}
             icon={<Key size={16} />}
           >
             Reset Password
@@ -195,7 +210,14 @@ const TeacherDetail: React.FC = () => {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => navigate(`/admin/teachers/edit/${id}`)}
+            onClick={() => {
+              try {
+                navigate(`/admin/teachers/edit/${id}`);
+              } catch (err) {
+                console.error('Error navigating to edit page:', err);
+                toast.error('Failed to navigate to edit page');
+              }
+            }}
             icon={<Edit size={16} />}
           >
             Edit Teacher
@@ -363,7 +385,7 @@ const TeacherDetail: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => {
-              setCurrentAssignment({ class_id: '', section_id: '', subject_id: '', is_primary: false, hours_per_week: 0 });
+              setCurrentAssignment({ class_obj: '', section: '', subject: '', is_primary: false, hours_per_week: 0 });
               setShowAssignmentModal(true);
             }}
             icon={<PlusCircle size={16} />}
@@ -422,9 +444,21 @@ const TeacherDetail: React.FC = () => {
       <Modal
         isOpen={showPasswordModal}
         onClose={() => setShowPasswordModal(false)}
-        title="Reset Password"
+        title="User Credentials"
       >
         <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Email</label>
+            <div className="mt-1 p-2 bg-gray-50 border border-gray-200 rounded-md text-sm">
+              {teacher.staff?.user?.email}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Current Password</label>
+            <div className="mt-1 p-2 bg-gray-50 border border-gray-200 rounded-md text-sm">
+              {currentPassword || 'Loading...'}
+            </div>
+          </div>
           <div>
             <label htmlFor="new-password" className="block text-sm font-medium text-gray-700">New Password</label>
             <input
@@ -457,7 +491,7 @@ const TeacherDetail: React.FC = () => {
               value={currentAssignment?.class_obj || ''}
               onChange={(e) => {
                 const classId = parseInt(e.target.value);
-                setCurrentAssignment({...currentAssignment, class_obj: classId, section_id: ''});
+                setCurrentAssignment({...currentAssignment, class_obj: classId, section: ''});
                 fetchSections(classId);
               }}
             >

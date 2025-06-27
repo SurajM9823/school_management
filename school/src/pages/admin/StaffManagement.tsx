@@ -6,7 +6,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import { Briefcase, UserPlus, Search, Filter, Edit, Trash2, Mail, Phone, Settings, Key } from 'lucide-react';
+import { Briefcase, UserPlus, Search, Filter, Edit, Trash2, Mail, Phone, Settings, Key, FilePlus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import api from '../../api';
 import axios from 'axios';
@@ -202,7 +202,13 @@ const StaffManagement: React.FC = () => {
   const [credentials, setCredentials] = useState<{ email: string; password: string; id?: string } | null>(null);
   const [showCredentialsModal, setShowCredentialsModal] = useState<StaffMember | null>(null);
   const [showLeaveModal, setShowLeaveModal] = useState<StaffMember | null>(null);
+  const [showDocumentModal, setShowDocumentModal] = useState<StaffMember | null>(null);
   const [newPassword, setNewPassword] = useState<string>('');
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentType, setDocumentType] = useState<string>('Other');
+  const [documentDescription, setDocumentDescription] = useState<string>('');
+  const [staffDocuments, setStaffDocuments] = useState<any[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState<boolean>(false);
 
   const selectedRole = watch('role');
   const employmentType = watch('employment_type');
@@ -417,8 +423,8 @@ const StaffManagement: React.FC = () => {
       provident_fund_number: data.provident_fund_number || '',
       status: data.status || 'active',
     };
-    // Choose the appropriate endpoint based on role
-    const endpoint = isTeacher ? '/teachers/' : '/school/settings/staff/';
+    // Always use the staff endpoint to avoid issues
+    const endpoint = '/school/settings/staff/';
     
     // Add teacher-specific fields if needed
     if (isTeacher) {
@@ -437,7 +443,8 @@ const StaffManagement: React.FC = () => {
     }
     
     if (editingStaff) {
-      const editEndpoint = isTeacher ? `/teachers/${editingStaff.id}/` : `/school/settings/staff/${editingStaff.id}/`;
+      // For teachers, always use the staff endpoint to avoid 404 errors
+      const editEndpoint = `/school/settings/staff/${editingStaff.id}/`;
       response = await api.put(editEndpoint, payload);
       setStaffList(prev =>
         prev.map(s =>
@@ -614,12 +621,12 @@ const toggleStaffStatus = async (staffId: string, currentStatus: 'active' | 'on_
   const targetStatus = newStatus || (currentStatus === 'active' ? 'on_leave' : currentStatus === 'on_leave' ? 'terminated' : 'active');
   
   // Special handling for on_leave status - show leave modal
-  if (targetStatus === 'on_leave' && !newStatus) { // Only show modal if changing to on_leave naturally
+  if (targetStatus === 'on_leave') { // Show modal for any change to on_leave
     const staff = staffList.find(s => s.id === staffId);
     if (staff) {
       setShowLeaveModal(staff);
+      return; // Important: return here to prevent automatic status update
     }
-    return;
   }
   setIsLoading(true);
   try {
@@ -735,6 +742,71 @@ const toggleStaffStatus = async (staffId: string, currentStatus: 'active' | 'on_
     setIsLoading(false);
   }
 };
+
+  const handleUploadDocument = async (staff: StaffMember) => {
+    setShowDocumentModal(staff);
+    setDocumentFile(null);
+    setDocumentType('Other');
+    setDocumentDescription('');
+    setIsLoadingDocuments(true);
+    
+    try {
+      const response = await api.get(`/school/settings/staff/${staff.id}/upload-documents/`);
+      setStaffDocuments(response.data || []);
+    } catch (err) {
+      console.error('Error fetching staff documents:', err);
+      setStaffDocuments([]);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  };
+
+  const handleDocumentSubmit = async () => {
+    if (!showDocumentModal || !documentFile) {
+      toast.error('Please select a file to upload');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', documentFile);
+      formData.append('document_type', documentType);
+      formData.append('description', documentDescription);
+      
+      await api.post(`/school/settings/staff/${showDocumentModal.id}/upload-documents/`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      toast.success('Document uploaded successfully');
+      
+      // Clear form
+      setDocumentFile(null);
+      setDocumentType('Other');
+      setDocumentDescription('');
+      
+      // Reset file input
+      const fileInput = document.getElementById('documentFile') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+      
+      // Refresh document list
+      try {
+        const response = await api.get(`/school/settings/staff/${showDocumentModal.id}/upload-documents/`);
+        setStaffDocuments(response.data || []);
+      } catch (err) {
+        console.error('Error refreshing documents:', err);
+      }
+      
+    } catch (err: any) {
+      console.error('Document upload error:', err);
+      const errorMessage = err.response?.data?.detail || 'Failed to upload document';
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleNameClick = (staffId: string) => {
     navigate(`/admin/staff/${staffId}`);
@@ -1186,6 +1258,122 @@ const toggleStaffStatus = async (staffId: string, currentStatus: 'active' | 'on_
         </div>
       )}
 
+      {showDocumentModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <Card title="Staff Documents" className="w-full max-w-3xl bg-white shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="p-4 space-y-6">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Upload New Document</h3>
+                <div className="mt-2 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Staff Member</label>
+                    <p className="mt-1 text-sm text-gray-900">{showDocumentModal.user_name}</p>
+                  </div>
+                  <div>
+                    <label htmlFor="documentType" className="block text-sm font-medium text-gray-700">Document Type</label>
+                    <select
+                      id="documentType"
+                      value={documentType}
+                      onChange={(e) => setDocumentType(e.target.value)}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                    >
+                      <option value="Other">Other</option>
+                      <option value="CV">CV/Resume</option>
+                      <option value="Certificate">Certificate</option>
+                      <option value="Contract">Contract</option>
+                      <option value="ID">ID Document</option>
+                      <option value="Medical">Medical Record</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="documentDescription" className="block text-sm font-medium text-gray-700">Description</label>
+                    <input
+                      type="text"
+                      id="documentDescription"
+                      value={documentDescription}
+                      onChange={(e) => setDocumentDescription(e.target.value)}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                      placeholder="Brief description of the document"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="documentFile" className="block text-sm font-medium text-gray-700">File</label>
+                    <input
+                      type="file"
+                      id="documentFile"
+                      onChange={(e) => setDocumentFile(e.target.files ? e.target.files[0] : null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      variant="primary"
+                      onClick={handleDocumentSubmit}
+                      disabled={isLoading || !documentFile}
+                    >
+                      {isLoading ? 'Uploading...' : 'Upload Document'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-lg font-medium text-gray-900">Uploaded Documents</h3>
+                {isLoadingDocuments ? (
+                  <div className="text-center py-4">Loading documents...</div>
+                ) : staffDocuments.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">No documents uploaded yet</div>
+                ) : (
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">File</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {staffDocuments.map((doc) => (
+                          <tr key={doc.id}>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{doc.document_type}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{doc.description || '-'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(doc.uploaded_at).toLocaleDateString()}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600">
+                              <a 
+                                href={doc.file_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="hover:underline"
+                              >
+                                View Document
+                              </a>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-end border-t border-gray-200 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDocumentModal(null)}
+                  disabled={isLoading}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+      
       {showLeaveModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
           <Card title="Apply Leave" className="w-full max-w-md bg-white shadow-xl">
@@ -1440,6 +1628,15 @@ const toggleStaffStatus = async (staffId: string, currentStatus: 'active' | 'on_
                         disabled={isLoading}
                       >
                         <Settings size={16} className="sm:text-gray-600" />
+                      </Button>
+                      <Button
+                        variant="icon"
+                        size="sm"
+                        onClick={() => handleUploadDocument(staff)}
+                        title="Upload Document"
+                        disabled={isLoading}
+                      >
+                        <FilePlus size={16} className="sm:text-green-600" />
                       </Button>
                     </td>
                   </tr>

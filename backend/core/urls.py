@@ -99,6 +99,11 @@ urlpatterns = [
     path('school/settings/staff/<int:pk>/credentials/', StaffViewSet.as_view({
         'get': 'get_credentials'
     }), name='staff-credentials'),
+    path('school/settings/staff/<int:pk>/upload-documents/', StaffViewSet.as_view({
+        'get': 'upload_documents',
+        'post': 'upload_documents',
+        'options': 'upload_documents'
+    }), name='staff-upload-documents'),
     path('school/settings/staff/<int:pk>/profile-image/', StaffProfileImageView.as_view(), name='staff-profile-image'),
 
     # Admin Admission URLs

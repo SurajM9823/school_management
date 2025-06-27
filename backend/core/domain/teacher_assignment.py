@@ -23,4 +23,4 @@ class TeacherAssignment(models.Model):
         unique_together = ('teacher', 'class_obj', 'section', 'subject')
     
     def __str__(self):
-        return f"{self.teacher.staff.first_name} - {self.class_obj.name} {self.section.name} - {self.subject.name}"
+        return f"{self.teacher.staff.user.name} - {self.class_obj.name} {self.section.name} - {self.subject.name}"

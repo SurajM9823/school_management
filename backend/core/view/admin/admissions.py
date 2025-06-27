@@ -331,7 +331,17 @@ class AdmissionFeeView(APIView):
     def post(self, request):
         try:
             school_id = request.user.school.school_id
-            serializer = AdmissionFeeSerializer(data=request.data, context={'request': request, 'school_id': school_id})
+            school = request.user.school
+            
+            # Log the request data for debugging
+            logger.info(f"AdmissionFee POST request data: {request.data}")
+            
+            # Convert class_id to class_id_id for the serializer
+            data = request.data.copy()
+            if 'class_id' in data and 'class_id_id' not in data:
+                data['class_id_id'] = data['class_id']
+                
+            serializer = AdmissionFeeSerializer(data=data, context={'request': request, 'school_id': school_id})
             if serializer.is_valid():
                 class_id = serializer.validated_data['class_id']
                 section = serializer.validated_data.get('section')
@@ -341,7 +351,7 @@ class AdmissionFeeView(APIView):
                 if section and not Section.objects.filter(id=section.id, school__school_id=school_id, is_active=True).exists():
                     logger.error(f"Invalid section_id {section.id} for school_id: {school_id}")
                     return Response({"error": "Invalid section for this school"}, status=status.HTTP_400_BAD_REQUEST)
-                fee = serializer.save(school_id=school_id)
+                fee = serializer.save()
                 logger.info(f"Created admission fee for class {class_id.name} in school_id: {school_id}")
                 return Response(AdmissionFeeSerializer(fee).data, status=status.HTTP_201_CREATED)
             logger.error(f"Create admission fee error: {serializer.errors}")

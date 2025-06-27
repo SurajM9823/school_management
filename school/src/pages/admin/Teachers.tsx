@@ -76,10 +76,11 @@ interface Teacher {
   phone: string;
   subject: string;
   qualification: string;
-  status: 'active' | 'inactive' | 'on_leave';
+  status: 'active' | 'inactive' | 'on_leave' | 'terminated';
   joiningDate: string;
   experience: string;
   address: string;
+  profile_image?: string | null;
 }
 
 const Teachers: React.FC = () => {
@@ -105,7 +106,7 @@ const Teachers: React.FC = () => {
       ]);
       
       setClasses(classesResponse.data);
-      setSubjectsList(subjectsResponse.data);
+      setSubjectsList(subjectsResponse.data || []);
     } catch (err) {
       console.error('Error fetching classes and subjects:', err);
       toast.error('Failed to load classes and subjects');
@@ -147,7 +148,8 @@ const Teachers: React.FC = () => {
           status: teacher.staff?.status || 'active',
           joiningDate: teacher.staff?.hire_date || '',
           experience: teacher.experience || '',
-          address: teacher.staff?.address || ''
+          address: teacher.staff?.address || '',
+          profile_image: teacher.staff?.profile_image || null
         }));
         
         setTeachers(mappedTeachers);
@@ -261,9 +263,29 @@ const Teachers: React.FC = () => {
       
       console.log('Sending teacher data to API:', teacherData);
       
-      // Make API call
+      // Make API call to create teacher
       const response = await api.post('/teachers/', teacherData);
       console.log('API response:', response.data);
+      
+      // Create assignments if any
+      if (newTeacher.assignments && newTeacher.assignments.length > 0) {
+        for (const assignment of newTeacher.assignments) {
+          if (assignment.class_id && assignment.section_id && assignment.subject_id) {
+            try {
+              await api.post(`/teachers/${response.data.id}/add_assignment/`, {
+                teacher: response.data.id,
+                class_obj: assignment.class_id,
+                section: assignment.section_id,
+                subject: assignment.subject_id,
+                is_primary: assignment.is_primary,
+                hours_per_week: assignment.hours_per_week
+              });
+            } catch (err) {
+              console.error('Error creating assignment:', err);
+            }
+          }
+        }
+      }
       
       // Add the new teacher to the list
       const newTeacherData = {
@@ -744,6 +766,7 @@ const Teachers: React.FC = () => {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="on_leave">On Leave</option>
+              <option value="terminated">Terminated</option>
             </select>
           </div>
 
@@ -777,7 +800,7 @@ const Teachers: React.FC = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joining Date</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -785,11 +808,15 @@ const Teachers: React.FC = () => {
                 <tr key={teacher.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <span className="text-sm font-medium text-blue-700">{teacher.name.split(' ').map(n => n[0]).join('')}</span>
+                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
+                        {teacher.profile_image ? (
+                          <img src={teacher.profile_image} alt={teacher.name} className="h-10 w-10 rounded-full object-cover" />
+                        ) : (
+                          <span className="text-sm font-medium text-blue-700">{teacher.name.split(' ').map(n => n[0]).join('')}</span>
+                        )}
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900 hover:text-blue-600 cursor-pointer" onClick={() => navigate(`/admin/teachers/${teacher.id}`)}>{teacher.name}</div>
+                        <div className="text-sm font-medium text-blue-600 hover:text-blue-800 cursor-pointer" onClick={() => navigate(`/admin/teachers/${teacher.id}`)}>{teacher.name}</div>
                         <div className="text-xs text-gray-500">{teacher.qualification}</div>
                       </div>
                     </div>
@@ -818,13 +845,7 @@ const Teachers: React.FC = () => {
                       {teacher.status.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900" title="View Details" onClick={() => handleViewCredentials(teacher.id)}><Eye size={16} /></button>
-                      <button className="text-yellow-600 hover:text-yellow-900" title="Edit Teacher" onClick={() => handleEditTeacher(teacher)}><Edit size={16} /></button>
-                      <button className="text-red-600 hover:text-red-900" title="Delete Teacher" onClick={() => handleDeleteTeacher(teacher.id)}><Trash2 size={16} /></button>
-                    </div>
-                  </td>
+
                 </tr>
               ))}
             </tbody>

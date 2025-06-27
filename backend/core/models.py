@@ -719,6 +719,17 @@ class StudentDocument(models.Model):
     def __str__(self):
         return f"{self.student.user.name} - {self.document_type.name if self.document_type else 'Document'}"
     
+class StaffDocument(models.Model):
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='staffdocuments', to_field='school_id', null=True)
+    staff = models.ForeignKey('Staff', on_delete=models.CASCADE, related_name='documents')
+    document_type = models.CharField(max_length=50, default='Other')
+    description = models.CharField(max_length=255, blank=True, null=True)
+    file = models.FileField(upload_to='staff_documents/%Y/%m/%d/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.staff.first_name} {self.staff.last_name} - {self.document_type}"
+    
 class Certificate(models.Model):
     school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='certificates', to_field='school_id', null=True)
     student_id = models.ForeignKey(Student, on_delete=models.CASCADE)

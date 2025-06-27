@@ -108,7 +108,7 @@ const AdmissionFees: React.FC = () => {
     setError(null);
     try {
       const payload = {
-        class_id: parseInt(data.class_id),
+        class_id_id: parseInt(data.class_id),
         section: data.section_id ? parseInt(data.section_id) : null,
         amount: parseFloat(data.amount),
       };
