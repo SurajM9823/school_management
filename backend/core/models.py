@@ -888,3 +888,29 @@ class StaffLeave(models.Model):
 
     def __str__(self):
         return f"{self.staff} - {self.leave_type.name} ({self.start_date})"
+
+
+
+
+class Attendance(models.Model):
+    STATUS_CHOICES = [
+        ('present', 'Present'),
+        ('absent', 'Absent'),
+        ('late', 'Late'),
+        ('leave', 'Leave'),
+    ]
+    student = models.ForeignKey('Student', on_delete=models.CASCADE, related_name='attendances')
+    date = models.DateField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES)
+    class_id = models.ForeignKey('Class', on_delete=models.CASCADE, related_name='attendances')
+    section = models.ForeignKey('Section', on_delete=models.SET_NULL, null=True, blank=True, related_name='attendances')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('student', 'date')
+        verbose_name = "Attendance"
+        verbose_name_plural = "Attendances"
+
+    def __str__(self):
+        return f"{self.student} - {self.date} - {self.status}"

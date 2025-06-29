@@ -18,6 +18,10 @@ from core.view.admin.staff_views import StaffViewSet, StaffProfileImageView
 from core.view.admin.staff_management.StaffLeaveView import StaffLeaveCreateView
 from core.view.superuser.SuperuserView import SuperuserView, SuperuserAdminView, SuperuserSubscriptionView, SuperuserSchoolCreateView
 from core.view.admin.teacher_views import TeacherViewSet
+from core.serial.teacher.teacher_attendance import (
+    ClassListAPIView, StudentListByClassAPIView,
+    AttendanceSaveAPIView, AttendanceListAPIView
+)
 
 # Register StudentView and TeacherViewSet with a router to handle document endpoints
 router = DefaultRouter()
@@ -120,7 +124,15 @@ urlpatterns = [
     path('students/<int:student_id>/credentials/', StudentCredentialsView.as_view(), name='student-credentials'),
     #urls for staff leave management
     path('school/settings/staff/<int:staff_id>/leave/', StaffLeaveCreateView.as_view(), name='staff-leave-create'),
-    
+
+
+    # Teacher Attendance APIs
+    path('teacher/classes/', ClassListAPIView.as_view(), name='teacher-class-list'),
+    path('teacher/classes/<int:class_id>/students/', StudentListByClassAPIView.as_view(), name='teacher-student-list-by-class'),
+    path('teacher/attendance/save/', AttendanceSaveAPIView.as_view(), name='teacher-attendance-save'),
+    path('teacher/attendance/list/', AttendanceListAPIView.as_view(), name='teacher-attendance-list'),
+
+
     # Include router URLs for StudentView
     path('', include(router.urls)),
 ]
