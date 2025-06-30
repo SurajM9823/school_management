@@ -104,8 +104,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
       return [
         { to: '/superadmin/dashboard', icon: <School size={16} />, label: 'Dashboard' },
         { to: '/superadmin/add-school', icon: <Building2 size={18} />, label: 'Add School' },
-        { to: '/superadmin/activities', icon: <Activity size={18} />, label: 'Activity Tracker' },
-        { to: '/superadmin/settings', icon: <Settings size={18} />, label: 'Settings' },
       ];
     }
     switch (user.role) {

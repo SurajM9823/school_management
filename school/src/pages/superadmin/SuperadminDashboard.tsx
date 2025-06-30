@@ -20,29 +20,55 @@ interface School {
   };
 }
 
+interface Stats {
+  total_schools: { current: number; previous: number };
+  active_subscriptions: { current: number; previous: number };
+  pending_actions: { current: number; previous: number };
+}
+
+const calculateChange = (current: number, previous: number): { value: string; trend: 'up' | 'down' | 'neutral' } => {
+  if (current === previous) {
+    return { value: '0%', trend: 'neutral' };
+  }
+  if (previous === 0) {
+    return { value: current > 0 ? '100%' : '0%', trend: current > 0 ? 'up' : 'neutral' };
+  }
+  const change = ((current - previous) / previous) * 100;
+  return {
+    value: `${Math.abs(change).toFixed(1)}%`,
+    trend: change > 0 ? 'up' : 'down'
+  };
+};
+
 const SuperadminDashboard: React.FC = () => {
   const [schools, setSchools] = useState<School[]>([]);
-  const [stats, setStats] = useState({ totalSchools: 0, activeSubscriptions: 0, pendingActions: 0 });
+  const [stats, setStats] = useState<Stats>({
+    total_schools: { current: 0, previous: 0 },
+    active_subscriptions: { current: 0, previous: 0 },
+    pending_actions: { current: 0, previous: 0 }
+  });
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await api.get('/superadmin/schools/');
-        setSchools(response.data);
-        setStats({
-          totalSchools: response.data.length,
-          activeSubscriptions: response.data.filter((s: School) => s.subscription_status === 'active').length,
-          pendingActions: response.data.filter((s: School) => s.subscription_status === 'pending').length,
-        });
+        setSchools(response.data.schools);
+        setStats(response.data.stats);
       } catch (error) {
         console.error('Error fetching schools:', error);
+        setError('Failed to load dashboard data');
       }
     };
     fetchData();
   }, []);
 
+  const totalSchoolsChange = calculateChange(stats.total_schools.current, stats.total_schools.previous);
+  const activeSubscriptionsChange = calculateChange(stats.active_subscriptions.current, stats.active_subscriptions.previous);
+  const pendingActionsChange = calculateChange(stats.pending_actions.current, stats.pending_actions.previous);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Superadmin Dashboard</h1>
         <div className="flex space-x-3">
@@ -54,25 +80,35 @@ const SuperadminDashboard: React.FC = () => {
         </div>
       </div>
 
+      {error && (
+        <div className="rounded-md bg-red-50 p-4">
+          <div className="flex">
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">{error}</h3>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         <StatsCard
           title="Total Schools"
-          value={stats.totalSchools.toString()}
-          change={{ value: '5%', trend: 'up' }}
+          value={stats.total_schools.current}
+          change={totalSchoolsChange}
           icon={<Building2 size={24} />}
           color="blue"
         />
         <StatsCard
           title="Active Subscriptions"
-          value={stats.activeSubscriptions.toString()}
-          change={{ value: '3%', trend: 'up' }}
+          value={stats.active_subscriptions.current}
+          change={activeSubscriptionsChange}
           icon={<CreditCard size={24} />}
           color="green"
         />
         <StatsCard
           title="Pending Actions"
-          value={stats.pendingActions.toString()}
-          change={{ value: '2', trend: 'down' }}
+          value={stats.pending_actions.current}
+          change={pendingActionsChange}
           icon={<Activity size={24} />}
           color="yellow"
         />
@@ -94,7 +130,7 @@ const SuperadminDashboard: React.FC = () => {
                 <tr key={school.school_id}>
                   <td className="px-6 py-4 whitespace-nowrap">{school.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={school.is_active ? 'text-green-600' : 'text-red-600'}>
+                    <span className={school.is_active ? 'text/green-600' : 'text-red-600'}>
                       {school.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>

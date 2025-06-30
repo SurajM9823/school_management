@@ -7,13 +7,14 @@ logger = logging.getLogger(__name__)
 class SuperuserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['email', 'name', 'role', 'school', 'password']
+        fields = ['email', 'name', 'role', 'school', 'password', 'plaintext_password']
         extra_kwargs = {
             'email': {'required': True, 'allow_blank': False},
             'name': {'required': True, 'allow_blank': False},
             'role': {'required': True, 'allow_blank': False},
             'password': {'write_only': True, 'required': True, 'allow_blank': False},
             'school': {'required': True},
+            'plaintext_password': {'write_only': False, 'required': False},
         }
 
     def validate(self, data):
@@ -31,7 +32,8 @@ class SuperuserSerializer(serializers.ModelSerializer):
         name = validated_data.pop('name')
         role = validated_data.pop('role')
         school = validated_data.get('school')
-        password = validated_data.get('password')
+        password = validated_data.pop('password')
+        plaintext_password = validated_data.get('plaintext_password', password)
         try:
             user = User.objects.create_user(
                 email=email,
@@ -40,6 +42,8 @@ class SuperuserSerializer(serializers.ModelSerializer):
                 school=school,
                 password=password
             )
+            user.plaintext_password = plaintext_password  # Set plaintext_password after creation
+            user.save()
             logger.info(f"Admin user {email} created for school {school.name} by superuser {self.context['request'].user.email}")
             return user
         except Exception as e:
@@ -52,6 +56,7 @@ class SuperuserSerializer(serializers.ModelSerializer):
         representation['name'] = instance.name or 'Unknown'
         representation['role'] = instance.role or 'admin'
         representation['school'] = str(instance.school.school_id) if instance.school else None
+        representation['plaintext_password'] = instance.plaintext_password or 'Not set'
         return representation
 
 class SubscriptionSerializer(serializers.ModelSerializer):
