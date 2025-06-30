@@ -30,12 +30,13 @@ const AdminDashboard: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Admin Dashboard</h1>
+        <h1 className="text-2x1 font-semibold text-gray-900">Admin Dashboard</h1>
         <div className="flex space-x-3">
           <Link to="/admin/admissions">
             <Button
               variant="primary"
               size="sm"
+              className='bg-primary hover:bg-darkPrimary text-white'
               icon={<PlusCircle size={16} />}
             >
               New Admission

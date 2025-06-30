@@ -59,10 +59,11 @@ const LiveChatWidget: React.FC = () => {
     return (
       <button
         onClick={() => { setIsOpen(true); setIsMinimized(false); }}
-        className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50 transition-transform transform hover:scale-110 z-50"
+        className="fixed bottom-14 right-5 bg-transparent text-black p-2 rounded-full shadow-lg  focus:outline-none focus:ring-2 hover:bg-gray-200 focus:ring-opacity-50 transition-transform transform hover:scale-110 z-50"
         aria-label="Open live chat"
+        style={{ border: '2px solid #167F92', color: '#167F92' }}
       >
-        <MessageCircle size={28} />
+        <MessageCircle size={20} />
       </button>
     );
   }

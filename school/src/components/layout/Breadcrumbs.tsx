@@ -13,12 +13,12 @@ const Breadcrumbs: React.FC = () => {
   };
 
   return (
-    <nav className="flex mb-6" aria-label="Breadcrumb">
+    <nav className="flex mb-2" aria-label="Breadcrumb">
       <ol className="flex items-center space-x-1">
         <li>
           <div>
             <Link to="/" className="text-gray-400 hover:text-gray-500">
-              <Home className="flex-shrink-0 h-5 w-5" aria-hidden="true" />
+              <Home className="flex-shrink-0 h-4 w-4" aria-hidden="true" />
               <span className="sr-only">Home</span>
             </Link>
           </div>

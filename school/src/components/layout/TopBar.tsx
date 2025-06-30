@@ -3,9 +3,16 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Menu, Bell, MessageSquare, Search, CheckCircle, AlertTriangle, Info, XCircle } from 'lucide-react'; // Added XCircle
 import { useNavigate, Link } from 'react-router-dom';
 import clsx from 'clsx';
+import api from '../../api'; 
+
+const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
 interface TopBarProps {
   setSidebarOpen: (open: boolean) => void;
+}
+interface SchoolData {
+  name: string;
+  address: string;
 }
 
 const TopBar: React.FC<TopBarProps> = ({ setSidebarOpen }) => {
@@ -15,6 +22,34 @@ const TopBar: React.FC<TopBarProps> = ({ setSidebarOpen }) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+   useEffect(() => {
+    const fetchSchoolData = async () => {
+      if (!user) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await api.get('/school/settings');
+        const data = response.data;
+        // Prepend backend base URL to logo path if it exists
+        if (data.logo && typeof data.logo === 'string' && data.logo.startsWith('/media')) {
+          data.logo = `${BACKEND_BASE_URL}${data.logo}`;
+        }
+        setSchoolData({ name: data.name, address: data.address});//eslint-disable-next-line
+      } catch (err: any ) {
+        console.error('Fetch school data error:', err);
+        setError('Failed to load school data.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSchoolData();
+  }, [user]);
+  
 
   // Mock notifications
   const [notifications, setNotifications] = useState([
@@ -62,8 +97,8 @@ const TopBar: React.FC<TopBarProps> = ({ setSidebarOpen }) => {
 
 
   return (
-    <header className="bg-white shadow-sm z-20 border-b border-gray-200 sticky top-0">
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8"> {/* Changed to max-w-full for wider layout */}
+    <header className="z-20 sticky top-0" style={{ height: '66px', background: '#167F92' }}>
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-0"> {/* Changed to max-w-full for wider layout */}
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <button
@@ -76,27 +111,30 @@ const TopBar: React.FC<TopBarProps> = ({ setSidebarOpen }) => {
             </button>
             
             {/* Search */}
-            <div className="hidden md:flex items-center ml-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                </div>
-                <input
-                  type="text"
-                  className="block w-full md:w-72 lg:w-96 pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-600 focus:border-blue-600 sm:text-sm"
-                  placeholder="Search anything..."
-                />
-              </div>
+            <div className="hidden md:flex items-center justify-between space-x-2">
+              <Menu className="h-4 w-4 text-white" aria-hidden="true" />
+              <span className="text-gray-200 text-lg font-bold">{isLoading ? 'Loading...' : schoolData?.name || 'School Management System'}</span>
+              
             </div>
           </div>
           
           <div className="flex items-center space-x-3">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-gray-400" aria-hidden="true" />
+                </div>
+                <input
+                  type="text"
+                  className="block w-full md:w-48 lg:w-48 pl-10 pr-3 py-1 border border-gray-200 rounded-md leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-600 focus:border-blue-600 sm:text-sm"
+                  placeholder="Search anything..."
+                />
+              </div>
             {/* Notification Icons */}
             <div className="relative" ref={notificationsRef}>
               <button
                 type="button"
                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                className="relative p-2 rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
+                className="relative p-2 rounded-full text-gray-200 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2"
               >
                 <span className="sr-only">View notifications</span>
                 <Bell className="h-6 w-6" aria-hidden="true" />
@@ -153,7 +191,7 @@ const TopBar: React.FC<TopBarProps> = ({ setSidebarOpen }) => {
             {/* Message Icon - can be enhanced similarly if needed */}
             <button
               type="button"
-              className="p-2 rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
+              className="p-2 rounded-full text-gray-200 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 "
             >
               <span className="sr-only">View messages</span>
               <MessageSquare className="h-6 w-6" aria-hidden="true" />
@@ -166,24 +204,25 @@ const TopBar: React.FC<TopBarProps> = ({ setSidebarOpen }) => {
               <button
                 type="button"
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                className="flex items-center space-x-2 p-1 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
+                className="flex items-center focus:outline-none focus:bg-gray-200"
                 id="user-menu-button"
                 aria-expanded={isProfileMenuOpen}
                 aria-haspopup="true"
+                style={{  padding: '13px 8px', border: 'none', marginRight: '0' }}
               >
                 <img
-                  className="h-9 w-9 rounded-full border-2 border-gray-200"
+                  className="h-10 w-10 rounded-full border"
                   src={user.avatar || 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150'}
                   alt={`${user.name} avatar`}
                 />
-                <div className="hidden md:block text-left">
-                  <div className="text-sm font-semibold text-gray-800">{user.name}</div>
-                  <div className="text-xs text-gray-500 capitalize">{user.role}</div>
-                </div>
               </button>
               {/* Profile Dropdown Menu */}
               {isProfileMenuOpen && (
-                 <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                 <div className="origin-top-right absolute right-0 w-48 shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none" style={{marginTop: '1px'}}>
+                    <div className="p-2 m-0 border-t bottom-3 border-yellow-600" style={{ background: '#167F92' }}>
+                      <h5 className="text-sm font-semibold text-gray-200 text-center">{user.name}</h5>
+                      <p className="text-xs text-gray-200 capitalize text-center">{user.role}</p>
+                    </div>
                     <Link to="/profile" onClick={() => setIsProfileMenuOpen(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Your Profile</Link>
                     <Link to="/settings" onClick={() => setIsProfileMenuOpen(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</Link>
                     <button onClick={() => { handleLogout(); setIsProfileMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Logout</button>
