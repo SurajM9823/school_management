@@ -1,10 +1,12 @@
 import uuid
 from django.shortcuts import get_object_or_404
+from core.domain.teacher_assignment import ClassTeacher
+from core.serial.admin.teacher_assignment_serializer import ClassTeacherSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from core.models import Class, FeeType, School, LocaleSettings, AcademicSession, Section, Term, Holiday, GradingSettings, AttendanceSettings, FeeSettings
+from core.models import Class, FeeType, School, LocaleSettings, AcademicSession, Section, Term, Holiday, GradingSettings, AttendanceSettings, FeeSettings, Subject
 from core.serializers import ClassSerializer, FeeTypeSerializer, SchoolSerializer, LocaleSettingsSerializer, AcademicSessionSerializer, SectionSerializer, TermSerializer, HolidaySerializer, GradingSettingsSerializer, AttendanceSettingsSerializer, FeeSettingsSerializer, RoleSerializer, CampusSerializer, BuildingSerializer, RoomSerializer, ResourceSerializer
 from core.models import NotificationSettings, NotificationTemplate, StaffRole, LeaveType, Department, Subject, GradingScale, PromotionRules, ClassCapacity, Campus, Building, Room, Resource
 from core.serializers import NotificationSettingsSerializer, NotificationTemplateSerializer, StaffRoleSerializer, LeaveTypeSerializer, DepartmentSerializer, BulkLeaveAssignmentSerializer, SubjectSerializer, GradingScaleSerializer, PromotionRulesSerializer, ClassCapacitySerializer
@@ -842,9 +844,17 @@ class BulkLeaveAssignmentView(APIView):
 class ClassView(APIView):
     permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
-    def get(self, request):
+    def get(self, request, class_id=None):
         if not request.user.school:
             return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        if class_id:
+            try:
+                class_obj = Class.objects.get(id=class_id, school=request.user.school, is_active=True)
+                serializer = ClassSerializer(class_obj)
+                return Response(serializer.data)
+            except Class.DoesNotExist:
+                logger.error(f"Class with id {class_id} not found for school {request.user.school}")
+                return Response({"error": "Class not found"}, status=status.HTTP_404_NOT_FOUND)
         classes = Class.objects.filter(school=request.user.school, is_active=True)
         serializer = ClassSerializer(classes, many=True)
         return Response(serializer.data)
@@ -869,6 +879,12 @@ class ClassView(APIView):
         except Class.DoesNotExist:
             logger.error(f"Class with id {class_id} not found for school {request.user.school}")
             return Response({"error": "Class not found"}, status=status.HTTP_404_NOT_FOUND)
+        if 'subject_ids' in request.data:
+            subject_ids = request.data.get('subject_ids', [])
+            subjects = Subject.objects.filter(id__in=subject_ids, school=request.user.school, is_active=True)
+            class_obj.subjects.set(subjects)
+            logger.info(f"Updated subjects for class {class_id} by user {request.user}")
+            return Response(ClassSerializer(class_obj).data)
         serializer = ClassSerializer(class_obj, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
@@ -884,9 +900,9 @@ class ClassView(APIView):
         except Class.DoesNotExist:
             logger.error(f"Class with id {class_id} not found for school {request.user.school}")
             return Response({"error": "Class not found"}, status=status.HTTP_404_NOT_FOUND)
-        if class_obj.sections.exists():
-            logger.warning(f"Attempt to delete class {class_id} with sections by user {request.user}")
-            return Response({"error": "Cannot delete class with associated sections"}, status=status.HTTP_400_BAD_REQUEST)
+        if class_obj.sections.exists() or class_obj.class_teachers.exists():
+            logger.warning(f"Attempt to delete class {class_id} with sections or teachers by user {request.user}")
+            return Response({"error": "Cannot delete class with associated sections or teacher assignments"}, status=status.HTTP_400_BAD_REQUEST)
         class_obj.is_active = False
         class_obj.save()
         logger.info(f"Class '{class_obj.name}' deactivated by user {request.user}")
@@ -952,6 +968,35 @@ class SectionView(APIView):
         section.save()
         logger.info(f"Section '{section.name}' deactivated by user {request.user}")
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class ClassSubjectsView(APIView):
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    def get(self, request, class_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            class_obj = Class.objects.get(id=class_id, school=request.user.school, is_active=True)
+        except Class.DoesNotExist:
+            return Response({"error": "Class not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        subjects = class_obj.subjects.filter(is_active=True)
+        serializer = SubjectSerializer(subjects, many=True)
+        return Response(serializer.data)
+
+    def put(self, request, class_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            class_obj = Class.objects.get(id=class_id, school=request.user.school, is_active=True)
+        except Class.DoesNotExist:
+            return Response({"error": "Class not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        subject_ids = request.data.get('subject_ids', [])
+        subjects = Subject.objects.filter(id__in=subject_ids, school=request.user.school, is_active=True)
+        class_obj.subjects.set(subjects)
+        logger.info(f"Subjects updated for class '{class_obj.name}' by user {request.user}")
+        return Response({"message": "Subjects updated successfully"})
 
 class SubjectView(APIView):
     permission_classes = [IsAuthenticated, IsSchoolAdmin]

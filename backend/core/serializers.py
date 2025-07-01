@@ -1,3 +1,4 @@
+from core.serial.admin.teacher_assignment_serializer import ClassTeacherSerializer
 from rest_framework import serializers
 from .models import User, School, LocaleSettings, AcademicSession, Term, Holiday, GradingSettings, AttendanceSettings, FeeSettings, NotificationSettings, NotificationTemplate, StaffRole, LeaveType, Department, BulkLeaveAssignment, Subject, GradingScale, PromotionRules, ClassCapacity, Campus, Building, Room, Resource, FeeType, Section, Class
 from django.contrib.auth.models import Group, Permission
@@ -375,10 +376,27 @@ class BulkLeaveAssignmentSerializer(serializers.ModelSerializer):
         model = BulkLeaveAssignment
         fields = ['id', 'leave_type', 'target_group', 'days', 'start_date', 'end_date', 'reason']
 
+
 class ClassSerializer(serializers.ModelSerializer):
+    teachers = serializers.SerializerMethodField()
+    subjects = serializers.SerializerMethodField()
+    current_capacity = serializers.SerializerMethodField()
+    
+    def get_teachers(self, obj):
+        latest_teacher = obj.class_teachers.filter(is_active=True).order_by('-created_at').first()
+        return ClassTeacherSerializer([latest_teacher], many=True).data if latest_teacher else []
+
+    def get_subjects(self, obj):
+        subjects = obj.subjects.filter(is_active=True)
+        return SubjectSerializer(subjects, many=True).data
+    
+    def get_current_capacity(self, obj):
+        from core.models import Student
+        return Student.objects.filter(class_id=obj, status='active').count()
+
     class Meta:
         model = Class
-        fields = ['id', 'name', 'max_capacity', 'is_active']
+        fields = ['id', 'name', 'max_capacity', 'current_capacity', 'is_active', 'teachers', 'subjects']
         extra_kwargs = {
             'is_active': {'read_only': True}
         }
@@ -387,9 +405,8 @@ class ClassSerializer(serializers.ModelSerializer):
         school = self.context['request'].user.school
         if not school:
             raise serializers.ValidationError({"error": "User is not associated with a school"})
-        if data['max_capacity'] < 1:
+        if 'max_capacity' in data and data['max_capacity'] is not None and data['max_capacity'] < 1:
             raise serializers.ValidationError({'max_capacity': 'Maximum capacity must be at least 1.'})
-        # Check unique name per school
         name = data.get('name')
         if name:
             instance_id = getattr(self.instance, 'id', None)
@@ -411,7 +428,7 @@ class ClassSerializer(serializers.ModelSerializer):
         class_obj = super().update(instance, validated_data)
         logger.info(f"Class '{class_obj.name}' updated by user {self.context['request'].user} for school {school}")
         return class_obj
-
+           
 class SectionSerializer(serializers.ModelSerializer):
     class_name = serializers.CharField(source='class_id.name', read_only=True)
 

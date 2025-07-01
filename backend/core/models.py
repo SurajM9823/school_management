@@ -417,10 +417,10 @@ class BulkLeaveAssignment(models.Model):
         return f"{self.leave_type.name} - {self.reason}"
 
 class Class(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='classes', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='classes', to_field='school_id', null=True, blank=True)
     name = models.CharField(max_length=100)
-    max_capacity = models.IntegerField()  # Maximum number of students
-    is_active = models.BooleanField(default=True)
+    max_capacity = models.IntegerField(null=True, blank=True)  # Made nullable
+    is_active = models.BooleanField(default=True, null=True, blank=True)
 
     class Meta:
         verbose_name = "Class"
@@ -428,6 +428,7 @@ class Class(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class Section(models.Model):
     school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='sections', to_field='school_id', null=True)

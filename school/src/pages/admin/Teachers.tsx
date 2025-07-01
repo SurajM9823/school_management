@@ -800,7 +800,7 @@ const Teachers: React.FC = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joining Date</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -845,7 +845,31 @@ const Teachers: React.FC = () => {
                       {teacher.status.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')}
                     </span>
                   </td>
-
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => navigate(`/admin/teachers/${teacher.id}`)}
+                        className="text-blue-600 hover:text-blue-900"
+                        title="View Details"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button
+                        onClick={() => navigate(`/admin/teachers/edit/${teacher.id}`)}
+                        className="text-yellow-600 hover:text-yellow-900"
+                        title="Edit Teacher"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button
+                        onClick={() => navigate(`/admin/teachers/${teacher.id}`)}
+                        className="text-green-600 hover:text-green-900"
+                        title="Assign Classes"
+                      >
+                        <BookOpen size={16} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

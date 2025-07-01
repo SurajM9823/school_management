@@ -208,6 +208,17 @@ const TeacherDetail: React.FC = () => {
             Reset Password
           </Button>
           <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setCurrentAssignment({ class_obj: '', section: '', subject: '', is_primary: false, hours_per_week: 0 });
+              setShowAssignmentModal(true);
+            }}
+            icon={<BookOpen size={16} />}
+          >
+            Assign Classes
+          </Button>
+          <Button
             variant="primary"
             size="sm"
             onClick={() => {

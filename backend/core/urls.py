@@ -8,7 +8,7 @@ from core.view.admin.school_setting import (
     NotificationTemplateDetailView, NotificationTemplateListView, NotificationSettingsView,
     RolePermissionsView, StaffRoleView, LeaveTypeView, DepartmentView, BulkLeaveAssignmentView,
     SubjectView, GradingScaleView, PromotionRulesView, ClassCapacityView, CampusView,
-    BuildingView, RoomView, ResourceView, TestSMTPView, FeeTypeView
+    BuildingView, RoomView, ResourceView, TestSMTPView, FeeTypeView, ClassSubjectsView
 )
 from core.view.admin.admissions import (
     ParentView, StudentView, StudentParentView, AdmissionFeeView, StudentFeeView, AdmissionView
@@ -17,7 +17,7 @@ from core.view.admin.certificate_view import CertificateViewSet, StudentCredenti
 from core.view.admin.staff_views import StaffViewSet, StaffProfileImageView
 from core.view.admin.staff_management.StaffLeaveView import StaffLeaveCreateView
 from core.view.superuser.SuperuserView import SuperuserView, SuperuserAdminView, SuperuserSubscriptionView, SuperuserSchoolCreateView
-from core.view.admin.teacher_views import TeacherViewSet
+from core.view.admin.teacher_views import ClassTeacherView, TeacherViewSet
 from core.serial.teacher.teacher_attendance import (
     ClassListAPIView, StudentListByClassAPIView,
     AttendanceSaveAPIView, AttendanceListAPIView
@@ -125,14 +125,18 @@ urlpatterns = [
     #urls for staff leave management
     path('school/settings/staff/<int:staff_id>/leave/', StaffLeaveCreateView.as_view(), name='staff-leave-create'),
 
-
+  
     # Teacher Attendance APIs
     path('teacher/classes/', ClassListAPIView.as_view(), name='teacher-class-list'),
     path('teacher/classes/<int:class_id>/students/', StudentListByClassAPIView.as_view(), name='teacher-student-list-by-class'),
     path('teacher/attendance/save/', AttendanceSaveAPIView.as_view(), name='teacher-attendance-save'),
     path('teacher/attendance/list/', AttendanceListAPIView.as_view(), name='teacher-attendance-list'),
 
-
+    path('school/class-teachers/', ClassTeacherView.as_view(), name='class-teacher-list'),
+    path('school/class-teachers/<int:class_id>/', ClassTeacherView.as_view(), name='class-teacher-by-class'),
+    path('school/class-teachers/<int:assignment_id>/', ClassTeacherView.as_view(), name='class-teacher-detail'),
+    path('school/settings/classes/<int:class_id>/subjects/', ClassSubjectsView.as_view(), name='class-subjects'),
+    
     # Include router URLs for StudentView
     path('', include(router.urls)),
 ]

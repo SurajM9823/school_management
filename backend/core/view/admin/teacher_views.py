@@ -1,12 +1,14 @@
+from core.views import IsSchoolAdmin
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from core.domain.teacher import Teacher
-from core.domain.teacher_assignment import TeacherAssignment
+from core.domain.teacher_assignment import ClassTeacher, TeacherAssignment
 from core.models import Staff, Subject, Class, Section
-from core.serial.admin.teacher_assignment_serializer import TeacherAssignmentSerializer
+from core.serial.admin.teacher_assignment_serializer import ClassTeacherSerializer, TeacherAssignmentSerializer
 from core.serial.admin.teacher_serializer import TeacherSerializer
 import logging
+from rest_framework.views import APIView
 
 logger = logging.getLogger(__name__)
 
@@ -253,3 +255,69 @@ class TeacherViewSet(viewsets.ModelViewSet):
         
         logger.error(f"Assignment creation failed: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ClassTeacherView(APIView):
+    permission_classes = [ IsSchoolAdmin]
+
+    def get(self, request, class_id=None):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        if class_id:
+            try:
+                Class.objects.get(id=class_id, school=request.user.school, is_active=True)
+            except Class.DoesNotExist:
+                logger.error(f"Class with id {class_id} not found for school {request.user.school}")
+                return Response({"error": "Class not found"}, status=status.HTTP_404_NOT_FOUND)
+            assignments = ClassTeacher.objects.filter(class_id=class_id, school=request.user.school, is_active=True)
+        else:
+            assignments = ClassTeacher.objects.filter(school=request.user.school, is_active=True)
+        serializer = ClassTeacherSerializer(assignments, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        data['school'] = request.user.school.id
+        logger.info(f"ClassTeacher POST payload: {data}")
+        serializer = ClassTeacherSerializer(data=data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save(school=request.user.school)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        logger.error(f"Create class teacher error: {serializer.errors}")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, assignment_id=None, class_id=None):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Use assignment_id if provided, otherwise use class_id (for backward compatibility)
+        lookup_id = assignment_id or class_id
+        if not lookup_id:
+            return Response({"error": "Assignment ID or Class ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            assignment = ClassTeacher.objects.get(id=lookup_id, school=request.user.school, is_active=True)
+        except ClassTeacher.DoesNotExist:
+            logger.error(f"ClassTeacher with id {lookup_id} not found for school {request.user.school}")
+            return Response({"error": "Assignment not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ClassTeacherSerializer(assignment, data=request.data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        logger.error(f"Update class teacher error: {serializer.errors}")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, assignment_id):
+        if not request.user.school:
+            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            assignment = ClassTeacher.objects.get(id=assignment_id, school=request.user.school, is_active=True)
+        except ClassTeacher.DoesNotExist:
+            logger.error(f"ClassTeacher with id {assignment_id} not found for school {request.user.school}")
+            return Response({"error": "Assignment not found"}, status=status.HTTP_404_NOT_FOUND)
+        assignment.is_active = False
+        assignment.save()
+        logger.info(f"ClassTeacher assignment {assignment_id} deactivated by user {request.user}")
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -28,7 +28,8 @@ class SuperuserView(APIView):
 
             # Calculate current and previous period metrics
             current_date = timezone.now()
-            one_month_ago = current_date - timedelta(days=30)
+            # Use 1 day for testing since data is recent
+            one_day_ago = current_date - timedelta(days=1)
 
             # Current counts
             total_schools_current = schools.count()
@@ -43,19 +44,19 @@ class SuperuserView(APIView):
                 end_date__gte=current_date
             ).count()
 
-            # Previous period counts (last month)
+            # Previous period counts (1 day ago)
             total_schools_previous = School.objects.filter(
-                created_at__lt=one_month_ago
+                created_at__lte=one_day_ago
             ).count()
             active_subscriptions_previous = Subscription.objects.filter(
                 status='active',
-                start_date__lte=one_month_ago,
-                end_date__gte=one_month_ago
+                start_date__lte=one_day_ago,
+                end_date__gte=one_day_ago
             ).count()
             pending_subscriptions_previous = Subscription.objects.filter(
                 status='pending',
-                start_date__lte=one_month_ago,
-                end_date__gte=one_month_ago
+                start_date__lte=one_day_ago,
+                end_date__gte=one_day_ago
             ).count()
 
             response_data = {
@@ -80,17 +81,7 @@ class SuperuserView(APIView):
         except Exception as e:
             logger.error(f"Error retrieving schools: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def post(self, request):
-        """Add a new school."""
-        serializer = SchoolSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            school = serializer.save()
-            logger.info(f"School {school.name} created by superuser {request.user.email}")
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        logger.error(f"School creation failed: {serializer.errors}")
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        
 class SuperuserSchoolCreateView(APIView):
     permission_classes = [IsAuthenticated, IsSuperuser]
 
