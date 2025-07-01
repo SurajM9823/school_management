@@ -7,6 +7,10 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 import random
 import string
 from django.utils import timezone
+from django.db import models
+import uuid
+from django.core.exceptions import ValidationError
+import logging
 
 class UserManager(BaseUserManager):
     def create_user(self, email, name, role, school=None, password=None):
@@ -915,3 +919,157 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.student} - {self.date} - {self.status}"
+
+
+
+class Exam(models.Model):
+    EXAM_TYPE_CHOICES = (
+        ('test', 'Test'),
+        ('exam', 'Exam'),
+    )
+    
+    school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name='exams',
+        to_field='school_id',
+        null=True
+    )
+    session = models.ForeignKey(
+        AcademicSession,
+        on_delete=models.CASCADE,
+        related_name='exams'
+    )
+    term = models.ForeignKey(
+        Term,
+        on_delete=models.CASCADE,
+        related_name='exams'
+    )
+    name = models.CharField(max_length=100)
+    exam_type = models.CharField(
+        max_length=20,
+        choices=EXAM_TYPE_CHOICES,
+        default='exam'
+    )
+    classes = models.ManyToManyField(
+        Class,
+        related_name='exams',
+        through='ExamClass'
+    )
+    start_date = models.DateField()
+    end_date = models.DateField()
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('scheduled', 'Scheduled'),
+            ('ongoing', 'Ongoing'),
+            ('completed', 'Completed'),
+            ('results_published', 'Results Published'),
+            ('cancelled', 'Cancelled')
+        ],
+        default='scheduled'
+    )
+    total_marks = models.IntegerField(null=True, blank=True)
+    passing_marks = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Exam"
+        verbose_name_plural = "Exams"
+        ordering = ['start_date']
+
+    def __str__(self):
+        return f"{self.name} ({self.session.name} - {self.term.name})"
+
+    def clean(self):
+        if self.start_date > self.end_date:
+            raise ValidationError("Start date must be before end date")
+        if self.session and self.term:
+            if self.term.session != self.session:
+                raise ValidationError("Term must belong to the selected session")
+        if self.total_marks is not None and self.total_marks < 0:
+            raise ValidationError("Total marks cannot be negative")
+        if self.passing_marks is not None and self.passing_marks < 0:
+            raise ValidationError("Passing marks cannot be negative")
+        if self.total_marks is not None and self.passing_marks is not None:
+            if self.passing_marks > self.total_marks:
+                raise ValidationError("Passing marks cannot exceed total marks")
+
+class ExamClass(models.Model):
+    exam = models.ForeignKey(
+        Exam,
+        on_delete=models.CASCADE,
+        related_name='exam_classes'
+    )
+    class_id = models.ForeignKey(
+        Class,
+        on_delete=models.CASCADE,
+        related_name='exam_classes'
+    )
+
+    class Meta:
+        verbose_name = "Exam Class"
+        verbose_name_plural = "Exam Classes"
+        unique_together = ('exam', 'class_id')
+
+    def __str__(self):
+        return f"{self.exam.name} - {self.class_id.name}"
+
+class ExamSubject(models.Model):
+    exam = models.ForeignKey(
+        Exam,
+        on_delete=models.CASCADE,
+        related_name='exam_subjects'
+    )
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.CASCADE,
+        related_name='exam_subjects'
+    )
+    date = models.DateField()
+    time = models.TimeField()
+    max_marks = models.IntegerField()
+    passing_marks = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Exam Subject"
+        verbose_name_plural = "Exam Subjects"
+        unique_together = ('exam', 'subject')
+
+    def __str__(self):
+        return f"{self.exam.name} - {self.subject.name}"
+
+    def clean(self):
+        if self.max_marks < 0:
+            raise ValidationError("Max marks cannot be negative")
+        if self.passing_marks < 0:
+            raise ValidationError("Passing marks cannot be negative")
+        if self.passing_marks > self.max_marks:
+            raise ValidationError("Passing marks cannot exceed max marks")
+        if self.date < self.exam.start_date or self.date > self.exam.end_date:
+            raise ValidationError("Subject exam date must be within the exam's start and end dates")
+        if self.exam.classes.exists():
+            subject_classes = self.subject.classes.all()
+            exam_classes = self.exam.classes.all()
+            if not subject_classes.filter(id__in=[c.id for c in exam_classes]).exists():
+                raise ValidationError("Subject is not associated with any of the exam's classes")
+
+class Score(models.Model):
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='scores')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    section = models.ForeignKey(Section, on_delete=models.CASCADE)
+    marks_obtained = models.FloatField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('exam', 'subject', 'student')
+        verbose_name = 'Score'
+        verbose_name_plural = 'Scores'
+
+    def __str__(self):
+        return f"{self.student.name} - {self.subject.name} - {self.exam.name}: {self.marks_obtained or 'Absent'}"

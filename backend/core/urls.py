@@ -1,4 +1,6 @@
 from django.urls import path, include
+
+from core.view.admin.exam import ExamView, ScoreView
 from .views import MyTokenObtainPairView, CurrentUserView, UserView
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework.routers import DefaultRouter
@@ -136,6 +138,13 @@ urlpatterns = [
     path('school/class-teachers/<int:class_id>/', ClassTeacherView.as_view(), name='class-teacher-by-class'),
     path('school/class-teachers/<int:assignment_id>/', ClassTeacherView.as_view(), name='class-teacher-detail'),
     path('school/settings/classes/<int:class_id>/subjects/', ClassSubjectsView.as_view(), name='class-subjects'),
+
+    #admin url exam 
+    path('school/exams/', ExamView.as_view(), name='exam-list-create'),
+    path('school/exams/<int:pk>/', ExamView.as_view(), name='exam-detail'),
+
+    #admin url fro exam score 
+    path('school/scores/', ScoreView.as_view(), name='score-create'),
     
     # Include router URLs for StudentView
     path('', include(router.urls)),
