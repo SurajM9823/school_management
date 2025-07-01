@@ -24,7 +24,7 @@ from core.serial.teacher.teacher_attendance import (
     ClassListAPIView, StudentListByClassAPIView,
     AttendanceSaveAPIView, AttendanceListAPIView
 )
-
+from core.serial.teacher.TeacherClasses import TeacherClassesAPIView
 # Register StudentView and TeacherViewSet with a router to handle document endpoints
 router = DefaultRouter()
 router.register(r'students', StudentView, basename='student')
@@ -129,6 +129,7 @@ urlpatterns = [
 
   
     # Teacher Attendance APIs
+    path('teacher/myclasses/', TeacherClassesAPIView.as_view(), name='teacher-classes'),
     path('teacher/classes/', ClassListAPIView.as_view(), name='teacher-class-list'),
     path('teacher/classes/<int:class_id>/students/', StudentListByClassAPIView.as_view(), name='teacher-student-list-by-class'),
     path('teacher/attendance/save/', AttendanceSaveAPIView.as_view(), name='teacher-attendance-save'),

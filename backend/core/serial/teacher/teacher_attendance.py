@@ -5,6 +5,7 @@ from core.models import Class, Student, Attendance, Section
 from django.utils.dateparse import parse_date
 from rest_framework import serializers
 
+
 # Serializer for Class
 class ClassSerializer(serializers.ModelSerializer):
     class Meta:
@@ -30,6 +31,7 @@ class AttendanceSerializer(serializers.ModelSerializer):
 
 # API to get all classes for the current user's school
 class ClassListAPIView(APIView):
+
     def get(self, request):
         school = getattr(request.user, 'school', None)
         if not school:
