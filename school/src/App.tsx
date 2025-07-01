@@ -26,6 +26,7 @@ import TeacherEditSimple from "./pages/admin/TeacherEditSimple";
 import Classes from "./pages/admin/Classes";
 import Exams from "./pages/admin/Exams";
 import ManageScores from "./pages/admin/exam/ManageScores";
+import ViewMarksheet from "./pages/admin/exam/ViewMarksheet";
 import Scholarships from "./pages/admin/Scholarships";
 import UserManagement from "./pages/admin/UserManagement";
 import StaffManagement from "./pages/admin/StaffManagement";
@@ -220,6 +221,14 @@ function App() {
             element={
               <ProtectedRoute roles={["admin"]}>
                 <ManageScores />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/exam/marksheet"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <ViewMarksheet />
               </ProtectedRoute>
             }
           />

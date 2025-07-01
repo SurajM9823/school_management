@@ -128,12 +128,15 @@ const ManageScores: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [sessionResponse, classResponse] = await Promise.all([
-        api.get<AcademicSession[]>('/school/settings/sessions/', { params: { status: 'active' } }),
-        api.get<Class[]>('/school/settings/classes/', { params: { is_active: true } }),
-      ]);
-      setSessions(Array.isArray(sessionResponse.data) ? sessionResponse.data : []);
-      setClasses(Array.isArray(classResponse.data) ? classResponse.data : []);
+      const sessionResponse = await api.get<AcademicSession[]>('/school/settings/sessions/', { params: { status: 'active' } });
+      const sessionsData = Array.isArray(sessionResponse.data) ? sessionResponse.data : [];
+      setSessions(sessionsData);
+      
+      // Set active session by default
+      const activeSession = sessionsData.find(s => s.status === 'active');
+      if (activeSession && !examId) {
+        setValue('session_id', activeSession.id);
+      }
 
       if (examId) {
         const examResponse = await api.get<Exam>(`/school/exams/${examId}/`);
@@ -198,8 +201,12 @@ const ManageScores: React.FC = () => {
       }
       setLoading(true);
       try {
-        const examResponse = await api.get<Exam[]>('/school/exams/', { params: { term_id: selectedTermId, status: 'results_published' } });
-        setExams(Array.isArray(examResponse.data) ? examResponse.data : []);
+        const examResponse = await api.get<Exam[]>('/school/exams/', { params: { term_id: selectedTermId } });
+        // Filter exams that are completed or results_published
+        const filteredExams = Array.isArray(examResponse.data) 
+          ? examResponse.data.filter(exam => exam.status === 'results_published' || exam.status === 'completed')
+          : [];
+        setExams(filteredExams);
         if (!examId) {
           setValue('exam_id', null);
         }
@@ -211,6 +218,22 @@ const ManageScores: React.FC = () => {
     };
     if (!examId) fetchExams();
   }, [selectedTermId, setValue, examId]);
+
+  useEffect(() => {
+    const fetchExamClasses = async () => {
+      if (!selectedExamId) {
+        setClasses([]);
+        setValue('class_id', null);
+        return;
+      }
+      const exam = exams.find(e => e.id === selectedExamId);
+      if (exam) {
+        setClasses(exam.classes);
+        setValue('class_id', null);
+      }
+    };
+    fetchExamClasses();
+  }, [selectedExamId, setValue, exams]);
 
   useEffect(() => {
     const fetchSections = async () => {

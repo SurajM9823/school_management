@@ -50,13 +50,16 @@ class ExamSerializer(serializers.ModelSerializer):
     )
     subjects = ExamSubjectSerializer(many=True, source='exam_subjects')
     classes = ClassSerializer(many=True, read_only=True)
+    # Add read-only fields for session_id and term_id
+    session_id_read = serializers.IntegerField(source='session.id', read_only=True)
+    term_id_read = serializers.IntegerField(source='term.id', read_only=True)
 
     class Meta:
         model = Exam
         fields = [
             'id', 'name', 'exam_type', 'session_id', 'term_id', 'class_ids',
             'start_date', 'end_date', 'status', 'total_marks', 'passing_marks',
-            'subjects', 'classes', 'created_at', 'updated_at'
+            'subjects', 'classes', 'session_id_read', 'term_id_read', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -252,8 +255,13 @@ class ScoreCreateSerializer(serializers.Serializer):
         # Validate exam
         try:
             exam = Exam.objects.get(id=exam_id, school=self.context['request'].user.school)
-            if exam.status != 'results_published':
-                raise serializers.ValidationError({'exam_id': 'Scores can only be entered for exams with Results Published status'})
+            from datetime import date
+            today = date.today()
+            exam_end_date = exam.end_date
+            
+            # Allow scores if exam is completed, results_published, or past end date
+            if not (exam.status in ['completed', 'results_published'] or exam_end_date < today):
+                raise serializers.ValidationError({'exam_id': 'Scores can only be entered for completed exams, published results, or exams past their end date'})
         except Exam.DoesNotExist:
             logger.error(f"Exam {exam_id} not found")
             raise serializers.ValidationError({'exam_id': 'Exam not found'})

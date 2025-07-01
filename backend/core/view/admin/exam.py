@@ -11,16 +11,27 @@ logger =   logging.getLogger(__name__)
 class ExamView(APIView):
     permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
-    def get(self, request):
+    def get(self, request, pk=None):
         logger.info(f"Fetching exams for user: {request.user}")
         school = request.user.school
         if not school:
             logger.warning(f"No school associated with user: {request.user}")
             return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
 
-        exams = Exam.objects.filter(school=school)
-        serializer = ExamSerializer(exams, many=True)
-        return Response(serializer.data)
+        if pk:
+            # Get single exam
+            try:
+                exam = Exam.objects.get(pk=pk, school=school)
+                serializer = ExamSerializer(exam)
+                return Response(serializer.data)
+            except Exam.DoesNotExist:
+                logger.warning(f"Exam {pk} not found for school {school}")
+                return Response({"error": "Exam not found"}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            # Get all exams
+            exams = Exam.objects.filter(school=school)
+            serializer = ExamSerializer(exams, many=True)
+            return Response(serializer.data)
 
     def post(self, request):
         logger.info(f"Creating exam for user: {request.user}")

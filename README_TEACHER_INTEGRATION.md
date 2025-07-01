@@ -63,3 +63,7 @@ The Teacher model extends the Staff model with:
 - Shared user credentials
 - Consistent status management
 - Integrated leave management
+
+
+----------frontend installation-----------------
+npm install axios jspdf jspdf-autotable

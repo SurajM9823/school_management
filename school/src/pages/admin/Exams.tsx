@@ -45,6 +45,8 @@ interface Exam {
   subjects: ExamSubjectDetail[];
   session_id: number;
   term_id: number;
+  session_id_read?: number;
+  term_id_read?: number;
   exam_type: 'test' | 'exam';
   start_date: string;
   end_date: string;
@@ -137,12 +139,17 @@ const Exams: React.FC = () => {
   const [showMarksheetModal, setShowMarksheetModal] = useState(false);
   const [selectedStudentForMarksheet, setSelectedStudentForMarksheet] = useState<Student | null>(null);
   const [selectedExamForMarksheet, setSelectedExamForMarksheet] = useState<Exam | null>(null);
+  const [schoolInfo, setSchoolInfo] = useState<any>(null);
+  const [marksheetData, setMarksheetData] = useState<any[]>([]);
+  const [selectedClassForMarksheet, setSelectedClassForMarksheet] = useState<Class | null>(null);
   const [showRankingsModal, setShowRankingsModal] = useState(false);
   const [selectedExamForRankings, setSelectedExamForRankings] = useState<Exam | null>(null);
   const [rankedStudents, setRankedStudents] = useState<Array<Student & { totalMarksObtained: number; totalMaxMarks: number; percentage: number; rank: number }>>([]);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedExamForStatus, setSelectedExamForStatus] = useState<Exam | null>(null);
   const [newStatus, setNewStatus] = useState<string>('');
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedExamForDetails, setSelectedExamForDetails] = useState<Exam | null>(null);
 
   const { register, handleSubmit, control, reset, formState: { errors }, setValue, watch, clearErrors } = useForm<FormData>({
     defaultValues: {
@@ -403,10 +410,17 @@ const Exams: React.FC = () => {
         });
       }
 
+      // Load terms for the exam's session
+      const sessionId = exam.session_id_read || exam.session_id;
+      if (sessionId) {
+        const termResponse = await api.get<Term[]>(`/school/settings/sessions/${sessionId}/terms/`, { params: { is_active: true } });
+        setTerms(Array.isArray(termResponse.data) ? termResponse.data : []);
+      }
+      
       setEditingExam(exam);
       setValue('name', exam.name);
-      setValue('session_id', exam.session_id);
-      setValue('term_id', exam.term_id);
+      setValue('session_id', exam.session_id_read || exam.session_id);
+      setValue('term_id', exam.term_id_read || exam.term_id);
       setValue('class_ids', exam.classes.map(c => c.id));
       setValue('exam_type', exam.exam_type);
       setValue('start_date', exam.start_date);
@@ -446,11 +460,68 @@ const Exams: React.FC = () => {
     toast.info('Score entry not yet implemented');
   };
 
-  const handleOpenMarksheetModal = (exam: Exam, studentId?: string) => {
-    setSelectedExamForMarksheet(exam);
-    setSelectedStudentForMarksheet({ id: studentId || '', name: '', class_id: exam.classes[0]?.id || 0 });
-    setShowMarksheetModal(true);
-    toast.info('Marksheet view not yet implemented');
+  const handleOpenMarksheetModal = async (exam: Exam, classId?: number) => {
+    setLoading(true);
+    try {
+      // Fetch school info
+      const schoolResponse = await api.get('/school/settings/');
+      setSchoolInfo(schoolResponse.data);
+      
+      // If no specific class selected, show class selection
+      if (!classId && exam.classes.length > 1) {
+        setSelectedExamForMarksheet(exam);
+        setShowMarksheetModal(true);
+        setLoading(false);
+        return;
+      }
+      
+      const targetClassId = classId || exam.classes[0]?.id;
+      const targetClass = exam.classes.find(c => c.id === targetClassId);
+      setSelectedClassForMarksheet(targetClass || null);
+      
+      // Fetch students and scores for the class
+      const [studentsResponse, scoresResponse] = await Promise.all([
+        api.get(`/students/`, { params: { class_id: targetClassId } }),
+        api.get('/school/scores/', { params: { exam_id: exam.id } })
+      ]);
+      
+      const students = studentsResponse.data || [];
+      const scores = scoresResponse.data || [];
+      
+      // Organize data for marksheet
+      const marksheetRows = students.map((student: any) => {
+        const studentScores = scores.filter((score: any) => score.student_id === student.id);
+        const subjectScores: any = {};
+        let totalMarks = 0;
+        let totalMaxMarks = 0;
+        
+        exam.subjects.forEach(subject => {
+          const score = studentScores.find((s: any) => s.subject_id === subject.subject_id);
+          subjectScores[subject.subject_id] = {
+            marks: score?.marks_obtained || 0,
+            maxMarks: subject.max_marks
+          };
+          totalMarks += score?.marks_obtained || 0;
+          totalMaxMarks += subject.max_marks;
+        });
+        
+        return {
+          student,
+          subjectScores,
+          totalMarks,
+          totalMaxMarks,
+          percentage: totalMaxMarks > 0 ? ((totalMarks / totalMaxMarks) * 100).toFixed(2) : '0.00'
+        };
+      });
+      
+      setMarksheetData(marksheetRows);
+      setSelectedExamForMarksheet(exam);
+      setShowMarksheetModal(true);
+    } catch (error) {
+      toast.error('Failed to load marksheet data');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOpenRankingsModal = (exam: Exam | null) => {
@@ -805,11 +876,11 @@ const Exams: React.FC = () => {
         <div className="flex space-x-3">
           <Button
             variant="outline"
-            icon={<AwardIcon size={16} />}
-            onClick={() => handleOpenRankingsModal(null)}
-            disabled={!exams.some(e => e.status === 'results_published')}
+            icon={<Printer size={16} />}
+            onClick={() => navigate('/admin/exam/marksheet')}
+            disabled={!exams.some(e => e.status === 'results_published' || e.status === 'completed')}
           >
-            View Rankings
+            View Marksheet
           </Button>
           <Button
             variant="outline"
@@ -965,21 +1036,24 @@ const Exams: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-1">
-                    <Button variant="icon" size="sm" onClick={() => toast.info(`Viewing details for ${exam.name}`)} title="View Details"><Eye size={16} /></Button>
+                    <Button variant="icon" size="sm" onClick={async () => {
+                      try {
+                        // Load terms for the exam's session to show proper term name
+                        const sessionId = exam.session_id_read || exam.session_id;
+                        if (sessionId) {
+                          const termResponse = await api.get<Term[]>(`/school/settings/sessions/${sessionId}/terms/`, { params: { is_active: true } });
+                          setTerms(Array.isArray(termResponse.data) ? termResponse.data : []);
+                        }
+                      } catch (error) {
+                        console.error('Failed to load terms for details:', error);
+                      }
+                      setSelectedExamForDetails(exam);
+                      setShowDetailsModal(true);
+                    }} title="View Details"><Eye size={16} /></Button>
                     <Button variant="icon" size="sm" onClick={() => handleEditExam(exam)} title="Edit Exam"><Edit size={16} className="text-yellow-600 hover:text-yellow-700" /></Button>
                     <Button variant="icon" size="sm" onClick={() => handleStatusUpdate(exam)} title="Update Status"><CalendarCheck size={16} className="text-blue-600 hover:text-blue-700" /></Button>
-                    {exam.status === 'results_published' && (
-                      <Button
-                        variant="icon"
-                        size="sm"
-                        onClick={() => handleOpenMarksheetModal(exam)}
-                        title="View Marksheet(s)"
-                      >
-                        <Printer size={16} className="text-teal-600 hover:text-teal-700"/>
-                      </Button>
-                    )}
-                    <Button variant="icon" size="sm" onClick={() => toast.info(`Manage papers for ${exam.name}`)} title="Manage Papers/Upload"><UploadCloud size={16} className="text-indigo-600 hover:text-indigo-700"/></Button>
-                    <Button variant="icon" size="sm" onClick={() => toast.info(`Download results for ${exam.name}`)} title="Download Results"><DownloadCloud size={16} className="text-green-600 hover:text-green-700"/></Button>
+
+
                     <Button variant="icon" size="sm" onClick={() => handleDeleteExam(exam.id)} title="Delete Exam"><Trash2 size={16} className="text-red-600 hover:text-red-700" /></Button>
                   </div>
                 </td>
@@ -1006,22 +1080,6 @@ const Exams: React.FC = () => {
             </div>
             <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 rounded-b-lg">
               <Button variant="outline" onClick={() => setShowScoreModal(false)} icon={<X size={16}/>}>Cancel</Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {showMarksheetModal && selectedExamForMarksheet && selectedStudentForMarksheet && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center p-4">
-          <Card
-            title={`Marksheet: ${selectedStudentForMarksheet.name} (Roll: ${selectedStudentForMarksheet.roll_number || 'N/A'}) - ${selectedExamForMarksheet.name}`}
-            className="w-full max-w-3xl bg-white shadow-xl rounded-lg"
-          >
-            <div className="p-6 max-h-[80vh] overflow-y-auto">
-              <p className="text-center text-gray-500 py-4">Marksheet view not yet implemented.</p>
-            </div>
-            <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 rounded-b-lg">
-              <Button variant="outline" onClick={() => setShowMarksheetModal(false)} icon={<X size={16}/>}>Close</Button>
             </div>
           </Card>
         </div>
@@ -1079,6 +1137,150 @@ const Exams: React.FC = () => {
               </Button>
             </div>
           </Card>
+        </div>
+      )}
+
+      {showDetailsModal && selectedExamForDetails && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center p-4">
+          <div className="w-full max-w-4xl bg-white shadow-xl rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Exam Details: {selectedExamForDetails.name}</h3>
+            </div>
+            <div className="p-6 max-h-[80vh] overflow-y-auto space-y-6">
+              {/* Basic Information */}
+              <div>
+                <h4 className="text-md font-semibold text-gray-800 mb-3">Basic Information</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600">Exam Name</label>
+                    <p className="text-sm text-gray-900">{selectedExamForDetails.name}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600">Exam Type</label>
+                    <p className="text-sm text-gray-900 capitalize">{selectedExamForDetails.exam_type}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600">Status</label>
+                    <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                      selectedExamForDetails.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                      selectedExamForDetails.status === 'ongoing' ? 'bg-yellow-100 text-yellow-800' :
+                      selectedExamForDetails.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                      selectedExamForDetails.status === 'results_published' ? 'bg-green-100 text-green-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {selectedExamForDetails.status.replace('_', ' ').split(' ').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')}
+                    </span>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600">Academic Session</label>
+                    <p className="text-sm text-gray-900">{sessions.find(s => s.id === (selectedExamForDetails.session_id_read || selectedExamForDetails.session_id))?.name || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <hr className="border-gray-200" />
+              
+              {/* Date Information */}
+              <div>
+                <h4 className="text-md font-semibold text-gray-800 mb-3">Schedule</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600">Start Date</label>
+                    <p className="text-sm text-gray-900">{format(new Date(selectedExamForDetails.start_date), 'MMMM dd, yyyy')}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600">End Date</label>
+                    <p className="text-sm text-gray-900">{format(new Date(selectedExamForDetails.end_date), 'MMMM dd, yyyy')}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600">Term</label>
+                    <p className="text-sm text-gray-900">{terms.find(t => t.id === (selectedExamForDetails.term_id_read || selectedExamForDetails.term_id))?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600">Duration</label>
+                    <p className="text-sm text-gray-900">{Math.ceil((new Date(selectedExamForDetails.end_date).getTime() - new Date(selectedExamForDetails.start_date).getTime()) / (1000 * 60 * 60 * 24))} days</p>
+                  </div>
+                </div>
+              </div>
+              
+              <hr className="border-gray-200" />
+              
+              {/* Classes Information */}
+              <div>
+                <h4 className="text-md font-semibold text-gray-800 mb-3">Classes</h4>
+                <div className="flex flex-wrap gap-2">
+                  {selectedExamForDetails.classes.map(cls => (
+                    <span key={cls.id} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                      Class {cls.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              
+              <hr className="border-gray-200" />
+              
+              {/* Marks Information */}
+              <div>
+                <h4 className="text-md font-semibold text-gray-800 mb-3">Marks Distribution</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600">Total Marks</label>
+                    <p className="text-sm text-gray-900 font-semibold">{selectedExamForDetails.total_marks || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600">Passing Marks</label>
+                    <p className="text-sm text-gray-900 font-semibold">{selectedExamForDetails.passing_marks || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <hr className="border-gray-200" />
+              
+              {/* Subjects Information */}
+              <div>
+                <h4 className="text-md font-semibold text-gray-800 mb-3">Subject Details</h4>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border border-gray-200 rounded-lg">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Max Marks</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Passing Marks</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {selectedExamForDetails.subjects.map((subject, index) => (
+                        <tr key={subject.subject_id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-4 py-2 text-sm text-gray-900 font-medium">
+                            {subjects.find(s => s.id === subject.subject_id)?.name || 'Unknown'}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-700">
+                            {subject.date ? format(new Date(subject.date), 'MMM dd, yyyy') : 'TBD'}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-700">
+                            {subject.time || 'TBD'}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-700 font-semibold">
+                            {subject.max_marks}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-700">
+                            {subject.passing_marks}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-6 py-3 flex justify-end rounded-b-lg">
+              <Button variant="outline" onClick={() => setShowDetailsModal(false)} icon={<X size={16}/>}>
+                Close
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
