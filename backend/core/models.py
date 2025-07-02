@@ -1073,3 +1073,213 @@ class Score(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - {self.subject.name} - {self.exam.name}: {self.marks_obtained or 'Absent'}"
+
+
+class Scholarship(models.Model):
+    SCHOLARSHIP_TYPES = (
+        ('merit-based', 'Merit-Based'),
+        ('need-based', 'Need-Based'),
+        ('sports', 'Sports'),
+        ('arts', 'Arts'),
+        ('other', 'Other'),
+        ('full-waiver', 'Full Fee Waiver'),
+        ('partial-waiver', 'Partial Fee Waiver'),
+        ('monthly', 'Monthly Stipend'),
+    )
+
+    STATUS_CHOICES = (
+        ('open', 'Open'),
+        ('closed', 'Closed'),
+        ('under_review', 'Under Review'),
+        ('awarded', 'Awarded'),
+        ('discontinued', 'Discontinued'),
+    )
+
+    name = models.CharField(max_length=200)
+    description = models.TextField()
+    scholarship_type = models.CharField(max_length=20, choices=SCHOLARSHIP_TYPES, default='merit-based')
+    amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    percentage_waiver = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    is_full_waiver = models.BooleanField(default=False)
+    duration_months = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
+    academic_session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE, related_name='scholarships')
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, null=True, blank=True, related_name='scholarships')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    number_of_awards = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # Eligibility criteria
+    general_criteria = models.TextField()
+    min_overall_percentage = models.FloatField(null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    min_exam_percentage = models.FloatField(null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    linked_exam = models.ForeignKey(Exam, on_delete=models.SET_NULL, null=True, blank=True)
+    max_rank_in_exam = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
+    auto_assign = models.BooleanField(default=False)  # If True, automatically assign based on criteria
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+
+class ScholarshipAssignment(models.Model):
+    ASSIGNMENT_TYPES = (
+        ('auto', 'Automatic'),
+        ('manual', 'Manual'),
+    )
+
+    scholarship = models.ForeignKey(Scholarship, on_delete=models.CASCADE, related_name='assignments')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='scholarships')
+    assignment_type = models.CharField(max_length=10, choices=ASSIGNMENT_TYPES, default='manual')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    remarks = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('scholarship', 'student', 'assigned_at')
+        ordering = ['-assigned_at']
+
+    def __str__(self):
+        return f"{self.student.user_name} - {self.scholarship.name}"
+
+class Route(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    stops = models.JSONField(default=list)  # List of stop names
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'routes'
+
+class Bus(models.Model):
+    id = models.AutoField(primary_key=True)
+    bus_number = models.CharField(max_length=50, unique=True)
+    registration_number = models.CharField(max_length=50, unique=True)
+    model = models.CharField(max_length=100, blank=True)
+    capacity = models.PositiveIntegerField()
+    driver_name = models.CharField(max_length=100, blank=True)
+    driver_contact = models.CharField(max_length=15, blank=True)
+    routes = models.ManyToManyField(Route, blank=True, related_name='buses')
+    status = models.CharField(max_length=20, choices=[
+        ('active', 'Active'),
+        ('maintenance', 'Maintenance'),
+        ('inactive', 'Inactive')
+    ], default='active')
+    last_serviced = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'buses'
+
+class BusFee(models.Model):
+    id = models.AutoField(primary_key=True)
+    route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name='fees')
+    academic_session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE)
+    default_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'bus_fees'
+        unique_together = ('route', 'academic_session')
+
+class BusAssignment(models.Model):
+    id = models.AutoField(primary_key=True)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='bus_assignments')
+    route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name='assignments')
+    bus = models.ForeignKey(Bus, on_delete=models.SET_NULL, null=True, blank=True, related_name='assignments')
+    stop = models.CharField(max_length=100, blank=True, null=True)
+    custom_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    academic_session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE)
+    is_active = models.BooleanField(default=True)
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    remarks = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'bus_assignments'
+        unique_together = ('student', 'route', 'academic_session')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['student', 'academic_session'],
+                condition=models.Q(is_active=True),
+                name='unique_active_student_assignment'
+            )
+        ]
+
+class Event(models.Model):
+    EVENT_TYPES = (
+        ('sports', 'Sports Meet'),
+        ('cultural', 'Cultural Event'),
+        ('academic', 'Academic Event'),
+        ('other', 'Other'),
+    )
+    
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    event_type = models.CharField(max_length=20, choices=EVENT_TYPES, default='other')
+    academic_session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE, related_name='events')
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)  # Null for one-day events
+    is_open_for_applications = models.BooleanField(default=False)  # For future student applications
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'events'
+
+class EventAssignment(models.Model):
+    id = models.AutoField(primary_key=True)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='assignments')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='event_assignments')
+    is_active = models.BooleanField(default=True)
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    remarks = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'event_assignments'
+        unique_together = ('event', 'student')
+
+
+class Notice(models.Model):
+    NOTICE_TYPES = (
+        ('school', 'Entire School'),
+        ('staff', 'Staff Only'),
+        ('students_parents', 'Students and Parents'),
+        ('specific_class', 'Specific Class/Section'),
+    )
+
+    id = models.AutoField(primary_key=True)
+    notice_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='notices')
+    academic_session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE)
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    notice_type = models.CharField(max_length=20, choices=NOTICE_TYPES)
+    class_id = models.ForeignKey(Class, on_delete=models.SET_NULL, null=True, blank=True, related_name='notices')
+    section = models.ForeignKey(Section, on_delete=models.SET_NULL, null=True, blank=True, related_name='notices')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['school', 'academic_session', 'is_active']),
+            models.Index(fields=['notice_type']),
+        ]
+
+    def __str__(self):
+        return f"{self.title} ({self.notice_type})"

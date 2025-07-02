@@ -25,6 +25,7 @@ import {
   Building2,
   CreditCard,
   Activity,
+  Bell,
 } from 'lucide-react';
 
 // Define backend base URL
@@ -117,7 +118,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
           { to: '/admin/exams', icon: <FileText size={18} />, label: 'Exams' },
           { to: '/admin/scholarships', icon: <Award size={18} />, label: 'Scholarships' },
           { to: '/admin/transport-management', icon: <Bus size={18} />, label: 'Transport' },
-          { to: '/admin/user-management', icon: <Users size={18} />, label: 'User Management' },
+          { to: '/admin/events', icon: <Calendar size={18} />, label: 'Events' },
+          { to: '/admin/notices', icon: <Bell size={18} />, label: 'Notices' },
           { to: '/admin/settings', icon: <Settings size={18} />, label: 'Settings' },
         ];
       case 'teacher':

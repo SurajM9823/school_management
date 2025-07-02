@@ -1,6 +1,8 @@
 from django.urls import path, include
 
+from core.view.admin.transportview import BusAssignmentViewSet, BusFeeViewSet, BusViewSet, RouteViewSet
 from core.view.admin.exam import ExamView, ScoreView
+from core.view.admin.eventViews import EventAssignmentViewSet, EventViewSet
 from .views import MyTokenObtainPairView, CurrentUserView, UserView
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework.routers import DefaultRouter
@@ -25,10 +27,21 @@ from core.serial.teacher.teacher_attendance import (
     AttendanceSaveAPIView, AttendanceListAPIView
 )
 from core.serial.teacher.TeacherClasses import TeacherClassesAPIView
+from core.view.admin.scholarshipView import ScholarshipViewSet, ScholarshipAssignmentViewSet
+from core.view.admin.dashboard_view import admin_dashboard_stats, admin_activities
+from core.view.admin.noticeView import NoticeViewSet
+
 # Register StudentView and TeacherViewSet with a router to handle document endpoints
 router = DefaultRouter()
 router.register(r'students', StudentView, basename='student')
 router.register(r'teachers', TeacherViewSet, basename='teacher')
+router.register(r'routes', RouteViewSet)
+router.register(r'buses', BusViewSet)
+router.register(r'bus-fees', BusFeeViewSet)
+router.register(r'bus-assignments', BusAssignmentViewSet)
+router.register(r'events', EventViewSet)
+router.register(r'event-assignments', EventAssignmentViewSet)
+router.register(r'notices', NoticeViewSet, basename='notice')
 
 urlpatterns = [
     # Authentication URLs
@@ -44,6 +57,8 @@ urlpatterns = [
     path('superadmin/subscriptions/<uuid:school_id>/', SuperuserSubscriptionView.as_view(), name='superuser-subscriptions'),
 
     # Admin Dashboard URLs
+    path('admin/dashboard/stats/', admin_dashboard_stats, name='admin-dashboard-stats'),
+    path('admin/dashboard/activities/', admin_activities, name='admin-activities'),
     path('school/settings/', SchoolSettingsView.as_view(), name='school-settings'),
     path('school/settings/locale/', LocaleSettingsView.as_view(), name='locale-settings'),
     path('school/settings/sessions/', AcademicSessionView.as_view(), name='academic-session'),
@@ -140,6 +155,13 @@ urlpatterns = [
     path('school/class-teachers/<int:assignment_id>/', ClassTeacherView.as_view(), name='class-teacher-detail'),
     path('school/settings/classes/<int:class_id>/subjects/', ClassSubjectsView.as_view(), name='class-subjects'),
 
+    path('scholarships/', ScholarshipViewSet.as_view({'get': 'list', 'post': 'create'}), name='scholarship-list-create'),
+    path('scholarships/<int:pk>/', ScholarshipViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='scholarship-detail'),
+    path('scholarships/<int:pk>/auto_assign/', ScholarshipViewSet.as_view({'post': 'auto_assign'}), name='scholarship-auto-assign'),
+    path('assignments/', ScholarshipAssignmentViewSet.as_view({'get': 'list', 'post': 'create'}), name='assignment-list-create'),
+    path('assignments/<int:pk>/', ScholarshipAssignmentViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='assignment-detail'),
+    path('assignments/<int:pk>/revoke/', ScholarshipAssignmentViewSet.as_view({'post': 'revoke'}), name='assignment-revoke'),
+
     #admin url exam 
     path('school/exams/', ExamView.as_view(), name='exam-list-create'),
     path('school/exams/<int:pk>/', ExamView.as_view(), name='exam-detail'),
@@ -150,3 +172,4 @@ urlpatterns = [
     # Include router URLs for StudentView
     path('', include(router.urls)),
 ]
+

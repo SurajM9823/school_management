@@ -553,6 +553,9 @@ class GradingScaleSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         school = self.context['request'].user.school
+        # Remove write-only fields that don't exist in the model
+        validated_data.pop('min_score', None)
+        validated_data.pop('max_score', None)
         validated_data['school'] = school
         scale = super().create(validated_data)
         logger.info(f"Grading scale '{scale.grade}' created by user {self.context['request'].user} for school {school}")
@@ -562,6 +565,9 @@ class GradingScaleSerializer(serializers.ModelSerializer):
         school = self.context['request'].user.school
         if instance.school != school:
             raise serializers.ValidationError({"error": "Cannot update grading scale from another school"})
+        # Remove write-only fields that don't exist in the model
+        validated_data.pop('min_score', None)
+        validated_data.pop('max_score', None)
         scale = super().update(instance, validated_data)
         logger.info(f"Grading scale '{scale.grade}' updated by user {self.context['request'].user} for school {school}")
         return scale
