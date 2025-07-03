@@ -3,7 +3,18 @@ from rest_framework import serializers
 from core.serializers import ClassSerializer, SubjectSerializer
 from datetime import datetime
 import logging
+from rest_framework.permissions import IsAuthenticated, BasePermission
+
 logger = logging.getLogger(__name__)
+
+class IsAdminOrTeacher(BasePermission):
+    def has_permission(self, request, view):
+        return (
+            request.user and
+            request.user.is_authenticated and
+            (request.user.role == 'admin' or request.user.role == 'teacher')
+        )
+
 class ExamSubjectSerializer(serializers.ModelSerializer):
     subject_id = serializers.PrimaryKeyRelatedField(
         queryset=Subject.objects.filter(is_active=True),
@@ -196,8 +207,8 @@ class ExamSerializer(serializers.ModelSerializer):
 
         return instance
 
-class ScoreSerializer(serializers.ModelSerializer):
-    student_id = serializers.CharField(source='student.id', required=False)
+class ScoreSerializer(serializers.Serializer):
+    student = serializers.DictField(child=serializers.IntegerField(), required=True)
     marks_obtained = serializers.FloatField(allow_null=True, required=False)
 
     class Meta:
@@ -208,15 +219,15 @@ class ScoreSerializer(serializers.ModelSerializer):
         # Skip validation if context is not provided (will be validated in parent serializer)
         if not all(key in self.context for key in ['exam', 'subject', 'section', 'max_marks']):
             return data
-            
+
         exam = self.context['exam']
         subject = self.context['subject']
         section = self.context['section']
         max_marks = self.context['max_marks']
 
         student_data = data.get('student')
-        if not student_data:
-            return data
+        if not student_data or 'id' not in student_data:
+            raise serializers.ValidationError({'student': 'Student id is required'})
         student_id = student_data.get('id')
         marks_obtained = data.get('marks_obtained')
 
@@ -225,7 +236,7 @@ class ScoreSerializer(serializers.ModelSerializer):
             student = Student.objects.get(id=student_id, section=section)
         except Student.DoesNotExist:
             logger.error(f"Student {student_id} not found in section {section.id}")
-            raise serializers.ValidationError({'student_id': f"Student {student_id} not found in section {section.name}"})
+            raise serializers.ValidationError({'student': f"Student {student_id} not found in section {section.name}"})
 
         # Validate marks
         if marks_obtained is not None:
@@ -234,10 +245,7 @@ class ScoreSerializer(serializers.ModelSerializer):
             if marks_obtained > max_marks:
                 raise serializers.ValidationError({'marks_obtained': f'Marks cannot exceed {max_marks}'})
 
-        # Check for existing score
-        if Score.objects.filter(exam=exam, subject=subject, student=student).exists():
-            raise serializers.ValidationError({'student_id': f'Score already exists for student {student_id} in this exam and subject'})
-
+        # Do not check for existing score here (update_or_create will handle it)
         return data
     
 class ScoreCreateSerializer(serializers.Serializer):
@@ -258,8 +266,6 @@ class ScoreCreateSerializer(serializers.Serializer):
             from datetime import date
             today = date.today()
             exam_end_date = exam.end_date
-            
-            # Allow scores if exam is completed, results_published, or past end date
             if not (exam.status in ['completed', 'results_published'] or exam_end_date < today):
                 raise serializers.ValidationError({'exam_id': 'Scores can only be entered for completed exams, published results, or exams past their end date'})
         except Exam.DoesNotExist:
@@ -286,8 +292,6 @@ class ScoreCreateSerializer(serializers.Serializer):
         exam_subject = exam.exam_subjects.get(subject=subject)
         max_marks = exam_subject.max_marks
 
-        # Skip student validation - allow partial score entry
-
         # Pass context to ScoreSerializer
         for score in scores:
             score_serializer = ScoreSerializer(data=score, context={
@@ -308,7 +312,8 @@ class ScoreCreateSerializer(serializers.Serializer):
 
         created_scores = []
         for score_data in scores_data:
-            student = Student.objects.get(id=score_data['student']['id'])
+            student_id = score_data['student']['id']
+            student = Student.objects.get(id=student_id)
             score, created = Score.objects.update_or_create(
                 exam=exam,
                 subject=subject,

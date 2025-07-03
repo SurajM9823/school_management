@@ -1,191 +1,378 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import { ChevronDown, Save } from 'lucide-react';
+import { Save, ChevronDown } from 'lucide-react';
+import api from '../../api';
 
 interface Student {
-  id: string;
+  id: number;
   name: string;
-  marks: { [subjectId: string]: string | number };
+  admission_number: string;
+  section?: number | null;
+}
+
+interface Subject {
+  id: number;
+  subject_id: number;
+  subject_name: string;
+  date: string;
+  max_marks: number;
+  passing_marks: number;
 }
 
 interface Exam {
-  id: string;
-  name: string;
+  exam_id: number;
+  exam_name: string;
+  subjects: Subject[];
 }
 
-interface ClassWithStudents {
-  id: string;
-  name: string;
-  students: Student[];
-  exams: Exam[]; // Exams associated with this class
+interface ClassItem {
+  class_id: number;
+  class_name: string;
+  exams: Exam[];
 }
-
-const mockClassesWithStudents: ClassWithStudents[] = [
-  {
-    id: 'class1',
-    name: 'Class 8A',
-    exams: [
-      { id: 'exam1-math', name: 'Mathematics - Mid Term' },
-      { id: 'exam1-sci', name: 'Science - Mid Term' },
-    ],
-    students: [
-      { id: 's1', name: 'Alice Wonderland', marks: { 'exam1-math': '', 'exam1-sci': '' } },
-      { id: 's2', name: 'Bob The Builder', marks: { 'exam1-math': '', 'exam1-sci': '' } },
-    ],
-  },
-  {
-    id: 'class2',
-    name: 'Class 9B',
-    exams: [
-      { id: 'exam2-eng', name: 'English - Final Term' },
-      { id: 'exam2-hist', name: 'History - Final Term' },
-    ],
-    students: [
-      { id: 's3', name: 'Charlie Brown', marks: { 'exam2-eng': '', 'exam2-hist': '' } },
-      { id: 's4', name: 'Diana Prince', marks: { 'exam2-eng': '', 'exam2-hist': '' } },
-    ],
-  },
-];
 
 const ExamMarks: React.FC = () => {
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(mockClassesWithStudents[0]?.id || null);
-  const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
-  const [studentMarks, setStudentMarks] = useState<{ [studentId: string]: { [examId: string]: string } }>({});
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [selectedExamId, setSelectedExamId] = useState<number | null>(null);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [marks, setMarks] = useState<{ [studentId: number]: string }>({});
+  const [loading, setLoading] = useState(false);
+  const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
+  const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const selectedClass = mockClassesWithStudents.find(c => c.id === selectedClassId);
+  // Fetch teacher's assigned classes/exams/subjects
+  useEffect(() => {
+    api.get('/teacher/exam-marks/classes/').then(res => {
+      setClasses(res.data);
+      if (res.data.length > 0) {
+        setSelectedClassId(res.data[0].class_id);
+      }
+    });
+  }, []);
 
-  const handleMarkChange = (studentId: string, examId: string, value: string) => {
-    setStudentMarks(prev => ({
+  // When class changes, update exams
+  useEffect(() => {
+    const cls = classes.find(c => c.class_id === selectedClassId);
+    setExams(cls ? cls.exams : []);
+    setSelectedExamId(null);
+    setSubjects([]);
+    setSelectedSubjectId(null);
+    setStudents([]);
+    setMarks({});
+  }, [selectedClassId, classes]);
+
+  // When exam changes, update subjects
+  useEffect(() => {
+    const ex = exams.find(e => e.exam_id === selectedExamId);
+    setSubjects(ex ? ex.subjects : []);
+    setSelectedSubjectId(null);
+    setStudents([]);
+    setMarks({});
+  }, [selectedExamId, exams]);
+
+  // When subject or section changes, fetch students and marks
+  useEffect(() => {
+    if (selectedClassId && selectedExamId && selectedSubjectId) {
+      api.get(`/teacher/exam-marks/classes/${selectedClassId}/students/`).then(res => {
+        setStudents(res.data);
+        const uniqueSections: { id: number; name: string }[] = [];
+        const sectionMap: { [id: number]: string } = {};
+        res.data.forEach((student: Student) => {
+          if (student.section && !sectionMap[student.section]) {
+            sectionMap[student.section] = `Section ${student.section}`;
+            uniqueSections.push({ id: student.section, name: `Section ${student.section}` });
+          }
+        });
+        setSections(uniqueSections);
+        setSelectedSectionId(uniqueSections.length === 1 ? uniqueSections[0].id : null);
+
+        // Initialize marks as empty first
+        const initialMarks: { [studentId: number]: string } = {};
+        res.data.forEach((student: Student) => {
+          initialMarks[student.id] = '';
+        });
+        setMarks(initialMarks);
+
+        // If section is auto-selected, fetch marks now
+        const sectionToFetch = uniqueSections.length === 1 ? uniqueSections[0].id : selectedSectionId;
+        if (sectionToFetch) {
+          api.get('/teacher/exam-marks/get-marks/', {
+            params: {
+              exam_id: selectedExamId,
+              subject_id: selectedSubjectId,
+              section_id: sectionToFetch,
+            }
+          }).then(marksRes => {
+            const marksMap: { [studentId: number]: string } = { ...initialMarks };
+            marksRes.data.forEach((item: { student_id: number, marks_obtained: string }) => {
+              marksMap[item.student_id] = item.marks_obtained ?? '';
+            });
+            setMarks(marksMap);
+          });
+        }
+      });
+    } else {
+      setStudents([]);
+      setMarks({});
+      setSections([]);
+      setSelectedSectionId(null);
+    }
+    // eslint-disable-next-line
+  }, [selectedClassId, selectedExamId, selectedSubjectId]);
+
+  // When section changes, fetch marks for that section
+  useEffect(() => {
+    if (
+      selectedClassId &&
+      selectedExamId &&
+      selectedSubjectId &&
+      selectedSectionId
+    ) {
+      api.get('/teacher/exam-marks/get-marks/', {
+        params: {
+          exam_id: selectedExamId,
+          subject_id: selectedSubjectId,
+          section_id: selectedSectionId,
+        }
+      }).then(marksRes => {
+        const marksMap: { [studentId: number]: string } = { ...marks };
+        marksRes.data.forEach((item: { student_id: number, marks_obtained: string }) => {
+          marksMap[item.student_id] = item.marks_obtained ?? '';
+        });
+        setMarks(marksMap);
+      });
+    }
+    // eslint-disable-next-line
+  }, [selectedSectionId]);
+
+  const handleMarkChange = (studentId: number, value: string) => {
+    setMarks(prev => ({
       ...prev,
-      [studentId]: {
-        ...prev[studentId],
-        [examId]: value,
-      },
+      [studentId]: value,
     }));
   };
 
-  const handleSaveChanges = () => {
-    // TODO: Implement API call to save marks
-    console.log('Saving marks:', studentMarks);
-    alert('Marks saved (mock)!');
-  };
-  
-  // Initialize studentMarks when selectedClass or selectedExamId changes
-  React.useEffect(() => {
-    if (selectedClass && selectedExamId) {
-      const initialMarks: { [studentId: string]: { [examId: string]: string } } = {};
-      selectedClass.students.forEach(student => {
-        initialMarks[student.id] = {
-          ...initialMarks[student.id],
-          [selectedExamId]: student.marks[selectedExamId]?.toString() || ''
-        };
-      });
-      setStudentMarks(initialMarks);
+  const handleConfirmSave = () => {
+    if (!selectedClassId || !selectedExamId || !selectedSubjectId) return;
+    if (sections.length > 1 && !selectedSectionId) {
+      alert('Please select a section.');
+      return;
     }
-  }, [selectedClass, selectedExamId]);
+    setShowConfirmModal(true);
+  };
 
+  const handleSave = async () => {
+    setShowConfirmModal(false);
+    setLoading(true);
+    try {
+      const scores = students
+          .filter(s => !sections.length || !selectedSectionId || s.section === selectedSectionId)
+          .map(s => ({
+            student: { id: s.id },
+            marks_obtained: marks[s.id],
+          }));
+
+      await api.post('/school/scores/', {
+        exam_id: selectedExamId,
+        subject_id: selectedSubjectId,
+        section_id: selectedSectionId,
+        scores,
+      });
+      setShowSuccessModal(true);
+    } catch (e) {
+      alert('Failed to save marks');
+    }
+    setLoading(false);
+  };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900">Enter Exam Marks</h1>
+      <div className="container mx-auto p-6 space-y-6 bg-gray-50 min-h-screen">
+        <h1 className="text-3xl font-bold text-gray-800">Enter Exam Marks</h1>
 
-      <Card>
-        <div className="space-y-4">
-          {/* Class Selector */}
-          <div>
-            <label htmlFor="class-select" className="block text-sm font-medium text-gray-700 mb-1">
-              Select Class
-            </label>
-            <select
-              id="class-select"
-              value={selectedClassId || ''}
-              onChange={(e) => {
-                setSelectedClassId(e.target.value);
-                setSelectedExamId(null); // Reset exam when class changes
-                setStudentMarks({}); // Reset marks
-              }}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-            >
-              <option value="" disabled>-- Select a Class --</option>
-              {mockClassesWithStudents.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Exam Selector */}
-          {selectedClass && (
-            <div>
-              <label htmlFor="exam-select" className="block text-sm font-medium text-gray-700 mb-1">
-                Select Exam
-              </label>
-              <select
-                id="exam-select"
-                value={selectedExamId || ''}
-                onChange={(e) => setSelectedExamId(e.target.value)}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-              >
-                <option value="" disabled>-- Select an Exam --</option>
-                {selectedClass.exams.map(exam => (
-                  <option key={exam.id} value={exam.id}>{exam.name}</option>
-                ))}
-              </select>
+        {/* Selectors Card */}
+        <Card className="shadow-lg">
+          <div className="space-y-6 p-6">
+            {/* Class Selector */}
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+              <div className="relative">
+                <select
+                    value={selectedClassId ?? ''}
+                    onChange={e => setSelectedClassId(Number(e.target.value))}
+                    className="appearance-none w-full p-3 pl-4 pr-10 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-400 cursor-pointer"
+                >
+                  <option value="" disabled>-- Select a Class --</option>
+                  {classes.map(c => (
+                      <option key={c.class_id} value={c.class_id}>{c.class_name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" size={20} />
+              </div>
             </div>
-          )}
-        </div>
-      </Card>
 
-      {selectedClass && selectedExamId && (
-        <Card title={`Enter Marks for ${selectedClass.exams.find(e=>e.id === selectedExamId)?.name} - ${selectedClass.name}`}>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Student Name
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Marks
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {selectedClass.students.map((student) => (
-                  <tr key={student.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {student.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <input
-                        type="number"
-                        value={studentMarks[student.id]?.[selectedExamId] || ''}
-                        onChange={(e) => handleMarkChange(student.id, selectedExamId, e.target.value)}
-                        className="mt-1 block w-24 text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter marks"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-6 flex justify-end">
-            <Button
-              variant="primary"
-              icon={<Save size={16} />}
-              onClick={handleSaveChanges}
-              disabled={Object.keys(studentMarks).length === 0}
-            >
-              Save Changes
-            </Button>
+            {/* Exam Selector */}
+            {exams.length > 0 && (
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Exam</label>
+                  <div className="relative">
+                    <select
+                        value={selectedExamId ?? ''}
+                        onChange={e => setSelectedExamId(Number(e.target.value))}
+                        className="appearance-none w-full p-3 pl-4 pr-10 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-400 cursor-pointer"
+                    >
+                      <option value="" disabled>-- Select an Exam --</option>
+                      {exams.map(exam => (
+                          <option key={exam.exam_id} value={exam.exam_id}>{exam.exam_name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" size={20} />
+                  </div>
+                </div>
+            )}
+
+            {/* Subject Selector */}
+            {subjects.length > 0 && (
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Subject</label>
+                  <div className="relative">
+                    <select
+                        value={selectedSubjectId ?? ''}
+                        onChange={e => setSelectedSubjectId(Number(e.target.value))}
+                        className="appearance-none w-full p-3 pl-4 pr-10 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-400 cursor-pointer"
+                    >
+                      <option value="" disabled>-- Select a Subject --</option>
+                      {subjects.map(subject => (
+                          <option key={subject.id} value={subject.subject_id}>{subject.subject_name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" size={20} />
+                  </div>
+                </div>
+            )}
+
+            {/* Section Selector */}
+            {sections.length > 1 && (
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Section</label>
+                  <div className="relative">
+                    <select
+                        value={selectedSectionId ?? ''}
+                        onChange={e => setSelectedSectionId(Number(e.target.value))}
+                        className="appearance-none w-full p-3 pl-4 pr-10 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-400 cursor-pointer"
+                    >
+                      <option value="" disabled>-- Select a Section --</option>
+                      {sections.map(section => (
+                          <option key={section.id} value={section.id}>{section.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" size={20} />
+                  </div>
+                </div>
+            )}
           </div>
         </Card>
-      )}
-       {/* TODO: Add validation for marks (e.g., numeric, range) */}
-       {/* TODO: Fetch actual class, student, and exam data from API */}
-    </div>
+
+        {/* Marks Entry Table */}
+        {students.length > 0 && selectedSubjectId && (
+            <Card title="Enter Marks" className="shadow-lg">
+              <div className="overflow-x-auto">
+                <table className="w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Roll No</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Student Name</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Marks</th>
+                  </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                  {students
+                      .filter(s => !sections.length || !selectedSectionId || s.section === selectedSectionId)
+                      .map(student => (
+                          <tr key={student.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{student.admission_number}</td>
+                            <td className="px-6 py-4 text-sm text-gray-700">{student.name}</td>
+                            <td className="px-6 py-4">
+                              <input
+                                  type="number"
+                                  value={marks[student.id] || ''}
+                                  onChange={e => handleMarkChange(student.id, e.target.value)}
+                                  className="w-24 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                                  placeholder="Enter marks"
+                              />
+                            </td>
+                          </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <Button
+                    variant="primary"
+                    icon={<Save size={16} />}
+                    onClick={handleConfirmSave}
+                    disabled={loading}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+                >
+                  {loading ? 'Saving...' : 'Save Marks'}
+                </Button>
+              </div>
+            </Card>
+        )}
+
+        {/* Confirmation Modal */}
+        {showConfirmModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl transform transition-all duration-300 scale-95 animate-in">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Confirm Save</h2>
+                <p className="text-gray-600 mb-6">Are you sure you want to save the entered marks? This action cannot be undone.</p>
+                <div className="flex justify-end space-x-3">
+                  <Button
+                      variant="secondary"
+                      onClick={() => setShowConfirmModal(false)}
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-200"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                      variant="primary"
+                      onClick={handleSave}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+                  >
+                    Confirm
+                  </Button>
+                </div>
+              </div>
+            </div>
+        )}
+
+        {/* Success Modal */}
+        {showSuccessModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl transform transition-all duration-300 scale-95 animate-in">
+                <h2 className="text-xl font-semibold text-green-600 mb-4">Success!</h2>
+                <p className="text-gray-600 mb-6">Marks have been saved successfully.</p>
+                <div className="flex justify-end">
+                  <Button
+                      variant="primary"
+                      onClick={() => setShowSuccessModal(false)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </div>
+        )}
+      </div>
   );
 };
 
 export default ExamMarks;
+

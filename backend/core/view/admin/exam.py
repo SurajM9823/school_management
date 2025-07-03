@@ -1,4 +1,4 @@
-from core.serial.admin.exam import ExamSerializer, ScoreCreateSerializer
+from core.serial.admin.exam import ExamSerializer, ScoreCreateSerializer, IsAdminOrTeacher
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -87,7 +87,7 @@ class ExamView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ScoreView(APIView):
-    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+    permission_classes = [IsAdminOrTeacher]
 
     def get(self, request):
         logger.info(f"Fetching scores for user: {request.user}")

@@ -31,6 +31,12 @@ from core.view.admin.scholarshipView import ScholarshipViewSet, ScholarshipAssig
 from core.view.admin.dashboard_view import admin_dashboard_stats, admin_activities
 from core.view.admin.noticeView import NoticeViewSet
 from core.view.admin.sheduleView import SchoolTimingViewSet, BreakViewSet, ClassScheduleViewSet, StaffDutyViewSet, ExamScheduleViewSet
+from core.serial.teacher.teacher_exam_marks import (
+    TeacherExamMarkClassListAPIView,
+    TeacherExamMarkStudentListAPIView,
+    TeacherExamMarkSubmitAPIView,
+    TeacherExamMarkGetAPIView,  # <-- add import
+)
 
 # Register StudentView and TeacherViewSet with a router to handle document endpoints
 router = DefaultRouter()
@@ -148,7 +154,6 @@ urlpatterns = [
     #urls for staff leave management
     path('school/settings/staff/<int:staff_id>/leave/', StaffLeaveCreateView.as_view(), name='staff-leave-create'),
 
-  
     # Teacher Attendance APIs
     path('teacher/myclasses/', TeacherClassesAPIView.as_view(), name='teacher-classes'),
     path('teacher/classes/', ClassListAPIView.as_view(), name='teacher-class-list'),
@@ -174,8 +179,12 @@ urlpatterns = [
 
     #admin url fro exam score 
     path('school/scores/', ScoreView.as_view(), name='score-create'),
-    
+
+    # Teacher Exam Marks APIs
+    path('teacher/exam-marks/classes/', TeacherExamMarkClassListAPIView.as_view(), name='teacher-exam-mark-class-list'),
+    path('teacher/exam-marks/classes/<int:class_id>/students/', TeacherExamMarkStudentListAPIView.as_view(), name='teacher-exam-mark-student-list'),
+    path('teacher/exam-marks/get-marks/', TeacherExamMarkGetAPIView.as_view(), name='teacher-exam-mark-get-marks'),
+    path('teacher/exam-marks/submit/', TeacherExamMarkSubmitAPIView.as_view(), name='teacher-exam-mark-submit'),
     # Include router URLs for StudentView
     path('', include(router.urls)),
 ]
-
