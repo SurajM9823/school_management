@@ -34,6 +34,8 @@ import StaffDetailDrill from "./pages/admin/StaffDetailDrill";
 import TransportManagement from "./pages/admin/TransportManagement";
 import Events from "./pages/admin/Events";
 import Notices from "./pages/admin/Notices";
+import StudentDetail from "./pages/admin/StudentDetail";
+import ClassSchedule from "./pages/admin/ClassSchedule";
 import Attendance from "./pages/teacher/Attendance";
 import Assignments from "./pages/teacher/Assignments";
 import Grades from "./pages/teacher/Grades";
@@ -287,6 +289,22 @@ function App() {
             element={
               <ProtectedRoute roles={["admin"]}>
                 <Notices />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/students/:id"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <StudentDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/schedule"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <ClassSchedule />
               </ProtectedRoute>
             }
           />

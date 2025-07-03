@@ -120,6 +120,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
           { to: '/admin/transport-management', icon: <Bus size={18} />, label: 'Transport' },
           { to: '/admin/events', icon: <Calendar size={18} />, label: 'Events' },
           { to: '/admin/notices', icon: <Bell size={18} />, label: 'Notices' },
+          { to: '/admin/schedule', icon: <Clock size={18} />, label: 'Schedule' },
           { to: '/admin/settings', icon: <Settings size={18} />, label: 'Settings' },
         ];
       case 'teacher':

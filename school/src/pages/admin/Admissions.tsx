@@ -2914,7 +2914,16 @@ const handleChangePassword = async (studentId: number, studentPassword: string, 
                       </div>
                       <div className="ml-4 min-w-[100px]">
                         <div className="text-sm font-medium text-gray-900">
-                          {student.user_name || "Unknown Student"}
+                          <a 
+                            href={`/admin/students/${student.id}`} 
+                            className="text-blue-600 hover:text-blue-800 hover:underline"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigate(`/admin/students/${student.id}`);
+                            }}
+                          >
+                            {student.user_name || "Unknown Student"}
+                          </a>
                         </div>
                         {student.dob && (
                           <div className="text-sm text-gray-500">
