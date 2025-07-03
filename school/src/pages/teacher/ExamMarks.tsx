@@ -199,63 +199,64 @@ const ExamMarks: React.FC = () => {
         {/* Selectors Card */}
         <Card className="shadow-lg">
           <div className="space-y-6 p-6">
-            {/* Class Selector */}
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
-              <div className="relative">
-                <select
-                    value={selectedClassId ?? ''}
-                    onChange={e => setSelectedClassId(Number(e.target.value))}
-                    className="appearance-none w-full p-3 pl-4 pr-10 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-400 cursor-pointer"
-                >
-                  <option value="" disabled>-- Select a Class --</option>
-                  {classes.map(c => (
-                      <option key={c.class_id} value={c.class_id}>{c.class_name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" size={20} />
+            {/* Class, Exam, Subject Selectors in one row */}
+            <div className="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0">
+              {/* Class Selector */}
+              <div className="relative flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+                <div className="relative">
+                  <select
+                      value={selectedClassId ?? ''}
+                      onChange={e => setSelectedClassId(Number(e.target.value))}
+                      className="appearance-none w-full p-3 pl-4 pr-10 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-400 cursor-pointer"
+                  >
+                    <option value="" disabled>-- Select a Class --</option>
+                    {classes.map(c => (
+                        <option key={c.class_id} value={c.class_id}>{c.class_name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" size={20} />
+                </div>
+              </div>
+
+              {/* Exam Selector */}
+              <div className="relative flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select Exam</label>
+                <div className="relative">
+                  <select
+                      value={selectedExamId ?? ''}
+                      onChange={e => setSelectedExamId(Number(e.target.value))}
+                      className="appearance-none w-full p-3 pl-4 pr-10 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-400 cursor-pointer"
+                      disabled={exams.length === 0}
+                  >
+                    <option value="" disabled>-- Select an Exam --</option>
+                    {exams.map(exam => (
+                        <option key={exam.exam_id} value={exam.exam_id}>{exam.exam_name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" size={20} />
+                </div>
+              </div>
+
+              {/* Subject Selector */}
+              <div className="relative flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select Subject</label>
+                <div className="relative">
+                  <select
+                      value={selectedSubjectId ?? ''}
+                      onChange={e => setSelectedSubjectId(Number(e.target.value))}
+                      className="appearance-none w-full p-3 pl-4 pr-10 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-400 cursor-pointer"
+                      disabled={subjects.length === 0}
+                  >
+                    <option value="" disabled>-- Select a Subject --</option>
+                    {subjects.map(subject => (
+                        <option key={subject.id} value={subject.subject_id}>{subject.subject_name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" size={20} />
+                </div>
               </div>
             </div>
-
-            {/* Exam Selector */}
-            {exams.length > 0 && (
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Exam</label>
-                  <div className="relative">
-                    <select
-                        value={selectedExamId ?? ''}
-                        onChange={e => setSelectedExamId(Number(e.target.value))}
-                        className="appearance-none w-full p-3 pl-4 pr-10 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-400 cursor-pointer"
-                    >
-                      <option value="" disabled>-- Select an Exam --</option>
-                      {exams.map(exam => (
-                          <option key={exam.exam_id} value={exam.exam_id}>{exam.exam_name}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" size={20} />
-                  </div>
-                </div>
-            )}
-
-            {/* Subject Selector */}
-            {subjects.length > 0 && (
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Subject</label>
-                  <div className="relative">
-                    <select
-                        value={selectedSubjectId ?? ''}
-                        onChange={e => setSelectedSubjectId(Number(e.target.value))}
-                        className="appearance-none w-full p-3 pl-4 pr-10 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-400 cursor-pointer"
-                    >
-                      <option value="" disabled>-- Select a Subject --</option>
-                      {subjects.map(subject => (
-                          <option key={subject.id} value={subject.subject_id}>{subject.subject_name}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" size={20} />
-                  </div>
-                </div>
-            )}
 
             {/* Section Selector */}
             {sections.length > 1 && (
