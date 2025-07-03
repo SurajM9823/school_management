@@ -107,12 +107,12 @@ const TopBar: React.FC<TopBarProps> = ({ setSidebarOpen }) => {
               onClick={() => setSidebarOpen(true)}
             >
               <span className="sr-only">Open sidebar</span>
-              <Menu className="h-6 w-6" aria-hidden="true" />
+              <Menu className="h-6 w-6 text-gray-50 font-semibold" aria-hidden="true" />
             </button>
             
             {/* Search */}
             <div className="hidden md:flex items-center justify-between space-x-2">
-              <Menu className="h-4 w-4 text-white" aria-hidden="true" />
+              <Menu className="h-5 w-5 text-white" aria-hidden="true" />
               <span className="text-gray-200 text-lg font-bold">{isLoading ? 'Loading...' : schoolData?.name || 'School Management System'}</span>
               
             </div>
@@ -121,11 +121,11 @@ const TopBar: React.FC<TopBarProps> = ({ setSidebarOpen }) => {
           <div className="flex items-center space-x-3">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" aria-hidden="true" />
+                  <Search className="h-5 w-5 text-gray-400" aria-hidden="true" />
                 </div>
                 <input
                   type="text"
-                  className="block w-full md:w-48 lg:w-48 pl-10 pr-3 py-1 border border-gray-200 rounded-md leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-600 focus:border-blue-600 sm:text-sm"
+                  className="block w-full md:w-52 lg:w-52 pl-10 pr-3 py-2 border border-gray-200 rounded-md leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 sm:text-sm"
                   placeholder="Search anything..."
                 />
               </div>
@@ -211,7 +211,7 @@ const TopBar: React.FC<TopBarProps> = ({ setSidebarOpen }) => {
                 style={{  padding: '13px 8px', border: 'none', marginRight: '0' }}
               >
                 <img
-                  className="h-10 w-10 rounded-full border"
+                  className="h-10 w-28 sm:h-10 sm:w-10 lg:h-10 lg:w-10 rounded-full border"
                   src={user.avatar || 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150'}
                   alt={`${user.name} avatar`}
                 />

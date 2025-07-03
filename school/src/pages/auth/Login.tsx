@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { School, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Lock } from 'lucide-react';
 import Button from '../../components/common/Button';
+import logo from '../../../public/images/smslogo.png';
+import emailIcon from '../../../public/icon/gmail.png';
+import lock from '../../../public/icon/lock.png';
 
 interface LocationState {
   from?: { pathname: string };
@@ -26,6 +29,8 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
   
   const from = (location.state as LocationState)?.from?.pathname || '/';
 
@@ -68,29 +73,31 @@ const handleSubmit = async (e: React.FormEvent) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <div className="min-h-screen flex flex-col justify-center" style={{ background: 'linear-gradient( #00c6a7, #082a68) fixed' }}>
+      <div className="sm:mx-auto sm:w-full sm:max-w-md lg:mx-auto">
+        <div
+  className="py-6 px-4 mx-5 lg:mx-auto shadow-lg sm:rounded-lg rounded-lg sm:px-8  lg:w-96"
+  style={{
+    background: 'linear-gradient(135deg, #e0f7f4, #ffffff)',
+    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+  }}
+>
+          <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <School className="h-12 w-12 text-blue-600" />
+          <img className=" h-20 w-auto" src={logo} alt="Logo" />
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          EduSync School Management
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Sign in to access your school dashboard
-        </p>
+        <h1 className="text-center text-xl font-extrabold text-primary">
+          School Management System
+        </h1>
+        <h3 className="text-center text-xs font-medium text-gray-600 mb-4">
+          Sign in to your account</h3>
       </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-lg sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
+              
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
+                  <img src={emailIcon} className="h-5 w-4 text-gray-400" />
                 </div>
                 <input
                   id="email"
@@ -100,53 +107,42 @@ const handleSubmit = async (e: React.FormEvent) => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                   placeholder="Email address"
+                  autoFocus
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
+             
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
+                  <img src={lock} className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                   placeholder="Password"
                 />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                  Remember me
-                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 focus:outline-none"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-6 w-5" /> : <Eye className="h-6 w-5" />}
+                </button>
               </div>
 
-              <div className="text-sm">
-                <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
-                  Forgot your password?
-                </a>
-              </div>
             </div>
+
 
             {error && (
               <div className="rounded-md bg-red-50 p-4">
@@ -161,66 +157,16 @@ const handleSubmit = async (e: React.FormEvent) => {
             <div>
               <Button
                 type="submit"
-                variant="primary"
-                className="w-full"
+                className="w-full btn bg-transparent text-gray-950 border border-primary hover:bg-darkPrimary hover:text-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 isLoading={isLoading}
               >
                 Sign in
               </Button>
             </div>
-          </form>
-          
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Demo Accounts</span>
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 gap-3">
-              <button
-                type="button"
-                onClick={() => setEmail('admin@example.com')}
-                className="text-sm text-blue-600 hover:text-blue-500"
-              >
-                Admin: admin@example.com
-              </button>
-              <button
-                type="button"
-                onClick={() => setEmail('teacher1@example.com')}
-                className="text-sm text-blue-600 hover:text-blue-500"
-              >
-                Teacher: teacher1@example.com
-              </button>
-              <button
-                type="button"
-                onClick={() => setEmail('parent1@example.com')}
-                className="text-sm text-blue-600 hover:text-blue-500"
-              >
-                Parent: parent1@example.com
-              </button>
-              <button
-                type="button"
-                onClick={() => setEmail('student1@example.com')}
-                className="text-sm text-blue-600 hover:text-blue-500"
-              >
-                Student: student1@example.com
-              </button>
-              <button
-                type="button"
-                onClick={() => setEmail('accountant1@example.com')}
-                className="text-sm text-blue-600 hover:text-blue-500"
-              >
-                Accountant: accountant1@example.com
-              </button>
-              <div className="flex justify-center">
-                <span className="text-sm text-gray-700">YourNewSecurePassword</span>
-              </div>
-            </div>
-          </div>
+          </form>   
+        </div>
+        <div className="mt-10 text-center text-sm text-gray-300">
+          &copy; {new Date().getFullYear()} School Management System. All rights reserved.
         </div>
       </div>
     </div>
