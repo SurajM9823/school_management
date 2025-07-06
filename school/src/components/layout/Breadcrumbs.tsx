@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight, Home } from 'lucide-react';
+import { assets } from '../../assets/assets';
 
 const Breadcrumbs: React.FC = () => {
   const location = useLocation();
@@ -13,12 +14,12 @@ const Breadcrumbs: React.FC = () => {
   };
 
   return (
-    <nav className="flex mb-2" aria-label="Breadcrumb">
+    <nav className="flex mb-1 mt-14 pt-3" aria-label="Breadcrumb">
       <ol className="flex items-center space-x-1">
         <li>
           <div>
-            <Link to="/" className="text-gray-400 hover:text-gray-500">
-              <Home className="flex-shrink-0 h-4 w-4" aria-hidden="true" />
+            <Link to="" className="text-gray-400 hover:text-gray-500">
+              <img src={assets.homeIcon} className="flex-shrink-0 h-4 w-4" aria-hidden="true" />
               <span className="sr-only">Home</span>
             </Link>
           </div>
@@ -41,7 +42,7 @@ const Breadcrumbs: React.FC = () => {
                 ) : (
                   <Link
                     to={routeTo}
-                    className="ml-1 text-sm font-medium text-blue-600 hover:text-blue-700"
+                    className="ml-1 text-sm font-medium text-primary hover:text-darkPrimary"
                   >
                     {getLabel(path)}
                   </Link>

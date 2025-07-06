@@ -4,7 +4,7 @@ import { Menu, Bell, MessageSquare, Search, CheckCircle, AlertTriangle, Info, XC
 import { useNavigate, Link } from 'react-router-dom';
 import clsx from 'clsx';
 import api from '../../api'; 
-
+import { assets } from '../../assets/assets';
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
 interface TopBarProps {
@@ -97,7 +97,7 @@ const TopBar: React.FC<TopBarProps> = ({ setSidebarOpen }) => {
 
 
   return (
-    <header className="z-20 sticky top-0" style={{ height: '66px', background: '#167F92' }}>
+    <header className="z-20 fixed top-0 pr-0 sm:pr-1 lg:pr-64" style={{ height: '66px', background: '#167F92', width:'100%' }}>
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-0"> {/* Changed to max-w-full for wider layout */}
         <div className="flex justify-between h-16">
           <div className="flex items-center">
@@ -137,7 +137,7 @@ const TopBar: React.FC<TopBarProps> = ({ setSidebarOpen }) => {
                 className="relative p-2 rounded-full text-gray-200 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2"
               >
                 <span className="sr-only">View notifications</span>
-                <Bell className="h-6 w-6" aria-hidden="true" />
+                <img src={assets.bellIcon} className="h-6 w-6" aria-hidden="true" />
                 {unreadNotificationsCount > 0 && (
                   <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white">
                      <span className="sr-only">{unreadNotificationsCount} new notifications</span>
@@ -189,13 +189,13 @@ const TopBar: React.FC<TopBarProps> = ({ setSidebarOpen }) => {
             </div>
             
             {/* Message Icon - can be enhanced similarly if needed */}
-            <button
+            {/* <button
               type="button"
               className="p-2 rounded-full text-gray-200 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 "
             >
               <span className="sr-only">View messages</span>
               <MessageSquare className="h-6 w-6" aria-hidden="true" />
-            </button>
+            </button> */}
             
             <div className="border-l border-gray-200 h-8 mx-2"></div>
 
@@ -223,9 +223,9 @@ const TopBar: React.FC<TopBarProps> = ({ setSidebarOpen }) => {
                       <h5 className="text-sm font-semibold text-gray-200 text-center">{user.name}</h5>
                       <p className="text-xs text-gray-200 capitalize text-center">{user.role}</p>
                     </div>
-                    <Link to="/profile" onClick={() => setIsProfileMenuOpen(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Your Profile</Link>
-                    <Link to="/settings" onClick={() => setIsProfileMenuOpen(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</Link>
-                    <button onClick={() => { handleLogout(); setIsProfileMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Logout</button>
+                    <Link to="/profile" onClick={() => setIsProfileMenuOpen(false)} className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 font-semibold"><img src={assets.userIcon} alt="" className='h-6'/> Your Profile</Link>
+                    <Link to="/settings" onClick={() => setIsProfileMenuOpen(false)} className=" px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 font-semibold"><img src={assets.settingIcon} alt="" className='h-6'/> Settings</Link>
+                    <button onClick={() => { handleLogout(); setIsProfileMenuOpen(false); }} className=" w-full text-left px-4 py-2 mb-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 font-semibold"><img src={assets.logoutIcon} alt="" className='h-5'/> Logout</button>
                  </div>
               )}
             </div>

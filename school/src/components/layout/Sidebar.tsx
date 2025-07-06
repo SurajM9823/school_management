@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import clsx from 'clsx';
-import logo from '../../../public/images/smslogo.png'; 
 import api from '../../api'; 
 import {
   School,
@@ -27,6 +26,7 @@ import {
   Activity,
   Bell,
 } from 'lucide-react';
+import { assets } from '../../assets/assets';
 
 // Define backend base URL
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
@@ -56,12 +56,12 @@ const SidebarLink: React.FC<SidebarLinkProps> = ({ to, icon, label, current }) =
     to={to}
     className={clsx(
       current
-        ? 'text-primary border-l-4 border-darkPrimary font-semibold bg-lightPrimary'
-        : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900',
-      'group flex items-center px-3 py-2 text-sm font-medium transition-all duration-150'
+        ? 'text-darkPrimary border-r-4 border-darkPrimary font-semibold bg-lightPrimary'
+        : 'text-gray-600 hover:bg-lightPrimary hover:border-r-8 hover:border-darkPrimary',
+      'group flex items-center pl-6 py-3 text-sm font-medium transition-all duration-150'
     )}
   >
-    <div className={clsx('mr-3 flex-shrink-0 h-5 w-5', current ? 'text-darkPrimary' : 'text-gray-500 group-hover:text-gray-700')}>
+    <div className={clsx('mr-4 flex-shrink-0 h-5 w-5', current ? 'text-darkPrimary' : 'text-gray-500 group-hover:text-gray-700')}>
       {icon}
     </div>
     <span className="truncate" >{label}</span>
@@ -110,18 +110,18 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
     switch (user.role) {
       case 'admin':
         return [
-          { to: '/admin/dashboard', icon: <School size={18} />, label: 'Dashboard' },
-          { to: '/admin/admissions', icon: <Users size={18} />, label: 'Admissions' },
-          { to: '/admin/teachers', icon: <BookOpen size={18} />, label: 'Teachers' },
-          { to: '/admin/staff-management', icon: <Briefcase size={18} />, label: 'Staff Management' },
-          { to: '/admin/classes', icon: <Calendar size={18} />, label: 'Classes' },
-          { to: '/admin/exams', icon: <FileText size={18} />, label: 'Exams' },
-          { to: '/admin/scholarships', icon: <Award size={18} />, label: 'Scholarships' },
-          { to: '/admin/transport-management', icon: <Bus size={18} />, label: 'Transport' },
-          { to: '/admin/events', icon: <Calendar size={18} />, label: 'Events' },
-          { to: '/admin/notices', icon: <Bell size={18} />, label: 'Notices' },
-          { to: '/admin/schedule', icon: <Clock size={18} />, label: 'Schedule' },
-          { to: '/admin/settings', icon: <Settings size={18} />, label: 'Settings' },
+          { to: '/admin/dashboard', icon: <img src={assets.homeIcon} alt='home' />, label: 'Dashboard' },
+          { to: '/admin/admissions', icon: <img src={assets.usersIcon} alt='' />, label: 'Admissions' },
+          { to: '/admin/teachers', icon: <img src={assets.teacherIcon} alt='' />, label: 'Teachers' },
+          { to: '/admin/staff-management', icon: <img src={assets.staffIcon} alt='' />, label: 'Staff Management' },
+          { to: '/admin/classes', icon: <img src={assets.classIcon} alt='' />, label: 'Classes' },
+          { to: '/admin/exams', icon: <img src={assets.examIcon} alt='' />, label: 'Exams' },
+          { to: '/admin/scholarships', icon: <img src={assets.scholershipIcon} alt='' />, label: 'Scholarships' },
+          { to: '/admin/transport-management', icon: <img src={assets.transportIcon} alt='' />, label: 'Transport' },
+          { to: '/admin/events', icon: <img src={assets.eventIcon} alt='' />, label: 'Events' },
+          { to: '/admin/notices', icon: <img src={assets.bellIcon} alt='' />, label: 'Notices' },
+          { to: '/admin/schedule', icon: <img src={assets.scheduleIcon} alt='' />, label: 'Schedule' },
+          { to: '/admin/settings', icon: <img src={assets.settingIcon} alt='' />, label: 'Settings' },
         ];
       case 'teacher':
         return [
@@ -205,7 +205,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
             {isLoading ? (
               <div className="h-12 w-12 animate-pulse rounded-md" />
             ) : error || !schoolData?.logo ? (
-               <img src={logo} alt="Logo" className="h-12" />
+               <img src={assets.logo} alt="Logo" className="h-12" />
             ) : (
               <img
                 src={schoolData.logo}
@@ -226,10 +226,10 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
             </span>
           </div>
         </div>
-        <div className="mt-1 flex flex-col flex-grow">
-          <nav className="flex-1 px-2 space-y-1">
+        <div className="flex flex-col flex-grow">
+          <nav className="flex-1 px-0 ">
             {navigation.map((item) => (
-              <SidebarLink
+              <SidebarLink 
                 key={item.to}
                 to={item.to}
                 icon={React.cloneElement(item.icon as React.ReactElement, {
@@ -240,17 +240,17 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
               />
             ))}
           </nav>
-          <div className="px-2 mt-auto border-t border-darkPrimary pt-1">
+          <div className="mt-auto border-t border-darkPrimary">
             <Link
               to="/profile"
               className={clsx(
                 location.pathname === '/profile'
-                  ? ' text-primary border-l-4 border-darkPrimary font-semibold bg-lightPrimary'
-                  : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900',
-                'group flex items-center px-3 py-3 text-sm font-medium rounded-r-md'
+                  ? ' text-darkPrimary border-r-4 border-darkPrimary font-semibold bg-lightPrimary'
+                  : 'text-gray-600 hover:bg-lightPrimary hover:border-r-4 hover:border-darkPrimary',
+                'group flex items-center pl-6 py-2 text-sm font-medium'
               )}
             >
-              <User
+              <img src={assets.userIcon}
                 className={clsx(
                   'mr-3 flex-shrink-0 h-5 w-5',
                   location.pathname === '/profile' ? 'text-blue-600' : 'text-gray-500 group-hover:text-gray-700'

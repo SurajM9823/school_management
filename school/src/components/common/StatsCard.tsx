@@ -50,7 +50,7 @@ const StatsCard: React.FC<StatsCardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow duration-200">
+    <div className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow duration-200">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-gray-500">{title}</p>
@@ -66,7 +66,7 @@ const StatsCard: React.FC<StatsCardProps> = ({
           )}
         </div>
         
-        <div className={clsx('p-3 rounded-full', getIconBgColor())}>
+        <div className={clsx('p-2 rounded-full', getIconBgColor())}>
           {icon}
         </div>
       </div>
