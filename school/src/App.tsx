@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Login from "./pages/auth/Login";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
@@ -84,11 +84,44 @@ import AddSchool from "./pages/superadmin/AddSchool";
 import SubscriptionManagement from "./pages/superadmin/SubscriptionManagement";
 import ActivityTracker from "./pages/superadmin/ActivityTracker";
 
+const AutoRedirect: React.FC = () => {
+  const { user, isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Redirect to role-specific dashboard
+  switch (user.role) {
+    case 'admin':
+      return user.is_superuser ? <Navigate to="/superadmin/dashboard" replace /> : <Navigate to="/admin/dashboard" replace />;
+    case 'teacher':
+      return <Navigate to="/teacher/dashboard" replace />;
+    case 'parent':
+      return <Navigate to="/parent/dashboard" replace />;
+    case 'student':
+      return <Navigate to="/student/dashboard" replace />;
+    case 'accountant':
+      return <Navigate to="/accountant/fees" replace />;
+    default:
+      return <Navigate to="/login" replace />;
+  }
+};
+
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
+          <Route path="/" element={<AutoRedirect />} />
           <Route path="/login" element={<Login />} />
 
           {/* Superadmin Routes */}

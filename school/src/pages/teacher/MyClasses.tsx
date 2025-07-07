@@ -250,14 +250,14 @@ const MyClasses: React.FC = () => {
                                 >
                                   View Students
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    icon={<Edit3 size={16} />}
-                                    onClick={() => handleAddRemarks(subject.id)}
-                                >
-                                  Add Remarks
-                                </Button>
+                                {/*<Button*/}
+                                {/*    variant="outline"*/}
+                                {/*    size="sm"*/}
+                                {/*    icon={<Edit3 size={16} />}*/}
+                                {/*    onClick={() => handleAddRemarks(subject.id)}*/}
+                                {/*>*/}
+                                {/*  Add Remarks*/}
+                                {/*</Button>*/}
                               </div>
                             </div>
                           </li>
