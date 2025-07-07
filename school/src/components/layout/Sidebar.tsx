@@ -27,6 +27,7 @@ import {
   Activity,
   Bell,
 } from 'lucide-react';
+import ExpandableSidebarMenu from './ExpandableSidebarMenu';
 
 // Define backend base URL
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';

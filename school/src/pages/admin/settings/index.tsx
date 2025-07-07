@@ -58,7 +58,8 @@ const Settings: React.FC = () => {
     { id: "session", label: "Session Config", icon: <Calendar size={20} />, to: "/admin/settings/session" },
     { id: "defaults", label: "Default Values", icon: <SettingsIcon size={20} />, to: "/admin/settings/defaults" },
     { id: "notifications", label: "Email & SMS", icon: <Mail size={20} />, to: "/admin/settings/notifications" },
-    { id: "permissions", label: "Roles & Permissions", icon: <Lock size={20} />, to: "/admin/settings/permissions" },
+    // Roles & Permissions temporarily removed
+    // { id: "permissions", label: "Roles & Permissions", icon: <Lock size={20} />, to: "/admin/settings/permissions" },
     { id: "staff", label: "Staff Management", icon: <Users size={20} />, to: "/admin/settings/staff" },
     { id: "academic", label: "Academic Settings", icon: <BookOpen size={20} />, to: "/admin/settings/academic" },
     { id: "campus", label: "Campus Settings", icon: <Building size={20} />, to: "/admin/settings/campus" },

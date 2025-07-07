@@ -30,7 +30,6 @@ from core.serial.teacher.TeacherClasses import TeacherClassesAPIView
 from core.view.admin.scholarshipView import ScholarshipViewSet, ScholarshipAssignmentViewSet
 from core.view.admin.dashboard_view import admin_dashboard_stats, admin_activities
 from core.view.admin.noticeView import NoticeViewSet
-from core.view.admin.sheduleView import SchoolTimingViewSet, BreakViewSet, ClassScheduleViewSet, StaffDutyViewSet, ExamScheduleViewSet
 from core.serial.teacher.teacher_exam_marks import (
     TeacherExamMarkClassListAPIView,
     TeacherExamMarkStudentListAPIView,
@@ -49,11 +48,6 @@ router.register(r'bus-assignments', BusAssignmentViewSet)
 router.register(r'events', EventViewSet)
 router.register(r'event-assignments', EventAssignmentViewSet)
 router.register(r'notices', NoticeViewSet, basename='notice')
-router.register(r'school-timings', SchoolTimingViewSet, basename='school-timing')
-router.register(r'breaks', BreakViewSet, basename='break')
-router.register(r'class-schedules', ClassScheduleViewSet, basename='class-schedule')
-router.register(r'staff-duties', StaffDutyViewSet, basename='staff-duty')
-router.register(r'exam-schedules', ExamScheduleViewSet, basename='exam-schedule')
 
 urlpatterns = [
     # Authentication URLs

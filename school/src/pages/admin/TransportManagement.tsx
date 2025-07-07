@@ -318,9 +318,56 @@ const TransportManagement: React.FC = () => {
     setShowBusDetailModal(true);
   };
   
-  const handleViewRouteDetails = (route: RouteDetails) => {
+  const handleViewRouteDetails = async (route: RouteDetails) => {
     setSelectedRouteDetail(route);
     setShowRouteDetailModal(true);
+    
+    try {
+      setLoading(true);
+      // Get detailed report data for this route - this will have complete student info
+      const reportResponse = await api.get('/bus-assignments/transport-report-data/', {
+        params: { route_id: route.id }
+      });
+      
+      // Find this route in the report data
+      const routeData = reportResponse.data?.routes?.find((r: any) => r.id === route.id);
+      
+      if (routeData && routeData.assignments && routeData.assignments.length > 0) {
+        // Use the assignments from the report data which has complete student info
+        setSelectedRouteDetail(prev => prev ? {
+          ...prev, 
+          assignments: routeData.assignments.map((a: any) => ({
+            id: a.assignment_id,
+            student: {
+              id: a.student_id,
+              user_name: a.student_name,
+              class_name: a.class_name || 'Unknown',
+              section_name: a.section_name || '-'
+            },
+            is_active: true,
+            custom_fee: a.fee,
+            stop: a.stop,
+            bus: a.bus_number ? { bus_number: a.bus_number } : null
+          }))
+        } : null);
+      } else {
+        // Fallback to regular assignments API if report data doesn't have what we need
+        const response = await api.get('/bus-assignments/', { params: { route_id: route.id } });
+        const assignments = response.data || [];
+        
+        // Filter only active assignments
+        const activeAssignments = assignments.filter(a => a.is_active);
+        
+        // Add assignments to the route detail
+        setSelectedRouteDetail(prev => prev ? {...prev, assignments: activeAssignments} : null);
+      }
+    } catch (err) {
+      console.error('Failed to fetch route assignments:', err);
+      // Fallback to basic route info without assignments
+      setSelectedRouteDetail(route);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSaveBusFee = async (routeId: number) => {
@@ -812,6 +859,44 @@ const TransportManagement: React.FC = () => {
                   )}
                 </div>
               </div>
+              
+              {/* Students section - similar to print report format */}
+              {selectedRouteDetail.assignments && selectedRouteDetail.assignments.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">Students</h3>
+                  <p className="text-sm text-gray-500 mb-2">Total Students: {selectedRouteDetail.assignments.length}</p>
+                  <div className="border rounded-md overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">S.No.</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Section</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Stop</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Bus No.</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fee (NPR)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {selectedRouteDetail.assignments.map((assignment, index) => (
+                          <tr key={assignment.id || index}>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm">{index + 1}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">{assignment.student.user_name}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm">{assignment.student.class_name || 'N/A'}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm">{assignment.student.section_name || '-'}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm">{assignment.stop}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm">{assignment.bus?.bus_number || 'Not Assigned'}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm">
+                              {assignment.custom_fee ? `NPR ${assignment.custom_fee}` : 'Default'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <div className="bg-gray-50 px-6 py-3 flex justify-end">

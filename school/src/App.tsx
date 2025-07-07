@@ -71,6 +71,12 @@ import AccountantReports from "./pages/accountant/Reports";
 import AccountantSettings from "./pages/accountant/Settings";
 import FeeStructures from "./pages/accountant/FeeStructures";
 import AccountantExpenses from "./pages/accountant/Expenses";
+import FeeStructureSetup from "./pages/accountant/fee-management/FeeStructureSetup";
+import FeePackagePlans from "./pages/accountant/fee-management/FeePackagePlans";
+import AssignFeesToStudents from "./pages/accountant/fee-management/AssignFeesToStudents";
+import GenerateMonthlyBills from "./pages/accountant/billing/GenerateMonthlyBills";
+import StudentBillingLedger from "./pages/accountant/billing/StudentBillingLedger";
+import DueFeeReport from "./pages/accountant/billing/DueFeeReport";
 import Profile from "./pages/common/Profile";
 import NotFound from "./pages/common/NotFound";
 import SuperadminDashboard from "./pages/superadmin/SuperadminDashboard";
@@ -158,7 +164,8 @@ function App() {
             <Route path="session" element={<SessionConfig />} />
             <Route path="defaults" element={<DefaultValues />} />
             <Route path="notifications" element={<Notifications />} />
-            <Route path="permissions" element={<RolesPermissions />} />
+            {/* Roles & Permissions route temporarily removed */}
+            {/* <Route path="permissions" element={<RolesPermissions />} /> */}
             <Route path="staff" element={<StaffManagementSettings />} />
             <Route path="academic" element={<AcademicSettings />} />
             <Route path="campus" element={<CampusSettings />} />
@@ -300,6 +307,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Schedule route temporarily removed
           <Route
             path="/admin/schedule"
             element={
@@ -308,6 +316,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          */}
 
           {/* Teacher Routes */}
           <Route
@@ -358,6 +367,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Teacher schedule route temporarily removed
           <Route
             path="/teacher/schedule"
             element={
@@ -366,6 +376,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          */}
           <Route
             path="/teacher/materials"
             element={
@@ -585,6 +596,56 @@ function App() {
             element={
               <ProtectedRoute roles={["accountant"]}>
                 <FeeStructures />
+              </ProtectedRoute>
+            }
+          />
+          {/* Fee Management Sub-pages */}
+          <Route
+            path="/accountant/fee-management/structure-setup"
+            element={
+              <ProtectedRoute roles={["accountant"]}>
+                <FeeStructureSetup />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/accountant/fee-management/package-plans"
+            element={
+              <ProtectedRoute roles={["accountant"]}>
+                <FeePackagePlans />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/accountant/fee-management/assign-fees"
+            element={
+              <ProtectedRoute roles={["accountant"]}>
+                <AssignFeesToStudents />
+              </ProtectedRoute>
+            }
+          />
+          {/* Billing Sub-pages */}
+          <Route
+            path="/accountant/billing/generate-monthly-bills"
+            element={
+              <ProtectedRoute roles={["accountant"]}>
+                <GenerateMonthlyBills />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/accountant/billing/student-billing-ledger"
+            element={
+              <ProtectedRoute roles={["accountant"]}>
+                <StudentBillingLedger />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/accountant/billing/due-fee-report"
+            element={
+              <ProtectedRoute roles={["accountant"]}>
+                <DueFeeReport />
               </ProtectedRoute>
             }
           />
