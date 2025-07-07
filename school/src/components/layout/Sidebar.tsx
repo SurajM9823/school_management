@@ -26,6 +26,7 @@ import {
   Activity,
   Bell,
 } from 'lucide-react';
+import { assets } from '../../assets/assets';
 
 // Define backend base URL
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';

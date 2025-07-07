@@ -213,29 +213,64 @@ const StaffManagement: React.FC = () => {
   const selectedRole = watch('role');
   const employmentType = watch('employment_type');
 
-
-  useEffect(() => {
+useEffect(() => {
   const source = axios.CancelToken.source();
   console.log('StaffManagement useEffect - user:', user);
+
+  // If user is undefined, wait for authentication
   if (!user) {
     console.log('No user found, waiting for authentication');
     return;
   }
-  if (user.role !== 'admin') {
-    console.log('User is not admin, redirecting to login');
+
+  // If user is present but role is missing or not admin, redirect
+  if (!user.role || user.role !== 'admin') {
+    console.log('User is not admin or role missing, redirecting to login');
     navigate('/login');
     toast.error('Unauthorized access. Please log in as admin.');
     return;
   }
-  if (!user.school_id) {
-    console.log('User has no school_id:', user);
-    toast.error('Your account is not associated with a school. Please contact support.');
+
+  // If school_id is present, fetch data immediately
+  if (user.school_id) {
+    console.log('Fetching staff data with school_id:', user.school_id);
+    fetchData(source.token);
     return;
   }
-  console.log('Fetching staff data with school_id:', user.school_id);
-  fetchData(source.token);
+
+  // If school_id is missing, try fetching it from /school/settings/
+  console.log('User data incomplete, fetching school_id:', user);
+  const fetchSchoolId = async () => {
+    try {
+      const schoolResponse = await api.get('/school/settings/', { cancelToken: source.token });
+      console.log('Fetched school response:', schoolResponse.data);
+      const fetchedSchoolId = schoolResponse.data?.school_id;
+      if (fetchedSchoolId) {
+        console.log('Fetched school_id:', fetchedSchoolId);
+        // Update user object with fetched school_id
+        // Since we can't modify useAuth, we'll pass the fetched school_id to fetchData
+        fetchData(source.token, fetchedSchoolId);
+      } else {
+        console.log('No school_id in school response:', schoolResponse.data);
+        toast.error('Your account is not associated with a school. Please contact support.');
+      }
+    } catch (err: any) {
+      if (axios.isCancel(err)) {
+        console.log('School fetch canceled:', err.message);
+        return;
+      }
+      console.error('Fetch school_id error:', err.response?.data || err.message);
+      const errorMessage = err.response?.data?.detail || 'Failed to fetch school data';
+      toast.error(errorMessage);
+    }
+  };
+
+  fetchSchoolId();
+
   return () => source.cancel('Request canceled due to component unmount');
 }, [user, navigate]);
+
+
 
   useEffect(() => {
     console.log('Current staffRoles:', staffRoles);
@@ -255,13 +290,14 @@ const StaffManagement: React.FC = () => {
     }
   }, [staffRoles, departments, leaveTypes, academicSessions, editingStaff, showForm, showLeaveModal, setValue, leaveForm, watch]);
 
-  const fetchData = async (cancelToken?: any) => {
+  const fetchData = async (cancelToken?: any, schoolId?: string) => {
   setIsLoading(true);
   setError(null);
   try {
-    if (!user?.school_id) {
+    if (!user?.school_id && !schoolId) {
       throw new Error('User school ID not found');
     }
+    const effectiveSchoolId = schoolId || user?.school_id;
     const [
       staffResponse,
       schoolResponse,
@@ -272,14 +308,14 @@ const StaffManagement: React.FC = () => {
       leaveTypeResponse,
       sessionResponse,
     ] = await Promise.all([
-      api.get('/school/settings/staff/', { cancelToken }), // Remove schoolId
-      api.get('/school/settings/', { cancelToken }), // Remove schoolId
-      api.get('/school/settings/staff-roles/', { cancelToken }), // Remove schoolId
-      api.get('/school/settings/departments/', { cancelToken }), // Remove schoolId
-      api.get('/school/settings/classes/', { cancelToken }), // Remove schoolId
-      api.get('/school/settings/subjects/', { cancelToken }), // Remove schoolId
-      api.get('/school/settings/leave-types/', { cancelToken, params: { leave_for: 'staff' } }), // Remove schoolId
-      api.get('/school/settings/sessions/', { cancelToken }), // Remove schoolId
+      api.get('/school/settings/staff/', { cancelToken }),
+      api.get('/school/settings/', { cancelToken }),
+      api.get('/school/settings/staff-roles/', { cancelToken }),
+      api.get('/school/settings/departments/', { cancelToken }),
+      api.get('/school/settings/classes/', { cancelToken }),
+      api.get('/school/settings/subjects/', { cancelToken }),
+      api.get('/school/settings/leave-types/', { cancelToken, params: { leave_for: 'staff' } }),
+      api.get('/school/settings/sessions/', { cancelToken }),
     ]);
 
     console.log('Staff Response:', staffResponse.data);
@@ -293,7 +329,6 @@ const StaffManagement: React.FC = () => {
 
     console.log('Raw staff data:', staffResponse.data);
     const mappedStaff = staffResponse.data.map((staff: any) => {
-      // Extract user data from nested user object
       const userData = staff.user || {};
       return {
         id: staff.id,
@@ -335,7 +370,7 @@ const StaffManagement: React.FC = () => {
     });
     console.log('Mapped staff data:', mappedStaff);
     setStaffList(mappedStaff);
-    setSchools(schoolResponse.data || []);
+    setSchools(schoolResponse.data ? [schoolResponse.data] : []);
     setStaffRoles(roleResponse.data);
     setDepartments(deptResponse.data);
     setClasses(classResponse.data);
