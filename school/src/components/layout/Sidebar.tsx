@@ -1,9 +1,8 @@
-// src/components/Sidebar.tsx
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import clsx from 'clsx';
-import api from '../../api'; 
+import api from '../../api';
 import {
   School,
   Users,
@@ -43,7 +42,7 @@ interface SidebarLinkProps {
   current: boolean;
 }
 
-interface SchoolData{
+interface SchoolData {
   name: string;
   address: string;
   contact: string;
@@ -64,7 +63,7 @@ const SidebarLink: React.FC<SidebarLinkProps> = ({ to, icon, label, current }) =
     <div className={clsx('mr-4 flex-shrink-0 h-5 w-5', current ? 'text-darkPrimary' : 'text-gray-500 group-hover:text-gray-700')}>
       {icon}
     </div>
-    <span className="truncate" >{label}</span>
+    <span className="truncate">{label}</span>
   </Link>
 );
 
@@ -87,8 +86,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
         if (data.logo && typeof data.logo === 'string' && data.logo.startsWith('/media')) {
           data.logo = `${BACKEND_BASE_URL}${data.logo}`;
         }
-        setSchoolData({ name: data.name, address: data.address ,contact: data.contact,email: data.email,logo: data.logo });//eslint-disable-next-line
-      } catch (err: any ) {
+        setSchoolData({ name: data.name, address: data.address, contact: data.contact, email: data.email, logo: data.logo });
+      } catch (err: any) {
         console.error('Fetch school data error:', err);
         setError('Failed to load school data.');
       } finally {
@@ -98,8 +97,9 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
 
     fetchSchoolData();
   }, [user]);
-  
+
   if (!user) return null;
+
   const getNavigationLinks = () => {
     if (user.is_superuser) {
       return [
@@ -120,7 +120,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
           { to: '/admin/transport-management', icon: <img src={assets.transportIcon} alt='' />, label: 'Transport' },
           { to: '/admin/events', icon: <img src={assets.eventIcon} alt='' />, label: 'Events' },
           { to: '/admin/notices', icon: <img src={assets.bellIcon} alt='' />, label: 'Notices' },
-          { to: '/admin/schedule', icon: <img src={assets.scheduleIcon} alt='' />, label: 'Schedule' },
+          // Removed: { to: '/admin/schedule', icon: <img src={assets.scheduleIcon} alt='' />, label: 'Schedule' },
           { to: '/admin/settings', icon: <img src={assets.settingIcon} alt='' />, label: 'Settings' },
         ];
       case 'teacher':
@@ -205,7 +205,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
             {isLoading ? (
               <div className="h-12 w-12 animate-pulse rounded-md" />
             ) : error || !schoolData?.logo ? (
-               <img src={assets.logo} alt="Logo" className="h-12" />
+              <img src={assets.logo} alt="Logo" className="h-12" />
             ) : (
               <img
                 src={schoolData.logo}
@@ -216,20 +216,20 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
             )}
             <span className="ml-2 text-white text-sm font-bold truncate">
               {isLoading
-              ? 'Loading...'
-              : (schoolData?.name
-                ? schoolData.name
-                  .split(' ')
-                  .map(word => word[0]?.toUpperCase() || '')
-                  .join('')
-                : 'SMS')}
+                ? 'Loading...'
+                : (schoolData?.name
+                    ? schoolData.name
+                        .split(' ')
+                        .map(word => word[0]?.toUpperCase() || '')
+                        .join('')
+                    : 'SMS')}
             </span>
           </div>
         </div>
         <div className="flex flex-col flex-grow">
-          <nav className="flex-1 px-0 ">
+          <nav className="flex-1 px-0">
             {navigation.map((item) => (
-              <SidebarLink 
+              <SidebarLink
                 key={item.to}
                 to={item.to}
                 icon={React.cloneElement(item.icon as React.ReactElement, {
@@ -245,12 +245,13 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
               to="/profile"
               className={clsx(
                 location.pathname === '/profile'
-                  ? ' text-darkPrimary border-r-4 border-darkPrimary font-semibold bg-lightPrimary'
+                  ? 'text-darkPrimary border-r-4 border-darkPrimary font-semibold bg-lightPrimary'
                   : 'text-gray-600 hover:bg-lightPrimary hover:border-r-4 hover:border-darkPrimary',
                 'group flex items-center pl-6 py-2 text-sm font-medium'
               )}
             >
-              <img src={assets.userIcon}
+              <img
+                src={assets.userIcon}
                 className={clsx(
                   'mr-3 flex-shrink-0 h-5 w-5',
                   location.pathname === '/profile' ? 'text-blue-600' : 'text-gray-500 group-hover:text-gray-700'
