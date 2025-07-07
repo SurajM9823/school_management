@@ -1,12 +1,8 @@
 
 // src/components/Footer.tsx
 import React, { useState, useEffect } from 'react';
-import { Mail, Phone, Globe, MapPinned } from 'lucide-react';
 import api from '../../api';
-import emailIcon from '../../../public/icon/gmail.png';
-import callIcon from '../../../public/icon/call.png';
-import websiteIcon from '../../../public/icon/website.png';
-import locationIcon from '../../../public/icon/location.png';
+import { assets } from '../../assets/assets';
 // Define backend base URL
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
@@ -55,7 +51,7 @@ const Footer: React.FC = () => {
           </span>
           <div className="flex flex-wrap justify-center sm:justify-end items-center space-x-3 text-gray-300 text-sm mt-3 sm:mt-0">
             <div className="flex items-center">
-              <img src={locationIcon} className="h-6 w-6 text-gray-300 mr-1" />
+              <img src={assets.locationIcon} className="h-6 w-6 text-gray-300 mr-1" />
               <a
                 href={`mailto:${schoolData?.email || 'info@sms.edu'}`}
                 className="text-sm hover:underline"
@@ -64,7 +60,7 @@ const Footer: React.FC = () => {
               </a>
             </div>
             <div className="flex items-center">
-              <img src={emailIcon} className="h-6 w-4 text-gray-300 mr-1" />
+              <img src={assets.gmailIcon} className="h-6 w-4 text-gray-300 mr-1" />
               <a
                 href={`mailto:${schoolData?.email || 'info@sms.edu'}`}
                 className="text-sm text-gary-100 hover:underline"
@@ -73,7 +69,7 @@ const Footer: React.FC = () => {
               </a>
             </div>
             <div className="flex items-center">
-              <img src={callIcon} className="h-6 w-6 text-gray-300 mr-1" />
+              <img src={assets.callIcon} className="h-6 w-6 text-gray-300 mr-1" />
               <a
                 href={`tel:${schoolData?.phone || '+123-456-7890'}`}
                 className="ext-sm text-gary-100  hover:underline"
@@ -82,7 +78,7 @@ const Footer: React.FC = () => {
               </a>
             </div>
             <div className="flex items-center">
-              <img src={websiteIcon} className="h-6 w-6 text-gray-300 mr-1" />
+              <img src={assets.websiteIcon} className="h-6 w-6 text-gray-300 mr-1" />
               <a
                 href={schoolData?.website || 'https://sms.nirc.com.np'}
                 target="_blank"

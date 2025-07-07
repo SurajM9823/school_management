@@ -15,6 +15,7 @@ import Card from '../../components/common/Card';
 import StatsCard from '../../components/common/StatsCard';
 import Button from '../../components/common/Button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { assets } from '../../assets/assets';
 
 // Mock data
 const attendanceData = [
@@ -136,7 +137,7 @@ const AdminDashboard: React.FC = () => {
             <Button
               variant="primary"
               size="sm"
-              className='bg-primary hover:bg-darkPrimary text-white'
+              className='bg-primary hover:bg-darkPrimary text-white py-2'
               icon={<PlusCircle size={16} />}
             >
               New Admission
@@ -150,26 +151,25 @@ const AdminDashboard: React.FC = () => {
         <StatsCard
           title="Total Students"
           value={stats?.total_students.count.toString() || '0'}
-          icon={<Users size={24} />}
+          icon={<img src={assets.userIcon} className='h-15' alt='' />}
           color="blue"
         />
         <StatsCard
           title="Teachers"
           value={stats?.total_teachers.count.toString() || '0'}
-          icon={<UserCheck size={24} />}
+          icon={<img src={assets.teacherIcon} className='h-15' alt='' />}
           color="purple"
         />
         <StatsCard
           title="Active Classes"
           value={stats?.active_classes.count.toString() || '0'}
-          icon={<BookOpen size={24} />}
+          icon={<img src={assets.classIcon} className='h-15' alt='' />}
           color="teal"
         />
         <StatsCard
           title="Fee Collection"
           value="NPR 3.2L"
-          icon={<DollarSign size={24} />}
-          color="green"
+          icon={<img src={assets.feeIcon} className='h-15' alt='' />}
         />
       </div>
 
@@ -177,13 +177,13 @@ const AdminDashboard: React.FC = () => {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Attendance Chart */}
         <Card title="Attendance Overview">
-          <div className="h-80">
+          <div className="h-60">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={attendanceData}
                 margin={{
                   top: 5,
-                  right: 30,
+                  right: 20,
                   left: 20,
                   bottom: 5,
                 }}
@@ -218,7 +218,7 @@ const AdminDashboard: React.FC = () => {
                     ) : null}
                     <div className="relative flex space-x-3">
                       <div>
-                        <span className="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white bg-blue-500">
+                        <span className="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white bg-primary">
                           {activity.type === 'admission' ? (
                             <Users className="h-5 w-5 text-white" />
                           ) : (
@@ -250,7 +250,7 @@ const AdminDashboard: React.FC = () => {
           <div className="mt-2">
             <div
               onClick={handleViewAllActivities}
-              className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-500 cursor-pointer select-none"
+              className="flex items-center text-sm font-medium text-primary hover:text-darkPrimary cursor-pointer select-none"
               role="button"
               tabIndex={0}
             >
@@ -265,10 +265,10 @@ const AdminDashboard: React.FC = () => {
         <Card>
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <BookOpen className="h-6 w-6 text-purple-600" />
+              <img src={assets.scheduleIcon} className="h-8 w-8" />
             </div>
             <div className="ml-4">
-              <h3 className="text-lg font-medium text-gray-900">Exam Schedule</h3>
+              <h3 className="text-lg font-medium text-primary">Exam Schedule</h3>
               <p className="text-sm text-gray-500">
                 {stats?.exam_schedule 
                   ? `${stats.exam_schedule.name} starts on ${stats.exam_schedule.start_date}`
@@ -281,10 +281,10 @@ const AdminDashboard: React.FC = () => {
         <Card>
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Award className="h-6 w-6 text-yellow-500" />
+              <img src={assets.scholershipIcon} className="h-8 w-8" />
             </div>
             <div className="ml-4">
-              <h3 className="text-lg font-medium text-gray-900">Scholarship Program</h3>
+              <h3 className="text-lg font-medium text-primary">Scholarship Program</h3>
               <p className="text-sm text-gray-500">
                 {stats?.scholarship_count || 0} scholarships available
               </p>
@@ -314,7 +314,7 @@ const AdminDashboard: React.FC = () => {
                     onClick={() => handleFilterChange(filter)}
                     className={`px-4 py-2 rounded-md text-sm font-medium ${
                       activitiesFilter === filter
-                        ? 'bg-blue-100 text-blue-700'
+                        ? 'bg-blue-100 text-primary'
                         : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
@@ -339,7 +339,7 @@ const AdminDashboard: React.FC = () => {
                           )}
                           <div className="relative flex space-x-3">
                             <div>
-                              <span className="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white bg-blue-500">
+                              <span className="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white bg-primary">
                                 {activity.type === 'admission' ? (
                                   <Users className="h-5 w-5 text-white" />
                                 ) : activity.type === 'staff' ? (

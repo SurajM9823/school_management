@@ -1,11 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Eye, EyeOff, Lock } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import Button from '../../components/common/Button';
-import logo from '../../../public/images/smslogo.png';
-import emailIcon from '../../../public/icon/gmail.png';
-import lock from '../../../public/icon/lock.png';
+import Particles, { initParticlesEngine } from "@tsparticles/react";
+import { assets } from '../../assets/assets';
+import {
+  type Container,
+  type ISourceOptions,
+  MoveDirection,
+  OutMode,
+} from "@tsparticles/engine";
+// import { loadSlim } from "@tsparticles/slim";
+import { loadImageShape } from "@tsparticles/shape-image"; // Import for custom image shapes
 
 interface LocationState {
   from?: { pathname: string };
@@ -24,6 +31,7 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const [init, setInit] = useState(false);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,26 +39,25 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  
   const from = (location.state as LocationState)?.from?.pathname || '/';
 
-const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
     try {
-        const response = await login(email, password);
-        const user: User = response.user;
-        console.log('User after login:', user);
-        const redirectPath = getRedirectPath(user);
-        navigate(redirectPath, { replace: true });
+      const response = await login(email, password);
+      const user: User = response.user;
+      console.log('User after login:', user);
+      const redirectPath = getRedirectPath(user);
+      navigate(redirectPath, { replace: true });
     } catch (err: any) {
-        const errorMsg = err.response?.data?.non_field_errors?.[0] || err.message || 'Login failed. Please check your credentials or contact support.';
-        setError(errorMsg);
-        setIsLoading(false);
-        console.error('Login error:', err);
+      const errorMsg = err.response?.data?.non_field_errors?.[0] || err.message || 'Login failed. Please check your credentials or contact support.';
+      setError(errorMsg);
+      setIsLoading(false);
+      console.error('Login error:', err);
     }
-};
+  };
 
   const getRedirectPath = (user: User) => {
     if (user.is_superuser) {
@@ -72,32 +79,134 @@ const handleSubmit = async (e: React.FormEvent) => {
     }
   };
 
+  useEffect(() => {
+    initParticlesEngine(async (engine) => {
+      // await loadSlim(engine);
+      await loadImageShape(engine); // Load the image shape plugin
+    }).then(() => {
+      setInit(true);
+    });
+  }, []);
+
+  const particlesLoaded = async (container?: Container): Promise<void> => {
+    console.log('Particles loaded:', container);
+  };
+
+  const options: ISourceOptions = useMemo(
+    () => ({
+      background: {
+        color: {
+          value: "transparent", // Use the div's gradient as the background
+        },
+      },
+      fpsLimit: 60,
+      interactivity: {
+        events: {
+          onClick: {
+            enable: true,
+            mode: "push",
+          },
+          onHover: {
+            enable: true,
+            mode: "repulse",
+          },
+        },
+        modes: {
+          push: {
+            quantity: 4,
+          },
+          repulse: {
+            distance: 200,
+            duration: 0.4,
+          },
+        },
+      },
+      particles: {
+        color: {
+          value: "#ffffff",
+        },
+        shape: {
+          type: "image", 
+          options: {
+            image: [
+              {
+                src: `${assets.appleIcon}`, 
+                width: 100,
+                height: 100,
+              },
+            ],
+          },
+        },
+        links: {
+          color: "#ffffff",
+          distance: 100,
+          enable: true,
+          opacity: 0.5,
+          width: 1,
+        },
+        move: {
+          direction: MoveDirection.none,
+          enable: true,
+          outModes: {
+            default: OutMode.out,
+          },
+          random: true,
+          speed: 2,
+          straight: false,
+        },
+        number: {
+          density: {
+            enable: true,
+            area: 800,
+          },
+          value: 200, // Increase for denser network
+        },
+        opacity: {
+          value: 0.7,
+        },
+        size: {
+          value: { min: 2, max: 10 },
+        },
+      },
+      detectRetina: true,
+    }),
+    [],
+  );
+
   return (
-    <div className="min-h-screen flex flex-col justify-center" style={{ background: 'linear-gradient( #00c6a7, #082a68) fixed' }}>
-      <div className="sm:mx-auto sm:w-full sm:max-w-md lg:mx-auto">
+    <div className="min-h-screen flex flex-col justify-center relative" style={{ background: 'linear-gradient(#00c6a7, #082a68) fixed' }}>
+      {init && (
+        <Particles
+          id="tsparticles"
+          particlesLoaded={particlesLoaded}
+          options={options}
+          className="absolute inset-0 z-0"
+        />
+      )}
+      <div className="sm:mx-auto sm:w-full sm:max-w-md lg:mx-auto relative z-10">
         <div
-  className="py-6 px-4 mx-5 lg:mx-auto shadow-lg sm:rounded-lg rounded-lg sm:px-8  lg:w-96"
-  style={{
-    background: 'linear-gradient(135deg, #e0f7f4, #ffffff)',
-    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
-  }}
->
+          className="py-6 px-4 mx-5 lg:mx-auto shadow-lg sm:rounded-lg rounded-lg sm:px-8 lg:w-96"
+          style={{
+            background: 'linear-gradient(135deg, #e0f7f4, #ffffff)',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+          }}
+        >
           <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <img className=" h-20 w-auto" src={logo} alt="Logo" />
-        </div>
-        <h1 className="text-center text-xl font-extrabold text-primary">
-          School Management System
-        </h1>
-        <h3 className="text-center text-xs font-medium text-gray-600 mb-4">
-          Sign in to your account</h3>
-      </div>
+            <div className="flex justify-center">
+              <img className="h-20 w-auto" src={assets.logo} alt="Logo" />
+            </div>
+            <h1 className="text-center text-xl font-extrabold text-primary">
+              School Management System
+            </h1>
+            <h3 className="text-center text-xs font-medium text-gray-600 mb-4">
+              Sign in to your account
+            </h3>
+          </div>
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <img src={emailIcon} className="h-5 w-4 text-gray-400" />
+                  <img src={assets.gmailIcon} className="h-5 w-4 text-gray-400" />
                 </div>
                 <input
                   id="email"
@@ -115,10 +224,9 @@ const handleSubmit = async (e: React.FormEvent) => {
             </div>
 
             <div>
-             
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <img src={lock} className="h-5 w-5 text-gray-400" />
+                  <img src={assets.lockIcon} className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   id="password"
@@ -140,9 +248,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   {showPassword ? <EyeOff className="h-6 w-5" /> : <Eye className="h-6 w-5" />}
                 </button>
               </div>
-
             </div>
-
 
             {error && (
               <div className="rounded-md bg-red-50 p-4">
@@ -157,16 +263,16 @@ const handleSubmit = async (e: React.FormEvent) => {
             <div>
               <Button
                 type="submit"
-                className="w-full btn bg-transparent text-gray-950 border border-primary hover:bg-darkPrimary hover:text-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                className="w-full btn text-gray-950 border bg-primary hover:bg-darkPrimary hover:text-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 isLoading={isLoading}
               >
                 Sign in
               </Button>
             </div>
-          </form>   
+          </form>
         </div>
-        <div className="mt-10 text-center text-sm text-gray-300">
-          &copy; {new Date().getFullYear()} School Management System. All rights reserved.
+        <div className="mt-10 text-center text-sm text-gray-300 relative z-10">
+          © {new Date().getFullYear()} School Management System. All rights reserved.
         </div>
       </div>
     </div>
