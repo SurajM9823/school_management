@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Calendar, 
@@ -13,134 +13,160 @@ import {
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { format } from 'date-fns';
-
-// Mock data for assignments
-const initialAssignments = [
-  {
-    id: 1,
-    title: 'Algebraic Equations Worksheet',
-    description: 'Complete all problems from 1-20 in the worksheet.',
-    class: '10A',
-    subject: 'Mathematics',
-    dueDate: '2023-06-15',
-    createdAt: '2023-06-01',
-    status: 'active',
-    submissions: 18,
-    totalStudents: 32
-  },
-  {
-    id: 2,
-    title: 'Essay on Industrial Revolution',
-    description: 'Write a 1000-word essay on the impact of the Industrial Revolution.',
-    class: '9B',
-    subject: 'History',
-    dueDate: '2023-06-20',
-    createdAt: '2023-06-05',
-    status: 'active',
-    submissions: 10,
-    totalStudents: 30
-  },
-  {
-    id: 3,
-    title: 'Chemical Reactions Lab Report',
-    description: 'Document the observations and results from today\'s lab experiment.',
-    class: '10A',
-    subject: 'Science',
-    dueDate: '2023-06-10',
-    createdAt: '2023-06-03',
-    status: 'active',
-    submissions: 28,
-    totalStudents: 32
-  },
-  {
-    id: 4,
-    title: 'Grammar Exercise',
-    description: 'Complete exercises on tenses from the textbook.',
-    class: '8A',
-    subject: 'English',
-    dueDate: '2023-06-12',
-    createdAt: '2023-06-02',
-    status: 'active',
-    submissions: 25,
-    totalStudents: 35
-  },
-  {
-    id: 5,
-    title: 'Programming Project: Calculator',
-    description: 'Create a simple calculator application using HTML, CSS, and JavaScript.',
-    class: '10A',
-    subject: 'Computer Science',
-    dueDate: '2023-06-25',
-    createdAt: '2023-06-08',
-    status: 'active',
-    submissions: 5,
-    totalStudents: 32
-  }
-];
+import api from '../../api';
 
 interface Assignment {
   id: number;
   title: string;
   description: string;
-  class: string;
-  subject: string;
-  dueDate: string;
-  createdAt: string;
+  class_assigned: number;
+  class_name: string;
+  subject: number;
+  subject_name: string;
+  due_date: string;
+  created_at: string;
   status: string;
   submissions: number;
-  totalStudents: number;
+  total_students: number;
+  teacher_name: string;
+}
+
+interface ClassOption {
+  id: number;
+  name: string;
+}
+
+interface SubjectOption {
+  id: number;
+  name: string;
+  code: string;
 }
 
 const Assignments: React.FC = () => {
-  const [assignments, setAssignments] = useState<Assignment[]>(initialAssignments);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [subjects, setSubjects] = useState<SubjectOption[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('all');
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [showNewAssignmentForm, setShowNewAssignmentForm] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [viewingAssignment, setViewingAssignment] = useState<Assignment | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [newAssignment, setNewAssignment] = useState({
     title: '',
     description: '',
-    class: '10A',
-    subject: 'Mathematics',
-    dueDate: format(new Date(), 'yyyy-MM-dd')
+    class_assigned: '',
+    subject: '',
+    due_date: format(new Date(), 'yyyy-MM-dd')
   });
+
+  useEffect(() => {
+    fetchAssignments();
+    fetchTeacherClassesSubjects();
+  }, []);
+
+  const fetchAssignments = async () => {
+    try {
+      const response = await api.get('/teacher-assignments/teacher_assignments/');
+      setAssignments(response.data);
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTeacherClassesSubjects = async () => {
+    try {
+      const response = await api.get('/teacher/myclasses/');
+      
+      // Extract classes and subjects from the response structure
+      const subjectData = response.data.subject_assignments || [];
+      
+      // Get unique classes
+      const uniqueClasses = subjectData.reduce((acc: ClassOption[], item: any) => {
+        if (!acc.find(cls => cls.id === item.class_obj)) {
+          acc.push({ id: item.class_obj, name: item.class_name });
+        }
+        return acc;
+      }, []);
+      
+      // Get unique subjects
+      const uniqueSubjects = subjectData.reduce((acc: SubjectOption[], item: any) => {
+        if (!acc.find(subj => subj.id === item.subject)) {
+          acc.push({ id: item.subject, name: item.subject_name, code: '' });
+        }
+        return acc;
+      }, []);
+      
+      setClasses(uniqueClasses);
+      setSubjects(uniqueSubjects);
+    } catch (error) {
+      console.error('Error fetching classes and subjects:', error);
+      setClasses([]);
+      setSubjects([]);
+    }
+  };
 
   // Filter assignments based on search term and filters
   const filteredAssignments = assignments.filter(assignment => {
     const matchesSearch = assignment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          assignment.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClass = selectedClass === 'all' || assignment.class === selectedClass;
-    const matchesSubject = selectedSubject === 'all' || assignment.subject === selectedSubject;
+    const matchesClass = selectedClass === 'all' || assignment.class_name === selectedClass;
+    const matchesSubject = selectedSubject === 'all' || assignment.subject_name === selectedSubject;
     
     return matchesSearch && matchesClass && matchesSubject;
   });
 
-  const handleCreateAssignment = () => {
-    const id = assignments.length > 0 ? Math.max(...assignments.map(a => a.id)) + 1 : 1;
-    
-    const createdAssignment = {
-      ...newAssignment,
-      id,
-      createdAt: format(new Date(), 'yyyy-MM-dd'),
-      status: 'active',
-      submissions: 0,
-      totalStudents: 32 // Mock data
-    };
-    
-    setAssignments([createdAssignment, ...assignments]);
-    setShowNewAssignmentForm(false);
-    setNewAssignment({
-      title: '',
-      description: '',
-      class: '10A',
-      subject: 'Mathematics',
-      dueDate: format(new Date(), 'yyyy-MM-dd')
-    });
+  const handleCreateAssignment = async () => {
+    try {
+      await api.post('/teacher-assignments/', newAssignment);
+      fetchAssignments();
+      setShowNewAssignmentForm(false);
+      setNewAssignment({
+        title: '',
+        description: '',
+        class_assigned: '',
+        subject: '',
+        due_date: format(new Date(), 'yyyy-MM-dd')
+      });
+    } catch (error) {
+      console.error('Error creating assignment:', error);
+    }
+  };
+
+  const handleEditAssignment = (assignment: Assignment) => {
+    setEditingAssignment(assignment);
+    setShowEditForm(true);
+  };
+
+  const handleUpdateAssignment = async () => {
+    if (!editingAssignment) return;
+    try {
+      await api.put(`/teacher-assignments/${editingAssignment.id}/`, editingAssignment);
+      fetchAssignments();
+      setShowEditForm(false);
+      setEditingAssignment(null);
+    } catch (error) {
+      console.error('Error updating assignment:', error);
+    }
+  };
+
+  const handleViewAssignment = (assignment: Assignment) => {
+    setViewingAssignment(assignment);
+    setShowViewModal(true);
   };
 
   // Get unique classes and subjects for filters
-  const classes = Array.from(new Set(assignments.map(a => a.class)));
-  const subjects = Array.from(new Set(assignments.map(a => a.subject)));
+  const uniqueClasses = Array.from(new Set(assignments.map(a => a.class_name)));
+  const uniqueSubjects = Array.from(new Set(assignments.map(a => a.subject_name)));
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -185,8 +211,8 @@ const Assignments: React.FC = () => {
                   type="date"
                   id="dueDate"
                   className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  value={newAssignment.dueDate}
-                  onChange={(e) => setNewAssignment({...newAssignment, dueDate: e.target.value})}
+                  value={newAssignment.due_date}
+                  onChange={(e) => setNewAssignment({...newAssignment, due_date: e.target.value})}
                 />
               </div>
             </div>
@@ -198,14 +224,15 @@ const Assignments: React.FC = () => {
               <select
                 id="class"
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                value={newAssignment.class}
-                onChange={(e) => setNewAssignment({...newAssignment, class: e.target.value})}
+                value={newAssignment.class_assigned}
+                onChange={(e) => setNewAssignment({...newAssignment, class_assigned: e.target.value})}
               >
-                {classes.map((cls) => (
-                  <option key={cls} value={cls}>
-                    Class {cls}
+                <option value="">Select Class</option>
+                {classes.length > 0 ? classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.name}
                   </option>
-                ))}
+                )) : <option disabled>No classes assigned</option>}
               </select>
             </div>
             
@@ -219,11 +246,12 @@ const Assignments: React.FC = () => {
                 value={newAssignment.subject}
                 onChange={(e) => setNewAssignment({...newAssignment, subject: e.target.value})}
               >
-                {subjects.map((subject) => (
-                  <option key={subject} value={subject}>
-                    {subject}
+                <option value="">Select Subject</option>
+                {subjects.length > 0 ? subjects.map((subject) => (
+                  <option key={subject.id} value={subject.id}>
+                    {subject.name}
                   </option>
-                ))}
+                )) : <option disabled>No subjects assigned</option>}
               </select>
             </div>
             
@@ -286,7 +314,7 @@ const Assignments: React.FC = () => {
             <Button
               variant="primary"
               onClick={handleCreateAssignment}
-              disabled={!newAssignment.title || !newAssignment.dueDate}
+              disabled={!newAssignment.title || !newAssignment.due_date || !newAssignment.class_assigned || !newAssignment.subject}
             >
               Create Assignment
             </Button>
@@ -320,9 +348,9 @@ const Assignments: React.FC = () => {
               onChange={(e) => setSelectedClass(e.target.value)}
             >
               <option value="all">All Classes</option>
-              {classes.map((cls) => (
+              {uniqueClasses.map((cls) => (
                 <option key={cls} value={cls}>
-                  Class {cls}
+                  {cls}
                 </option>
               ))}
             </select>
@@ -339,7 +367,7 @@ const Assignments: React.FC = () => {
             onChange={(e) => setSelectedSubject(e.target.value)}
           >
             <option value="all">All Subjects</option>
-            {subjects.map((subject) => (
+            {uniqueSubjects.map((subject) => (
               <option key={subject} value={subject}>
                 {subject}
               </option>
@@ -373,13 +401,13 @@ const Assignments: React.FC = () => {
                     <h4 className="text-md font-medium text-gray-900">{assignment.title}</h4>
                     <div className="flex space-x-2 mt-1">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        Class {assignment.class}
+                        {assignment.class_name}
                       </span>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                        {assignment.subject}
+                        {assignment.subject_name}
                       </span>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        Due: {format(new Date(assignment.dueDate), 'MMM dd, yyyy')}
+                        Due: {format(new Date(assignment.due_date), 'MMM dd, yyyy')}
                       </span>
                     </div>
                   </div>
@@ -387,12 +415,12 @@ const Assignments: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <div className="text-right">
                     <p className="text-sm text-gray-900">
-                      {assignment.submissions}/{assignment.totalStudents} submissions
+                      {assignment.submissions}/{assignment.total_students} submissions
                     </p>
                     <div className="mt-1 w-32 bg-gray-200 rounded-full h-2.5">
                       <div 
                         className="bg-blue-600 h-2.5 rounded-full" 
-                        style={{ width: `${(assignment.submissions / assignment.totalStudents) * 100}%` }}
+                        style={{ width: `${(assignment.submissions / assignment.total_students) * 100}%` }}
                       ></div>
                     </div>
                   </div>
@@ -401,6 +429,7 @@ const Assignments: React.FC = () => {
                       variant="outline"
                       size="sm"
                       icon={<Eye size={16} />}
+                      onClick={() => handleViewAssignment(assignment)}
                     >
                       View
                     </Button>
@@ -408,6 +437,7 @@ const Assignments: React.FC = () => {
                       variant="outline"
                       size="sm"
                       icon={<Edit size={16} />}
+                      onClick={() => handleEditAssignment(assignment)}
                     >
                       Edit
                     </Button>
@@ -445,6 +475,86 @@ const Assignments: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Assignment Modal */}
+      {showEditForm && editingAssignment && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50">
+          <Card title="Edit Assignment" className="w-full max-w-2xl bg-white">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Title</label>
+                <input
+                  type="text"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  value={editingAssignment.title}
+                  onChange={(e) => setEditingAssignment({...editingAssignment, title: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Due Date</label>
+                <input
+                  type="date"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  value={editingAssignment.due_date}
+                  onChange={(e) => setEditingAssignment({...editingAssignment, due_date: e.target.value})}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <textarea
+                  rows={4}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  value={editingAssignment.description}
+                  onChange={(e) => setEditingAssignment({...editingAssignment, description: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end mt-6 space-x-3">
+              <Button variant="outline" onClick={() => setShowEditForm(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleUpdateAssignment}>Update Assignment</Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* View Assignment Modal */}
+      {showViewModal && viewingAssignment && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50">
+          <Card title={viewingAssignment.title} className="w-full max-w-2xl bg-white">
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium text-gray-900">Description</h4>
+                <p className="text-gray-600">{viewingAssignment.description}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium text-gray-900">Class</h4>
+                  <p className="text-gray-600">{viewingAssignment.class_name}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Subject</h4>
+                  <p className="text-gray-600">{viewingAssignment.subject_name}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Due Date</h4>
+                  <p className="text-gray-600">{format(new Date(viewingAssignment.due_date), 'MMM dd, yyyy')}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Status</h4>
+                  <p className="text-gray-600">{viewingAssignment.status}</p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900">Submissions</h4>
+                <p className="text-gray-600">{viewingAssignment.submissions}/{viewingAssignment.total_students} students submitted</p>
+              </div>
+            </div>
+            <div className="flex justify-end mt-6">
+              <Button variant="outline" onClick={() => setShowViewModal(false)}>Close</Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

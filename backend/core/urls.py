@@ -4,6 +4,7 @@ from core.view.admin.transportview import BusAssignmentViewSet, BusFeeViewSet, B
 from core.view.admin.exam import ExamView, ScoreView
 from core.view.admin.eventViews import EventAssignmentViewSet, EventViewSet
 from .views import MyTokenObtainPairView, CurrentUserView, UserView
+from core.serial.teacher.teacher_assignment_views import TeacherAssignmentViewSet
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework.routers import DefaultRouter
 from core.view.admin.school_setting import (
@@ -48,6 +49,7 @@ router.register(r'bus-assignments', BusAssignmentViewSet)
 router.register(r'events', EventViewSet)
 router.register(r'event-assignments', EventAssignmentViewSet)
 router.register(r'notices', NoticeViewSet, basename='notice')
+router.register(r'teacher-assignments', TeacherAssignmentViewSet, basename='teacher-assignment')
 
 urlpatterns = [
     # Authentication URLs

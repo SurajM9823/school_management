@@ -1286,4 +1286,45 @@ class Notice(models.Model):
     def __str__(self):
         return f"{self.title} ({self.notice_type})"
 
+# added
+class TeacherAssignmentToStudent(models.Model):
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+        ('completed', 'Completed'),
+    ]
+    
+    SUBMISSION_STATUS = [
+        ('pending', 'Pending'),
+        ('submitted', 'Submitted'),
+        ('graded', 'Graded'),
+        ('overdue', 'Overdue'),
+    ]
+    
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='teacher_assignments')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='student_assignments')
+    class_assigned = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='class_assignments')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='subject_assignments')
+    due_date = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    attachment = models.FileField(upload_to='assignments/', blank=True, null=True)
+    
+    # Student submission fields
+    submission_file = models.FileField(upload_to='submissions/', blank=True, null=True)
+    submission_text = models.TextField(blank=True)
+    submitted_at = models.DateTimeField(blank=True, null=True)
+    submission_status = models.CharField(max_length=20, choices=SUBMISSION_STATUS, default='pending')
+    marks = models.IntegerField(blank=True, null=True)
+    feedback = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.title} - {self.student.name} ({self.class_assigned.name})"
+
 

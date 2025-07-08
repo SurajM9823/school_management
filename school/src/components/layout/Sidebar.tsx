@@ -128,7 +128,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
           { to: '/teacher/dashboard', icon: <School size={18} />, label: 'Dashboard' },
           { to: '/teacher/my-classes', icon: <Users size={18} />, label: 'My Classes' },
           { to: '/teacher/attendance', icon: <Clock size={18} />, label: 'Attendance' },
-          { to: '/teacher/schedule', icon: <Calendar size={18} />, label: 'Schedule' },
+          // { to: '/teacher/schedule', icon: <Calendar size={18} />, label: 'Schedule' },
           { to: '/teacher/assignments', icon: <FileText size={18} />, label: 'Assignments' },
           { to: '/teacher/exam-marks', icon: <Edit3 size={18} />, label: 'Exam Marks' },
           { to: '/teacher/grades', icon: <Award size={18} />, label: 'View Grades' },
