@@ -41,6 +41,7 @@ from core.serial.teacher.teacher_exam_marks import (
 )
 from core.serial.student.student_assignments import StudentAssignmentsAPIView
 from core.serial.teacher.teacher_assignment_submissions import TeacherAssignmentSubmissionsAPIView
+from core.serial.teacher.student_grades import TeacherClassesAPIView as GradeTeacherClassesAPIView, TeacherStudentsAPIView, StudentGradesAPIView
 
 # Register StudentView and TeacherViewSet with a router to handle document endpoints
 router = DefaultRouter()
@@ -191,6 +192,11 @@ urlpatterns = [
     
     # Teacher Assignment Submissions
     path('teacher/assignments/<str:assignment_title>/submissions/', TeacherAssignmentSubmissionsAPIView.as_view(), name='teacher-assignment-submissions'),
+    
+    # Teacher Student Grades APIs
+    path('teacher/grades/classes/', GradeTeacherClassesAPIView.as_view(), name='teacher-grade-classes'),
+    path('teacher/grades/classes/<int:class_id>/students/', TeacherStudentsAPIView.as_view(), name='teacher-grade-students'),
+    path('teacher/grades/students/<int:student_id>/', StudentGradesAPIView.as_view(), name='student-grades'),
     # Include router URLs for StudentView
     path('', include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
