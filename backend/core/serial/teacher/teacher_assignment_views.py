@@ -21,25 +21,19 @@ class TeacherAssignmentViewSet(viewsets.ModelViewSet):
         teacher = request.user
         data = request.data
         
-        # Get all students in the class
-        students = Student.objects.filter(class_id=data['class_assigned'], status='active')
+        # Create single assignment record
+        assignment = TeacherAssignmentToStudent.objects.create(
+            title=data['title'],
+            description=data['description'],
+            teacher=teacher,
+            class_assigned_id=data['class_assigned'],
+            subject_id=data['subject'],
+            due_date=data['due_date'],
+            status='active',
+            attachment=request.FILES.get('attachment')
+        )
         
-        # Create assignment for each student
-        created_assignments = []
-        for student in students:
-            assignment = TeacherAssignmentToStudent.objects.create(
-                title=data['title'],
-                description=data['description'],
-                teacher=teacher,
-                student=student.user,
-                class_assigned_id=data['class_assigned'],
-                subject_id=data['subject'],
-                due_date=data['due_date'],
-                status='active'
-            )
-            created_assignments.append(assignment)
-        
-        return Response({'message': f'Assignment created for {len(created_assignments)} students'}, status=status.HTTP_201_CREATED)
+        return Response({'message': 'Assignment created successfully'}, status=status.HTTP_201_CREATED)
     
     @action(detail=False, methods=['get'])
     def teacher_classes_subjects(self, request):
@@ -53,71 +47,86 @@ class TeacherAssignmentViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def teacher_assignments(self, request):
-        """Get assignments grouped by title for teacher view"""
+        """Get assignments for teacher view"""
         user = request.user
         if user.role != 'teacher':
             return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
         
         try:
-            # Get unique assignments by title, class, and subject for this teacher
             assignments = TeacherAssignmentToStudent.objects.filter(
-                teacher=user
-            ).select_related('class_assigned', 'subject').values(
-                'title', 'description', 'class_assigned__name', 'subject__name', 
-                'due_date', 'created_at', 'status'
-            ).distinct()
+                teacher=user, student__isnull=True
+            ).select_related('class_assigned', 'subject')
             
-            # Add submission counts
             result = []
             for assignment in assignments:
-                total_students = TeacherAssignmentToStudent.objects.filter(
-                    teacher=user,
-                    title=assignment['title'],
-                    class_assigned__name=assignment['class_assigned__name'],
-                    subject__name=assignment['subject__name']
+                # Count students in the class
+                total_students = Student.objects.filter(
+                    class_id=assignment.class_assigned_id, status='active'
                 ).count()
                 
+                # Count submissions (assignments with same title but with students)
                 submissions = TeacherAssignmentToStudent.objects.filter(
                     teacher=user,
-                    title=assignment['title'],
-                    class_assigned__name=assignment['class_assigned__name'],
-                    subject__name=assignment['subject__name'],
+                    title=assignment.title,
+                    student__isnull=False,
                     submission_status='submitted'
                 ).count()
                 
                 result.append({
-                    'title': assignment['title'],
-                    'description': assignment['description'],
-                    'class_name': assignment['class_assigned__name'],
-                    'subject_name': assignment['subject__name'],
-                    'due_date': assignment['due_date'],
-                    'created_at': assignment['created_at'],
-                    'status': assignment['status'],
+                    'id': assignment.id,
+                    'title': assignment.title,
+                    'description': assignment.description,
+                    'class_name': assignment.class_assigned.name if assignment.class_assigned else '',
+                    'subject_name': assignment.subject.name if assignment.subject else '',
+                    'due_date': assignment.due_date,
+                    'created_at': assignment.created_at,
+                    'status': assignment.status,
                     'total_students': total_students,
-                    'submissions': submissions
+                    'submissions': submissions,
+                    'attachment': assignment.attachment.url if assignment.attachment else None
                 })
             
             return Response(result)
         except Exception as e:
-            return Response([])
+            import traceback
+            print(f"Error in teacher_assignments: {str(e)}")
+            print(traceback.format_exc())
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
         """Submit assignment (student)"""
-        assignment = get_object_or_404(TeacherAssignmentToStudent, pk=pk, student=request.user)
+        # Get the original assignment
+        original_assignment = get_object_or_404(TeacherAssignmentToStudent, pk=pk)
         
-        if assignment.submission_status == 'submitted':
+        # Check if student already submitted
+        existing_submission = TeacherAssignmentToStudent.objects.filter(
+            title=original_assignment.title,
+            teacher=original_assignment.teacher,
+            student=request.user
+        ).first()
+        
+        if existing_submission and existing_submission.submission_status == 'submitted':
             return Response({'error': 'Assignment already submitted'}, status=status.HTTP_400_BAD_REQUEST)
         
         submission_text = request.data.get('submission_text', '')
         submission_file = request.FILES.get('submission_file')
         
-        assignment.submission_text = submission_text
-        if submission_file:
-            assignment.submission_file = submission_file
-        assignment.submitted_at = timezone.now()
-        assignment.submission_status = 'submitted'
-        assignment.save()
+        # Create submission record
+        TeacherAssignmentToStudent.objects.create(
+            title=original_assignment.title,
+            description=original_assignment.description,
+            teacher=original_assignment.teacher,
+            student=request.user,
+            class_assigned=original_assignment.class_assigned,
+            subject=original_assignment.subject,
+            due_date=original_assignment.due_date,
+            status=original_assignment.status,
+            submission_text=submission_text,
+            submission_file=submission_file,
+            submitted_at=timezone.now(),
+            submission_status='submitted'
+        )
         
         return Response({'message': 'Assignment submitted successfully'})
     
@@ -138,3 +147,35 @@ class TeacherAssignmentViewSet(viewsets.ModelViewSet):
         assignment.save()
         
         return Response({'message': 'Assignment graded successfully'})
+    
+    @action(detail=False, methods=['post'])
+    def bulk_update(self, request):
+        """Bulk update assignments with same title, class, and subject"""
+        user = request.user
+        if user.role != 'teacher':
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+        
+        data = request.data
+        title = data.get('title')
+        class_name = data.get('class_name')
+        subject_name = data.get('subject_name')
+        
+        # Update all matching assignments
+        assignments = TeacherAssignmentToStudent.objects.filter(
+            teacher=user,
+            title=title,
+            class_assigned__name=class_name,
+            subject__name=subject_name
+        )
+        
+        updated_count = 0
+        for assignment in assignments:
+            assignment.title = data.get('new_title', title)
+            assignment.description = data.get('new_description', '')
+            assignment.due_date = data.get('new_due_date')
+            if request.FILES.get('new_attachment'):
+                assignment.attachment = request.FILES.get('new_attachment')
+            assignment.save()
+            updated_count += 1
+        
+        return Response({'message': f'Updated {updated_count} assignments'})

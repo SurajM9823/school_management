@@ -20,7 +20,7 @@ interface Assignment {
   submitted_at?: string;
 }
 
-const assignmentStatuses: Assignment['status'][] = ['pending', 'submitted', 'graded', 'overdue'];
+const assignmentStatuses: Assignment['submission_status'][] = ['pending', 'submitted', 'graded', 'overdue'];
 
 const Assignments: React.FC = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -37,8 +37,9 @@ const Assignments: React.FC = () => {
 
   const fetchAssignments = async () => {
     try {
-      const response = await api.get('/teacher-assignments/');
-      setAssignments(response.data.filter((a: Assignment) => a.student));
+      const response = await api.get('/student/assignments/');
+      setAssignments(response.data);
+      
     } catch (error) {
       console.error('Error fetching assignments:', error);
     } finally {

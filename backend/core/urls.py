@@ -1,4 +1,6 @@
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 from core.view.admin.transportview import BusAssignmentViewSet, BusFeeViewSet, BusViewSet, RouteViewSet
 from core.view.admin.exam import ExamView, ScoreView
@@ -37,6 +39,8 @@ from core.serial.teacher.teacher_exam_marks import (
     TeacherExamMarkSubmitAPIView,
     TeacherExamMarkGetAPIView,  # <-- add import
 )
+from core.serial.student.student_assignments import StudentAssignmentsAPIView
+from core.serial.teacher.teacher_assignment_submissions import TeacherAssignmentSubmissionsAPIView
 
 # Register StudentView and TeacherViewSet with a router to handle document endpoints
 router = DefaultRouter()
@@ -181,6 +185,12 @@ urlpatterns = [
     path('teacher/exam-marks/classes/<int:class_id>/students/', TeacherExamMarkStudentListAPIView.as_view(), name='teacher-exam-mark-student-list'),
     path('teacher/exam-marks/get-marks/', TeacherExamMarkGetAPIView.as_view(), name='teacher-exam-mark-get-marks'),
     path('teacher/exam-marks/submit/', TeacherExamMarkSubmitAPIView.as_view(), name='teacher-exam-mark-submit'),
+    
+    # Student APIs
+    path('student/assignments/', StudentAssignmentsAPIView.as_view(), name='student-assignments'),
+    
+    # Teacher Assignment Submissions
+    path('teacher/assignments/<str:assignment_title>/submissions/', TeacherAssignmentSubmissionsAPIView.as_view(), name='teacher-assignment-submissions'),
     # Include router URLs for StudentView
     path('', include(router.urls)),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
