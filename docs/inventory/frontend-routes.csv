@@ -1,0 +1,84 @@
+﻿route,component,source,roles,superuser_only
+/,,,,false
+/login,Login,school/src/pages/auth/Login.tsx,,false
+/superadmin/dashboard,SuperadminDashboard,school/src/pages/superadmin/SuperadminDashboard.tsx,admin,true
+/superadmin/add-school,AddSchool,school/src/pages/superadmin/AddSchool.tsx,admin,true
+/superadmin/subscriptions/:schoolId,SubscriptionManagement,school/src/pages/superadmin/SubscriptionManagement.tsx,admin,true
+/superadmin/activities,ActivityTracker,school/src/pages/superadmin/ActivityTracker.tsx,admin,true
+/superadmin/settings,Settings,school/src/pages/admin/settings/index.tsx,admin,true
+/admin/dashboard,AdminDashboard,school/src/pages/dashboard/AdminDashboard.tsx,admin,false
+/admin/admissions,Admissions,school/src/pages/admin/Admissions.tsx,admin,false
+/admin/settings,Settings,school/src/pages/admin/settings/index.tsx,admin,false
+/admin/settings/school,SchoolInfo,school/src/pages/admin/settings/SchoolInfo.tsx,admin (inherited),false
+/admin/settings/locale,TimezoneLocale,school/src/pages/admin/settings/TimezoneLocale.tsx,admin (inherited),false
+/admin/settings/session,SessionConfig,school/src/pages/admin/settings/SessionConfig.tsx,admin (inherited),false
+/admin/settings/defaults,DefaultValues,school/src/pages/admin/settings/DefaultValues.tsx,admin (inherited),false
+/admin/settings/notifications,Notifications,school/src/pages/admin/settings/Notifications.tsx,admin (inherited),false
+/admin/settings/staff,StaffManagementSettings,school/src/pages/admin/settings/StaffManagementSettings.tsx,admin (inherited),false
+/admin/settings/academic,AcademicSettings,school/src/pages/admin/settings/AcademicSettings.tsx,admin (inherited),false
+/admin/settings/campus,CampusSettings,school/src/pages/admin/settings/CampusSettings.tsx,admin (inherited),false
+/admin/settings/admission-fees,AdmissionFees,school/src/pages/admin/settings/AdmissionFees.tsx,admin (inherited),false
+/admin/teachers,Teachers,school/src/pages/admin/Teachers.tsx,admin,false
+/admin/teachers/edit/:id,TeacherEditSimple,school/src/pages/admin/TeacherEditSimple.tsx,admin,false
+/admin/teachers/:id,TeacherDetail,school/src/pages/admin/TeacherDetail.tsx,admin,false
+/admin/classes,Classes,school/src/pages/admin/Classes.tsx,admin,false
+/admin/exams,Exams,school/src/pages/admin/Exams.tsx,admin,false
+/admin/exam/managescore/:examId,ManageScores,school/src/pages/admin/exam/ManageScores.tsx,admin,false
+/admin/exam/managescore,ManageScores,school/src/pages/admin/exam/ManageScores.tsx,admin,false
+/admin/exam/managescore,ManageScores,school/src/pages/admin/exam/ManageScores.tsx,admin,false
+/admin/exam/marksheet,ViewMarksheet,school/src/pages/admin/exam/ViewMarksheet.tsx,admin,false
+/admin/scholarships,Scholarships,school/src/pages/admin/Scholarships.tsx,admin,false
+/admin/user-management,UserManagement,school/src/pages/admin/UserManagement.tsx,admin,false
+/admin/staff-management,StaffManagement,school/src/pages/admin/StaffManagement.tsx,admin,false
+/admin/staff/:id,StaffDetailDrill,school/src/pages/admin/StaffDetailDrill.tsx,admin,false
+/admin/transport-management,TransportManagement,school/src/pages/admin/TransportManagement.tsx,admin,false
+/admin/events,Events,school/src/pages/admin/Events.tsx,admin,false
+/admin/notices,Notices,school/src/pages/admin/Notices.tsx,admin,false
+/admin/students/:id,StudentDetail,school/src/pages/admin/StudentDetail.tsx,admin,false
+/teacher/dashboard,TeacherDashboard,school/src/pages/dashboard/TeacherDashboard.tsx,teacher,false
+/teacher/attendance,Attendance,school/src/pages/teacher/Attendance.tsx,teacher,false
+/teacher/assignments,Assignments,school/src/pages/teacher/Assignments.tsx,teacher,false
+/teacher/my-classes,MyClasses,school/src/pages/teacher/MyClasses.tsx,teacher,false
+/teacher/exam-marks,ExamMarks,school/src/pages/teacher/ExamMarks.tsx,teacher,false
+/teacher/grades,Grades,school/src/pages/teacher/Grades.tsx,teacher,false
+/teacher/materials,ReadingMaterials,school/src/pages/teacher/ReadingMaterials.tsx,teacher,false
+/teacher/announcements,Announcements,school/src/pages/teacher/Announcements.tsx,teacher,false
+/teacher/leave,LeaveApply,school/src/pages/teacher/LeaveApply.tsx,teacher,false
+/parent/dashboard,ParentDashboard,school/src/pages/dashboard/ParentDashboard.tsx,parent,false
+/parent/children,ParentChildren,school/src/pages/parent/Children.tsx,parent,false
+/parent/child-classes,ParentChildClasses,school/src/pages/parent/ChildClasses.tsx,parent,false
+/parent/assignments,ParentAssignments,school/src/pages/parent/Assignments.tsx,parent,false
+/parent/timetable,ParentTimetable,school/src/pages/parent/Timetable.tsx,parent,false
+/parent/results,ParentResults,school/src/pages/parent/Results.tsx,parent,false
+/parent/attendance,ParentAttendance,school/src/pages/parent/Attendance.tsx,parent,false
+/parent/fees,ParentFees,school/src/pages/parent/Fees.tsx,parent,false
+/parent/leave-requests,ParentLeaveRequests,school/src/pages/parent/LeaveRequests.tsx,parent,false
+/parent/notices,ParentNotices,school/src/pages/parent/Notices.tsx,parent,false
+/parent/complaints,ParentComplaints,school/src/pages/parent/Complaints.tsx,parent,false
+/student/dashboard,StudentDashboard,school/src/pages/dashboard/StudentDashboard.tsx,student,false
+/student/my-classes,StudentMyClasses,school/src/pages/student/MyClasses.tsx,student,false
+/student/assignments,StudentAssignments,school/src/pages/student/Assignments.tsx,student,false
+/student/timetable,StudentTimetable,school/src/pages/student/Timetable.tsx,student,false
+/student/results,StudentResults,school/src/pages/student/Results.tsx,student,false
+/student/attendance,StudentAttendance,school/src/pages/student/Attendance.tsx,student,false
+/student/fees,StudentFees,school/src/pages/student/Fees.tsx,student,false
+/student/leave,StudentLeaveRequests,school/src/pages/student/LeaveRequests.tsx,student,false
+/student/notices,StudentNotices,school/src/pages/student/Notices.tsx,student,false
+/student/complaints,StudentComplaints,school/src/pages/student/Complaints.tsx,student,false
+/accountant/dashboard,AccountantDashboard,school/src/pages/dashboard/AccountantDashboard.tsx,accountant,false
+/accountant/fees,AccountantFees,school/src/pages/accountant/Fees.tsx,accountant,false
+/accountant/fee-structures,FeeStructures,school/src/pages/accountant/FeeStructures.tsx,accountant,false
+/accountant/fee-management/structure-setup,FeeStructureSetup,school/src/pages/accountant/fee-management/FeeStructureSetup.tsx,accountant,false
+/accountant/fee-management/package-plans,FeePackagePlans,school/src/pages/accountant/fee-management/FeePackagePlans.tsx,accountant,false
+/accountant/fee-management/assign-fees,AssignFeesToStudents,school/src/pages/accountant/fee-management/AssignFeesToStudents.tsx,accountant,false
+/accountant/billing/generate-monthly-bills,GenerateMonthlyBills,school/src/pages/accountant/billing/GenerateMonthlyBills.tsx,accountant,false
+/accountant/billing/student-billing-ledger,StudentBillingLedger,school/src/pages/accountant/billing/StudentBillingLedger.tsx,accountant,false
+/accountant/billing/due-fee-report,DueFeeReport,school/src/pages/accountant/billing/DueFeeReport.tsx,accountant,false
+/accountant/payroll,AccountantPayroll,school/src/pages/accountant/Payroll.tsx,accountant,false
+/accountant/scholarships,AccountantScholarships,school/src/pages/accountant/Scholarships.tsx,accountant,false
+/accountant/expenses,AccountantExpenses,school/src/pages/accountant/Expenses.tsx,accountant,false
+/accountant/reports,AccountantReports,school/src/pages/accountant/Reports.tsx,accountant,false
+/accountant/settings,AccountantSettings,school/src/pages/accountant/Settings.tsx,accountant,false
+/profile,Profile,school/src/pages/common/Profile.tsx,"admin, teacher, parent, student, accountant",false
+/,,,,false
+*,NotFound,school/src/pages/common/NotFound.tsx,,false

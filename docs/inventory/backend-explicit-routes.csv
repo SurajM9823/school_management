@@ -1,0 +1,101 @@
+﻿route,declared_methods,target,source_candidates,url_line
+/api/token/,See target / framework,MyTokenObtainPairView.as_view(),backend/core/views.py,61
+/api/token/refresh/,See target / framework,TokenRefreshView.as_view(),,62
+/api/school/settings/current-user/,GET,CurrentUserView.as_view(),backend/core/views.py,63
+/api/users/<int:pk>/change-password/,PUT,UserView.as_view(),backend/core/views.py,64
+/api/superadmin/schools/,GET,SuperuserView.as_view(),backend/core/view/superuser/SuperuserView.py,67
+/api/superadmin/schools/create/,POST,SuperuserSchoolCreateView.as_view(),backend/core/view/superuser/SuperuserView.py,68
+/api/superadmin/admins/,POST,SuperuserAdminView.as_view(),backend/core/view/superuser/SuperuserView.py,69
+/api/superadmin/subscriptions/<uuid:school_id>/,"GET, PATCH, POST",SuperuserSubscriptionView.as_view(),backend/core/view/superuser/SuperuserView.py,70
+/api/admin/dashboard/stats/,See target / framework,admin_dashboard_stats,,73
+/api/admin/dashboard/activities/,See target / framework,admin_activities,,74
+/api/school/settings/,"GET, POST, PUT",SchoolSettingsView.as_view(),backend/core/view/admin/admissions.py; backend/core/view/admin/school_setting.py,75
+/api/school/settings/locale/,"GET, POST, PUT",LocaleSettingsView.as_view(),backend/core/view/admin/school_setting.py,76
+/api/school/settings/sessions/,"DELETE, GET, POST, PUT",AcademicSessionView.as_view(),backend/core/view/admin/admissions.py; backend/core/view/admin/school_setting.py,77
+/api/school/settings/sessions/<int:session_id>/,"DELETE, GET, POST, PUT",AcademicSessionView.as_view(),backend/core/view/admin/admissions.py; backend/core/view/admin/school_setting.py,78
+/api/school/settings/sessions/<int:session_id>/terms/,"DELETE, GET, POST, PUT",TermView.as_view(),backend/core/view/admin/school_setting.py,79
+/api/school/settings/sessions/<int:session_id>/terms/<int:term_id>/,"DELETE, GET, POST, PUT",TermView.as_view(),backend/core/view/admin/school_setting.py,80
+/api/school/settings/sessions/<int:session_id>/holidays/,"DELETE, GET, POST, PUT",HolidayView.as_view(),backend/core/view/admin/school_setting.py,81
+/api/school/settings/sessions/<int:session_id>/holidays/<int:holiday_id>/,"DELETE, GET, POST, PUT",HolidayView.as_view(),backend/core/view/admin/school_setting.py,82
+/api/school/settings/grading-settings/,"GET, PUT",GradingSettingsView.as_view(),backend/core/view/admin/school_setting.py,83
+/api/school/settings/attendance-settings/,"GET, PUT",AttendanceSettingsView.as_view(),backend/core/view/admin/school_setting.py,84
+/api/school/settings/fee-settings/,"GET, PUT",FeeSettingsView.as_view(),backend/core/view/admin/school_setting.py,85
+/api/school/settings/fee-types/,"DELETE, GET, POST, PUT",FeeTypeView.as_view(),backend/core/view/admin/school_setting.py,86
+/api/school/settings/fee-types/<int:fee_type_id>/,"DELETE, GET, POST, PUT",FeeTypeView.as_view(),backend/core/view/admin/school_setting.py,87
+/api/school/settings/notification-settings/,"GET, PUT",NotificationSettingsView.as_view(),backend/core/view/admin/school_setting.py,88
+/api/school/settings/notifications/templates/,"GET, POST",NotificationTemplateListView.as_view(),backend/core/view/admin/school_setting.py,89
+/api/school/settings/notifications/templates/<str:template_id>/,"DELETE, GET, PUT",NotificationTemplateDetailView.as_view(),backend/core/view/admin/school_setting.py,90
+/api/school/settings/notification-settings/test-smtp/,POST,TestSMTPView.as_view(),backend/core/view/admin/school_setting.py,91
+/api/school/settings/roles/,"GET, PUT",RolePermissionsView.as_view(),backend/core/view/admin/school_setting.py,92
+/api/school/settings/roles/<int:role_id>/,"GET, PUT",RolePermissionsView.as_view(),backend/core/view/admin/school_setting.py,93
+/api/school/settings/staff-roles/,"DELETE, GET, POST, PUT",StaffRoleView.as_view(),backend/core/view/admin/school_setting.py,94
+/api/school/settings/staff-roles/<int:role_id>/,"DELETE, GET, POST, PUT",StaffRoleView.as_view(),backend/core/view/admin/school_setting.py,95
+/api/school/settings/leave-types/,"DELETE, GET, POST, PUT",LeaveTypeView.as_view(),backend/core/view/admin/school_setting.py,96
+/api/school/settings/leave-types/<int:leave_id>/,"DELETE, GET, POST, PUT",LeaveTypeView.as_view(),backend/core/view/admin/school_setting.py,97
+/api/school/settings/departments/,"DELETE, GET, POST, PUT",DepartmentView.as_view(),backend/core/view/admin/school_setting.py,98
+/api/school/settings/departments/<int:dept_id>/,"DELETE, GET, POST, PUT",DepartmentView.as_view(),backend/core/view/admin/school_setting.py,99
+/api/school/settings/bulk-leave-assignments/,POST,BulkLeaveAssignmentView.as_view(),backend/core/view/admin/school_setting.py,100
+/api/school/settings/classes/,"DELETE, GET, POST, PUT",ClassView.as_view(),backend/core/view/admin/admissions.py; backend/core/view/admin/school_setting.py,101
+/api/school/settings/classes/<int:class_id>/,"DELETE, GET, POST, PUT",ClassView.as_view(),backend/core/view/admin/admissions.py; backend/core/view/admin/school_setting.py,102
+/api/school/settings/classes/<int:class_id>/sections/,"DELETE, GET, POST, PUT",SectionView.as_view(),backend/core/view/admin/admissions.py; backend/core/view/admin/school_setting.py,103
+/api/school/settings/classes/<int:class_id>/sections/<int:section_id>/,"DELETE, GET, POST, PUT",SectionView.as_view(),backend/core/view/admin/admissions.py; backend/core/view/admin/school_setting.py,104
+/api/school/settings/subjects/,"DELETE, GET, POST, PUT",SubjectView.as_view(),backend/core/view/admin/school_setting.py,105
+/api/school/settings/subjects/<int:subject_id>/,"DELETE, GET, POST, PUT",SubjectView.as_view(),backend/core/view/admin/school_setting.py,106
+/api/school/settings/grading-scales/,"DELETE, GET, POST, PUT",GradingScaleView.as_view(),backend/core/view/admin/school_setting.py,107
+/api/school/settings/grading-scales/<int:scale_id>/,"DELETE, GET, POST, PUT",GradingScaleView.as_view(),backend/core/view/admin/school_setting.py,108
+/api/school/settings/promotion-rules/,"GET, PUT",PromotionRulesView.as_view(),backend/core/view/admin/school_setting.py,109
+/api/school/settings/class-capacity/,"GET, PUT",ClassCapacityView.as_view(),backend/core/view/admin/school_setting.py,110
+/api/school/settings/campuses/,"DELETE, GET, POST, PUT",CampusView.as_view(),backend/core/view/admin/school_setting.py,111
+/api/school/settings/campuses/<int:campus_id>/,"DELETE, GET, POST, PUT",CampusView.as_view(),backend/core/view/admin/school_setting.py,112
+/api/school/settings/campuses/<int:campus_id>/buildings/,"DELETE, GET, POST, PUT",BuildingView.as_view(),backend/core/view/admin/school_setting.py,113
+/api/school/settings/campuses/<int:campus_id>/buildings/<int:building_id>/,"DELETE, GET, POST, PUT",BuildingView.as_view(),backend/core/view/admin/school_setting.py,114
+/api/school/settings/buildings/<int:building_id>/rooms/,"DELETE, GET, POST, PUT",RoomView.as_view(),backend/core/view/admin/school_setting.py,115
+/api/school/settings/buildings/<int:building_id>/rooms/<int:room_id>/,"DELETE, GET, POST, PUT",RoomView.as_view(),backend/core/view/admin/school_setting.py,116
+/api/school/settings/resources/,"DELETE, GET, POST, PUT",ResourceView.as_view(),backend/core/view/admin/school_setting.py,117
+/api/school/settings/resources/<int:resource_id>/,"DELETE, GET, POST, PUT",ResourceView.as_view(),backend/core/view/admin/school_setting.py,118
+/api/school/settings/staff/,"GET, POST","StaffViewSet.as_view({'get': 'list', 'post': 'create'})",backend/core/view/admin/staff_views.py,120
+/api/school/settings/staff/<int:pk>/,"GET, PUT, PATCH, DELETE","StaffViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})",backend/core/view/admin/staff_views.py,124
+/api/school/settings/staff/<int:pk>/reset-password/,POST,StaffViewSet.as_view({'post': 'reset_password'}),backend/core/view/admin/staff_views.py,130
+/api/school/settings/staff/<int:pk>/credentials/,GET,StaffViewSet.as_view({'get': 'get_credentials'}),backend/core/view/admin/staff_views.py,133
+/api/school/settings/staff/<int:pk>/upload-documents/,"GET, POST, OPTIONS","StaffViewSet.as_view({'get': 'upload_documents', 'post': 'upload_documents', 'options': 'upload_documents'})",backend/core/view/admin/staff_views.py,136
+/api/school/settings/staff/<int:pk>/profile-image/,POST,StaffProfileImageView.as_view(),backend/core/view/admin/staff_views.py,141
+/api/admissions/,POST,AdmissionView.as_view(),backend/core/view/admin/admissions.py,144
+/api/parents/,"DELETE, GET, POST, PUT",ParentView.as_view(),backend/core/view/admin/admissions.py,145
+/api/parents/<int:parent_id>/,"DELETE, GET, POST, PUT",ParentView.as_view(),backend/core/view/admin/admissions.py,146
+/api/admission-fees/,"DELETE, GET, POST, PUT",AdmissionFeeView.as_view(),backend/core/view/admin/admissions.py,147
+/api/admission-fees/<int:fee_id>/,"DELETE, GET, POST, PUT",AdmissionFeeView.as_view(),backend/core/view/admin/admissions.py,148
+/api/students/<int:student_id>/fees/,"GET, PUT",StudentFeeView.as_view(),backend/core/view/admin/admissions.py,149
+/api/students/<int:student_id>/parents/,DELETE,StudentParentView.as_view(),backend/core/view/admin/admissions.py,150
+/api/certificates/,"GET, POST","CertificateViewSet.as_view({'get': 'list', 'post': 'create'})",backend/core/view/admin/certificate_view.py,151
+/api/certificates/by-student/<int:student_id>/,GET,CertificateViewSet.as_view({'get': 'by_student'}),backend/core/view/admin/certificate_view.py,152
+/api/certificates/<int:pk>/,PUT,CertificateViewSet.as_view({'put': 'update'}),backend/core/view/admin/certificate_view.py,153
+/api/students/<int:student_id>/credentials/,"GET, PUT",StudentCredentialsView.as_view(),backend/core/view/admin/certificate_view.py,154
+/api/school/settings/staff/<int:staff_id>/leave/,POST,StaffLeaveCreateView.as_view(),backend/core/view/admin/staff_management/StaffLeaveView.py,156
+/api/teacher/myclasses/,GET,TeacherClassesAPIView.as_view(),backend/core/serial/teacher/student_grades.py; backend/core/serial/teacher/TeacherClasses.py,159
+/api/teacher/classes/,GET,ClassListAPIView.as_view(),backend/core/serial/teacher/teacher_attendance.py,160
+/api/teacher/classes/<int:class_id>/students/,GET,StudentListByClassAPIView.as_view(),backend/core/serial/teacher/teacher_attendance.py,161
+/api/teacher/attendance/save/,POST,AttendanceSaveAPIView.as_view(),backend/core/serial/teacher/teacher_attendance.py,162
+/api/teacher/attendance/list/,GET,AttendanceListAPIView.as_view(),backend/core/serial/teacher/teacher_attendance.py,163
+/api/school/class-teachers/,"DELETE, GET, POST, PUT",ClassTeacherView.as_view(),backend/core/view/admin/teacher_views.py,165
+/api/school/class-teachers/<int:class_id>/,"DELETE, GET, POST, PUT",ClassTeacherView.as_view(),backend/core/view/admin/teacher_views.py,166
+/api/school/class-teachers/<int:assignment_id>/,"DELETE, GET, POST, PUT",ClassTeacherView.as_view(),backend/core/view/admin/teacher_views.py,167
+/api/school/settings/classes/<int:class_id>/subjects/,"GET, PUT",ClassSubjectsView.as_view(),backend/core/view/admin/school_setting.py,168
+/api/scholarships/,"GET, POST","ScholarshipViewSet.as_view({'get': 'list', 'post': 'create'})",backend/core/view/admin/scholarshipView.py,170
+/api/scholarships/<int:pk>/,"GET, PUT, DELETE","ScholarshipViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'})",backend/core/view/admin/scholarshipView.py,171
+/api/scholarships/<int:pk>/auto_assign/,POST,ScholarshipViewSet.as_view({'post': 'auto_assign'}),backend/core/view/admin/scholarshipView.py,172
+/api/assignments/,"GET, POST","ScholarshipAssignmentViewSet.as_view({'get': 'list', 'post': 'create'})",backend/core/view/admin/scholarshipView.py,173
+/api/assignments/<int:pk>/,"GET, PUT, DELETE","ScholarshipAssignmentViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'})",backend/core/view/admin/scholarshipView.py,174
+/api/assignments/<int:pk>/revoke/,POST,ScholarshipAssignmentViewSet.as_view({'post': 'revoke'}),backend/core/view/admin/scholarshipView.py,175
+/api/school/exams/,"DELETE, GET, POST, PUT",ExamView.as_view(),backend/core/view/admin/exam.py,178
+/api/school/exams/<int:pk>/,"DELETE, GET, POST, PUT",ExamView.as_view(),backend/core/view/admin/exam.py,179
+/api/school/scores/,"GET, POST",ScoreView.as_view(),backend/core/view/admin/exam.py,182
+/api/teacher/exam-marks/classes/,GET,TeacherExamMarkClassListAPIView.as_view(),backend/core/serial/teacher/teacher_exam_marks.py,185
+/api/teacher/exam-marks/classes/<int:class_id>/students/,GET,TeacherExamMarkStudentListAPIView.as_view(),backend/core/serial/teacher/teacher_exam_marks.py,186
+/api/teacher/exam-marks/get-marks/,GET,TeacherExamMarkGetAPIView.as_view(),backend/core/serial/teacher/teacher_exam_marks.py,187
+/api/teacher/exam-marks/submit/,POST,TeacherExamMarkSubmitAPIView.as_view(),backend/core/serial/teacher/teacher_exam_marks.py,188
+/api/student/assignments/,GET,StudentAssignmentsAPIView.as_view(),backend/core/serial/student/student_assignments.py,191
+/api/teacher/assignments/<str:assignment_title>/submissions/,"GET, POST",TeacherAssignmentSubmissionsAPIView.as_view(),backend/core/serial/teacher/teacher_assignment_submissions.py,194
+/api/teacher/grades/classes/,See target / framework,GradeTeacherClassesAPIView.as_view(),,197
+/api/teacher/grades/classes/<int:class_id>/students/,GET,TeacherStudentsAPIView.as_view(),backend/core/serial/teacher/student_grades.py,198
+/api/teacher/grades/students/<int:student_id>/,GET,StudentGradesAPIView.as_view(),backend/core/serial/teacher/student_grades.py,199
+/api/,See target / framework,include(router.urls),,201

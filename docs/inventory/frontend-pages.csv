@@ -1,0 +1,87 @@
+﻿source,routes,integration_evidence,literal_api_call_count,mock_todo_timer_lines
+school/src/pages/accountant/billing/DueFeeReport.tsx,/accountant/billing/due-fee-report,No direct API call detected; inspect local/static behavior,0,
+school/src/pages/accountant/billing/GenerateMonthlyBills.tsx,/accountant/billing/generate-monthly-bills,No direct API call detected; inspect local/static behavior,0,
+school/src/pages/accountant/billing/StudentBillingLedger.tsx,/accountant/billing/student-billing-ledger,No direct API call detected; inspect local/static behavior,0,
+school/src/pages/accountant/Expenses.tsx,/accountant/expenses,No direct API call detected; inspect local/static behavior,0,19; 76; 94; 98; 114
+school/src/pages/accountant/fee-management/AssignFeesToStudents.tsx,/accountant/fee-management/assign-fees,No direct API call detected; inspect local/static behavior,0,
+school/src/pages/accountant/fee-management/FeePackagePlans.tsx,/accountant/fee-management/package-plans,No direct API call detected; inspect local/static behavior,0,
+school/src/pages/accountant/fee-management/FeeStructureSetup.tsx,/accountant/fee-management/structure-setup,No direct API call detected; inspect local/static behavior,0,
+school/src/pages/accountant/Fees.tsx,/accountant/fees,No direct API call detected; inspect local/static behavior,0,18
+school/src/pages/accountant/FeeStructures.tsx,/accountant/fee-structures,No direct API call detected; inspect local/static behavior,0,44; 72; 79; 83; 87; 102; 103; 127; 172
+school/src/pages/accountant/Payroll.tsx,/accountant/payroll,No direct API call detected; inspect local/static behavior,0,18; 41; 48; 55; 59; 73; 87; 88; 120; 162
+school/src/pages/accountant/Reports.tsx,/accountant/reports,No direct API call detected; inspect local/static behavior,0,34; 42; 171
+school/src/pages/accountant/Scholarships.tsx,/accountant/scholarships,No direct API call detected; inspect local/static behavior,0,36; 68; 78; 79; 84; 103; 107; 124; 128; 229; 275
+school/src/pages/accountant/Settings.tsx,/accountant/settings,No direct API call detected; inspect local/static behavior,0,21; 31; 39; 60; 89; 162; 184; 212
+school/src/pages/admin/Admissions.tsx,/admin/admissions,API calls present; runtime unverified,20,
+school/src/pages/admin/Classes.tsx,/admin/classes,API calls present; runtime unverified,13,342; 390
+school/src/pages/admin/ClassSchedule.tsx,Not directly routed (may be embedded),API calls present; runtime unverified,28,
+school/src/pages/admin/ClassScheduleForm.tsx,Not directly routed (may be embedded),No direct API call detected; inspect local/static behavior,0,
+school/src/pages/admin/ClassScheduleHelpers.ts,Not directly routed (may be embedded),No direct API call detected; inspect local/static behavior,0,
+school/src/pages/admin/Events.tsx,/admin/events,Partial: lookups use API; event CRUD/participation use local state,4,84; 85; 112; 113; 184
+school/src/pages/admin/exam/ManageScores.tsx,/admin/exam/managescore/:examId; /admin/exam/managescore; /admin/exam/managescore,API calls present; runtime unverified,12,
+school/src/pages/admin/exam/ViewMarksheet.tsx,/admin/exam/marksheet,API calls present; runtime unverified,9,
+school/src/pages/admin/Exams.tsx,/admin/exams,API calls present; runtime unverified,17,431; 895
+school/src/pages/admin/handleSaveBreak.js,Not directly routed (may be embedded),API calls present; runtime unverified,2,
+school/src/pages/admin/Notices.tsx,/admin/notices,Partial: lookups use API; notice CRUD uses local state,3,84; 85; 114
+school/src/pages/admin/Scholarships.tsx,/admin/scholarships,API calls present; runtime unverified,19,252; 393
+school/src/pages/admin/settings/AcademicSettings.tsx,/admin/settings/academic,API calls present; runtime unverified,20,
+school/src/pages/admin/settings/AdmissionFees.tsx,/admin/settings/admission-fees,API calls present; runtime unverified,6,
+school/src/pages/admin/settings/CampusSettings.tsx,/admin/settings/campus,API calls present; runtime unverified,16,
+school/src/pages/admin/settings/DefaultValues.tsx,/admin/settings/defaults,API calls present; runtime unverified,9,
+school/src/pages/admin/settings/index.tsx,/superadmin/settings; /admin/settings,No direct API call detected; inspect local/static behavior,0,
+school/src/pages/admin/settings/Notifications.tsx,/admin/settings/notifications,API calls present; runtime unverified,7,
+school/src/pages/admin/settings/RolesPermissions.tsx,Not directly routed (may be embedded),API calls present; runtime unverified,4,
+school/src/pages/admin/settings/SchoolInfo.tsx,/admin/settings/school,API calls present; runtime unverified,2,
+school/src/pages/admin/settings/SessionConfig.tsx,/admin/settings/session,API calls present; runtime unverified,12,
+school/src/pages/admin/settings/StaffManagementSettings.tsx,/admin/settings/staff,API calls present; runtime unverified,10,
+school/src/pages/admin/settings/TimezoneLocale.tsx,/admin/settings/locale,API calls present; runtime unverified,3,
+school/src/pages/admin/StaffDetailDrill.tsx,/admin/staff/:id,API calls present; runtime unverified,2,
+school/src/pages/admin/StaffManagement.tsx,/admin/staff-management,API calls present; runtime unverified,16,
+school/src/pages/admin/StudentDetail.tsx,/admin/students/:id,API calls present; runtime unverified,2,104; 105; 121; 123; 124; 150; 169
+school/src/pages/admin/TeacherAssignments.tsx,Not directly routed (may be embedded),Embedded form; receives data and callbacks from parent,0,
+school/src/pages/admin/TeacherDetail.tsx,/admin/teachers/:id,API calls present; runtime unverified,12,
+school/src/pages/admin/TeacherEdit.tsx,Not directly routed (may be embedded),API calls present; runtime unverified,6,
+school/src/pages/admin/TeacherEditSimple.tsx,/admin/teachers/edit/:id,API calls present; runtime unverified,10,213
+school/src/pages/admin/Teachers.tsx,/admin/teachers,API calls present; runtime unverified,8,32; 159
+school/src/pages/admin/TransportManagement.tsx,/admin/transport-management,API calls present; runtime unverified,26,
+school/src/pages/admin/UserManagement.tsx,/admin/user-management,No direct API call detected; inspect local/static behavior,0,21; 22; 36; 57; 69; 79; 148
+school/src/pages/auth/Login.tsx,/login,Delegates login to AuthContext; API wiring exists there,0,
+school/src/pages/common/NotFound.tsx,*,No direct API call detected; inspect local/static behavior,0,
+school/src/pages/common/Profile.tsx,/profile,No direct API call detected; inspect local/static behavior,0,12; 24; 42
+school/src/pages/dashboard/AccountantDashboard.tsx,/accountant/dashboard,No direct API call detected; inspect local/static behavior,0,9; 148
+school/src/pages/dashboard/AdminDashboard.tsx,/admin/dashboard,API calls present; runtime unverified,2,20
+school/src/pages/dashboard/ParentDashboard.tsx,/parent/dashboard,No direct API call detected; inspect local/static behavior,0,15
+school/src/pages/dashboard/StudentDashboard.tsx,/student/dashboard,No direct API call detected; inspect local/static behavior,0,
+school/src/pages/dashboard/TeacherDashboard.tsx,/teacher/dashboard,No direct API call detected; inspect local/static behavior,0,
+school/src/pages/parent/Assignments.tsx,/parent/assignments,No direct API call detected; inspect local/static behavior,0,21; 22; 47; 48; 79; 85
+school/src/pages/parent/Attendance.tsx,/parent/attendance,No direct API call detected; inspect local/static behavior,0,12; 13; 28; 30; 33; 40; 183; 184
+school/src/pages/parent/ChildClasses.tsx,/parent/child-classes,No direct API call detected; inspect local/static behavior,0,24; 25; 79
+school/src/pages/parent/Children.tsx,/parent/children,No direct API call detected; inspect local/static behavior,0,6; 8; 50; 51; 57; 118
+school/src/pages/parent/Complaints.tsx,/parent/complaints,No direct API call detected; inspect local/static behavior,0,21; 22; 61; 62; 70; 72; 92; 97; 98; 141
+school/src/pages/parent/Fees.tsx,/parent/fees,No direct API call detected; inspect local/static behavior,0,20; 21; 78; 95; 99; 220
+school/src/pages/parent/LeaveRequests.tsx,/parent/leave-requests,No direct API call detected; inspect local/static behavior,0,22; 23; 29; 30; 74; 77; 105; 111; 116; 164; 209; 247
+school/src/pages/parent/Notices.tsx,/parent/notices,No direct API call detected; inspect local/static behavior,0,20; 21; 76
+school/src/pages/parent/Results.tsx,/parent/results,No direct API call detected; inspect local/static behavior,0,29; 30; 71; 74; 188
+school/src/pages/parent/Timetable.tsx,/parent/timetable,No direct API call detected; inspect local/static behavior,0,20; 21; 101
+school/src/pages/student/Assignments.tsx,/student/assignments,API calls present; runtime unverified,2,202
+school/src/pages/student/Attendance.tsx,/student/attendance,No direct API call detected; inspect local/static behavior,0,14; 15; 27; 33; 36; 38; 40; 43; 47; 52
+school/src/pages/student/Complaints.tsx,/student/complaints,No direct API call detected; inspect local/static behavior,0,19; 20; 59; 90
+school/src/pages/student/Fees.tsx,/student/fees,No direct API call detected; inspect local/static behavior,0,19; 20; 85; 179
+school/src/pages/student/LeaveRequests.tsx,/student/leave,No direct API call detected; inspect local/static behavior,0,20; 21; 68; 108; 133; 135
+school/src/pages/student/MyClasses.tsx,/student/my-classes,No direct API call detected; inspect local/static behavior,0,26; 27; 93
+school/src/pages/student/Notices.tsx,/student/notices,No direct API call detected; inspect local/static behavior,0,20; 21; 68
+school/src/pages/student/Results.tsx,/student/results,No direct API call detected; inspect local/static behavior,0,28; 29; 56; 59
+school/src/pages/student/Timetable.tsx,/student/timetable,No direct API call detected; inspect local/static behavior,0,21; 22; 99; 106
+school/src/pages/superadmin/ActivityTracker.tsx,/superadmin/activities,API call present; matching backend route absent,1,
+school/src/pages/superadmin/AddSchool.tsx,/superadmin/add-school,API calls present; runtime unverified,2,
+school/src/pages/superadmin/SubscriptionManagement.tsx,/superadmin/subscriptions/:schoolId,API calls present; runtime unverified,5,
+school/src/pages/superadmin/SuperadminDashboard.tsx,/superadmin/dashboard,API calls present; runtime unverified,1,
+school/src/pages/teacher/Announcements.tsx,/teacher/announcements,No direct API call detected; inspect local/static behavior,0,15; 43; 57; 69; 74; 88; 89; 148; 204; 205
+school/src/pages/teacher/Assignments.tsx,/teacher/assignments,API calls present; runtime unverified,6,
+school/src/pages/teacher/Attendance.tsx,/teacher/attendance,API calls present; runtime unverified,6,
+school/src/pages/teacher/ExamMarks.tsx,/teacher/exam-marks,API calls present; runtime unverified,5,
+school/src/pages/teacher/Grades.tsx,/teacher/grades,API calls present; runtime unverified,3,
+school/src/pages/teacher/LeaveApply.tsx,/teacher/leave,No direct API call detected; inspect local/static behavior,0,8
+school/src/pages/teacher/MyClasses.tsx,/teacher/my-classes,API calls present; runtime unverified,3,
+school/src/pages/teacher/ReadingMaterials.tsx,/teacher/materials,No direct API call detected; inspect local/static behavior,0,10; 18; 24; 45; 53; 73; 74; 82; 83; 233; 249; 250
+school/src/pages/teacher/Schedule.tsx,Not directly routed (may be embedded),No direct API call detected; inspect local/static behavior,0,8

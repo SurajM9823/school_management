@@ -1,0 +1,603 @@
+
+> school-management-system@0.1.0 lint
+> eslint .
+
+
+C:\Users\Suraj\Desktop\school_management\school\src\App.tsx
+  18:8  error  'RolesPermissions' is defined but never used  @typescript-eslint/no-unused-vars
+  38:8  error  'ClassSchedule' is defined but never used     @typescript-eslint/no-unused-vars
+  42:8  error  'Schedule' is defined but never used          @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\api.ts
+  43:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  44:30  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\components\TeachingAssignmentForm.tsx
+   6:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   7:12  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   8:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   9:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  10:61  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  69:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  83:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\components\common\LiveChatWidget.tsx
+  2:45  error  'Maximize2' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\components\layout\Breadcrumbs.tsx
+  3:24  error  'Home' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\components\layout\FooterBar.tsx
+   7:7   error  'BACKEND_BASE_URL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  19:10  error  'error' is assigned a value but never used             @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\components\layout\Sidebar.tsx
+  17:3   error  'User' is defined but never used          @typescript-eslint/no-unused-vars
+  21:3   error  'Briefcase' is defined but never used     @typescript-eslint/no-unused-vars
+  22:3   error  'Bus' is defined but never used           @typescript-eslint/no-unused-vars
+  24:3   error  'CreditCard' is defined but never used    @typescript-eslint/no-unused-vars
+  25:3   error  'Activity' is defined but never used      @typescript-eslint/no-unused-vars
+  26:3   error  'Bell' is defined but never used          @typescript-eslint/no-unused-vars
+  90:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\components\layout\TopBar.tsx
+   3:22  error  'MessageSquare' is defined but never used   @typescript-eslint/no-unused-vars
+  26:10  error  'error' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\contexts\AuthContext.tsx
+   26:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+   69:28  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+   90:38  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  101:23  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  126:4   warning  React Hook useEffect has a missing dependency: 'user'. Either include it or remove the dependency array                         react-hooks/exhaustive-deps
+  150:19  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\accountant\Expenses.tsx
+  4:36  error  'Filter' is defined but never used    @typescript-eslint/no-unused-vars
+  4:44  error  'Calendar' is defined but never used  @typescript-eslint/no-unused-vars
+  4:54  error  'Tag' is defined but never used       @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\accountant\Fees.tsx
+  6:3  error  'Users' is defined but never used       @typescript-eslint/no-unused-vars
+  7:3  error  'TrendingUp' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\accountant\Payroll.tsx
+  4:10  error  'Users' is defined but never used       @typescript-eslint/no-unused-vars
+  4:17  error  'DollarSign' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\accountant\Reports.tsx
+  4:20  error  'Calendar' is defined but never used  @typescript-eslint/no-unused-vars
+  4:51  error  'PieChart' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\accountant\Scholarships.tsx
+   4:36  error  'Filter' is defined but never used                     @typescript-eslint/no-unused-vars
+   4:44  error  'Award' is defined but never used                      @typescript-eslint/no-unused-vars
+   4:70  error  'Calendar' is defined but never used                   @typescript-eslint/no-unused-vars
+   4:80  error  'Percent' is defined but never used                    @typescript-eslint/no-unused-vars
+  74:7   error  'scholarshipTypes' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  79:23  error  'setAwardedList' is assigned a value but never used    @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\accountant\Settings.tsx
+   4:16  error  'Edit' is defined but never used                              @typescript-eslint/no-unused-vars
+  26:10  error  'currentFinancialYear' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  38:9   error  'handleSaveFinancialYear' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\accountant\billing\GenerateMonthlyBills.tsx
+  262:11  error  'student' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\accountant\billing\StudentBillingLedger.tsx
+  5:10  error  'FileText' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\accountant\fee-management\FeePackagePlans.tsx
+  5:43  error  'Users' is defined but never used     @typescript-eslint/no-unused-vars
+  5:50  error  'FileText' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\Admissions.tsx
+  184:10  error    'editProfilePicture' is assigned a value but never used                                                                                                                                      @typescript-eslint/no-unused-vars
+  190:10  error    'certificateFormType' is assigned a value but never used                                                                                                                                     @typescript-eslint/no-unused-vars
+  215:26  error    'isValid' is assigned a value but never used                                                                                                                                                 @typescript-eslint/no-unused-vars
+  278:13  error    'registerPromotion' is assigned a value but never used                                                                                                                                       @typescript-eslint/no-unused-vars
+  302:16  error    'err' is defined but never used                                                                                                                                                              @typescript-eslint/no-unused-vars
+  318:9   error    'editClassId' is assigned a value but never used                                                                                                                                             @typescript-eslint/no-unused-vars
+  344:1   error    React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+  366:19  error    Unexpected any. Specify a different type                                                                                                                                                     @typescript-eslint/no-explicit-any
+  374:3   error    React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+  380:6   warning  React Hook useEffect has a missing dependency: 'fetchSections'. Either include it or remove the dependency array                                                                             react-hooks/exhaustive-deps
+  382:3   error    React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+  390:3   error    React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+  420:14  error    'err' is defined but never used                                                                                                                                                              @typescript-eslint/no-unused-vars
+  467:19  error    Unexpected any. Specify a different type                                                                                                                                                     @typescript-eslint/no-explicit-any
+  520:19  error    Unexpected any. Specify a different type                                                                                                                                                     @typescript-eslint/no-explicit-any
+  548:21  error    Unexpected any. Specify a different type                                                                                                                                                     @typescript-eslint/no-explicit-any
+  561:17  error    Unexpected any. Specify a different type                                                                                                                                                     @typescript-eslint/no-explicit-any
+  618:19  error    Unexpected any. Specify a different type                                                                                                                                                     @typescript-eslint/no-explicit-any
+  629:14  error    'err' is defined but never used                                                                                                                                                              @typescript-eslint/no-unused-vars
+  667:14  error    'err' is defined but never used                                                                                                                                                              @typescript-eslint/no-unused-vars
+  684:14  error    'err' is defined but never used                                                                                                                                                              @typescript-eslint/no-unused-vars
+  847:19  error    Unexpected any. Specify a different type                                                                                                                                                     @typescript-eslint/no-explicit-any
+  941:19  error    Unexpected any. Specify a different type                                                                                                                                                     @typescript-eslint/no-explicit-any
+  977:19  error    Unexpected any. Specify a different type                                                                                                                                                     @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\ClassSchedule.tsx
+  130:46  error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+  131:50  error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+  334:7   error  'isTimeWithinRange' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  392:17  error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\ClassScheduleForm.tsx
+   2:8   error  'Button' is defined but never used                  @typescript-eslint/no-unused-vars
+   3:8   error  'api' is defined but never used                     @typescript-eslint/no-unused-vars
+   6:14  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+   8:12  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+   9:13  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  10:13  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  11:13  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  12:10  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  14:17  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  29:10  error  'classSubjects' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  29:54  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  49:13  error  'classId' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  50:13  error  'sectionId' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  57:48  error  'subject' is defined but never used                 @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\ClassScheduleHelpers.ts
+  6:11  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\Classes.tsx
+    3:31   error    'setValue' is defined but never used                                                                                                                     @typescript-eslint/no-unused-vars
+  110:146  error    'subjectErrors' is assigned a value but never used                                                                                                       @typescript-eslint/no-unused-vars
+  125:6    warning  React Hook useEffect has missing dependencies: 'fetchClasses', 'fetchSubjects', and 'fetchTeachers'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  223:6    warning  React Hook useEffect has a missing dependency: 'handleError'. Either include it or remove the dependency array                                           react-hooks/exhaustive-deps
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\Events.tsx
+    2:26  error  'Filter' is defined but never used        @typescript-eslint/no-unused-vars
+  279:63  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  294:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  302:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  313:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\Exams.tsx
+   19:3   error    'UploadCloud' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+   20:3   error    'DownloadCloud' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+   25:12  error    'AwardIcon' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+  109:18  error    Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  138:10  error    'currentStudentScores' is assigned a value but never used                                                            @typescript-eslint/no-unused-vars
+  138:32  error    'setCurrentStudentScores' is assigned a value but never used                                                         @typescript-eslint/no-unused-vars
+  139:10  error    'showMarksheetModal' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  140:10  error    'selectedStudentForMarksheet' is assigned a value but never used                                                     @typescript-eslint/no-unused-vars
+  140:39  error    'setSelectedStudentForMarksheet' is assigned a value but never used                                                  @typescript-eslint/no-unused-vars
+  141:10  error    'selectedExamForMarksheet' is assigned a value but never used                                                        @typescript-eslint/no-unused-vars
+  142:10  error    'schoolInfo' is assigned a value but never used                                                                      @typescript-eslint/no-unused-vars
+  142:48  error    Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  143:10  error    'marksheetData' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  143:54  error    Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  144:10  error    'selectedClassForMarksheet' is assigned a value but never used                                                       @typescript-eslint/no-unused-vars
+  147:10  error    'rankedStudents' is assigned a value but never used                                                                  @typescript-eslint/no-unused-vars
+  147:26  error    'setRankedStudents' is assigned a value but never used                                                               @typescript-eslint/no-unused-vars
+  178:6   warning  React Hook useEffect has a missing dependency: 'fetchInitialData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  239:6   warning  React Hook useEffect has a missing dependency: 'handleError'. Either include it or remove the dependency array       react-hooks/exhaustive-deps
+  345:13  error    'response' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+  360:9   error    'handleUpdateStatus' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  456:9   error    'handleOpenScoreModal' is assigned a value but never used                                                            @typescript-eslint/no-unused-vars
+  463:9   error    'handleOpenMarksheetModal' is assigned a value but never used                                                        @typescript-eslint/no-unused-vars
+  492:52  error    Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  493:53  error    Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  494:30  error    Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  499:48  error    Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  520:14  error    'error' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+  527:9   error    'handleOpenRankingsModal' is assigned a value but never used                                                         @typescript-eslint/no-unused-vars
+  771:41  error    'index' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\Notices.tsx
+  182:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\Scholarships.tsx
+   13:3    error  'XCircle' is defined but never used                           @typescript-eslint/no-unused-vars
+   14:3    error  'CalendarDays' is defined but never used                      @typescript-eslint/no-unused-vars
+   18:10   error  'format' is defined but never used                            @typescript-eslint/no-unused-vars
+   21:11   error  'ScholarshipEligibilityCriteria' is defined but never used    @typescript-eslint/no-unused-vars
+   65:10   error  'exams' is assigned a value but never used                    @typescript-eslint/no-unused-vars
+   72:10   error  'classFilter' is assigned a value but never used              @typescript-eslint/no-unused-vars
+   72:23   error  'setClassFilter' is assigned a value but never used           @typescript-eslint/no-unused-vars
+   73:10   error  'sectionFilter' is assigned a value but never used            @typescript-eslint/no-unused-vars
+   73:25   error  'setSectionFilter' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  127:62   error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  133:51   error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  197:14   error  'err' is defined but never used                               @typescript-eslint/no-unused-vars
+  224:57   error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  240:14   error  'err' is defined but never used                               @typescript-eslint/no-unused-vars
+  245:9    error  'handleAutoAssign' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  253:14   error  'err' is defined but never used                               @typescript-eslint/no-unused-vars
+  260:9    error  'handleAssignScholarship' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  286:9    error  'handleRevokeScholarship' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  411:327  error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  471:309  error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\StaffDetailDrill.tsx
+  107:6   warning  React Hook useEffect has a missing dependency: 'fetchStaffDetails'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  120:19  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  149:19  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\StaffManagement.tsx
+    9:31  error    'Search' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+  188:10  error    'schools' is assigned a value but never used                                                                  @typescript-eslint/no-unused-vars
+  210:56  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  257:19  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  271:4   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  293:42  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  300:11  error    'effectiveSchoolId' is assigned a value but never used                                                        @typescript-eslint/no-unused-vars
+  331:56  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  340:49  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  354:45  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  355:47  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  380:17  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  494:64  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  508:60  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  509:62  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  536:58  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  550:54  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  551:56  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  578:17  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  644:17  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  678:17  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  712:11  error    'response' is assigned a value but never used                                                                 @typescript-eslint/no-unused-vars
+  721:17  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  771:17  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  837:19  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\StudentDetail.tsx
+    3:37   error  'Book' is defined but never used          @typescript-eslint/no-unused-vars
+    3:43   error  'Award' is defined but never used         @typescript-eslint/no-unused-vars
+    3:112  error  'Trash2' is defined but never used        @typescript-eslint/no-unused-vars
+  152:21   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\TeacherAssignments.tsx
+   6:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   7:12  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   8:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   9:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  10:61  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  69:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  83:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\TeacherDetail.tsx
+   21:3   error    'Save' is defined but never used                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   22:3   error    'X' is defined but never used                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   31:42  error    Unexpected any. Specify a different type                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+   32:50  error    Unexpected any. Specify a different type                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+   39:62  error    Unexpected any. Specify a different type                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+   75:6   warning  React Hook useEffect has an unnecessary dependency: 'window.location.search'. Either exclude it or remove the dependency array. Outer scope values like 'window.location.search' aren't valid dependencies because mutating them doesn't re-render the component  react-hooks/exhaustive-deps
+  416:43  error    Unexpected any. Specify a different type                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  510:34  error    Unexpected any. Specify a different type                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  525:39  error    Unexpected any. Specify a different type                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  539:39  error    Unexpected any. Specify a different type                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\TeacherEdit.tsx
+   13:8   error  'TeacherAssignments' is defined but never used      @typescript-eslint/no-unused-vars
+   18:42  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+   21:10  error  'classes' is assigned a value but never used        @typescript-eslint/no-unused-vars
+   22:10  error  'sections' is assigned a value but never used       @typescript-eslint/no-unused-vars
+   24:10  error  'staffRoles' is assigned a value but never used     @typescript-eslint/no-unused-vars
+   25:10  error  'departments' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  114:9   error  'fetchSections' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  172:19  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  364:41  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\TeacherEditSimple.tsx
+   17:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   23:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  110:72  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  156:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  220:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  387:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  529:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  544:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  558:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\Teachers.tsx
+   13:3   error  'X' is defined but never used                               @typescript-eslint/no-unused-vars
+   15:3   error  'Download' is defined but never used                        @typescript-eslint/no-unused-vars
+   92:10  error  'isLoading' is assigned a value but never used              @typescript-eslint/no-unused-vars
+   93:10  error  'error' is assigned a value but never used                  @typescript-eslint/no-unused-vars
+  141:60  error  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+  365:72  error  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+  394:9   error  'handleEditTeacher' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  394:30  error  'teacher' is defined but never used                         @typescript-eslint/no-unused-vars
+  399:9   error  'handleDeleteTeacher' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  417:9   error  'handleViewCredentials' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\TransportManagement.tsx
+    2:25  error  'Search' is defined but never used        @typescript-eslint/no-unused-vars
+  128:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  162:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  179:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  262:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  274:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  298:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  310:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  333:63  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  339:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  402:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  439:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  448:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  452:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  454:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  548:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  602:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\UserManagement.tsx
+  4:22  error  'ToggleLeft' is defined but never used   @typescript-eslint/no-unused-vars
+  4:34  error  'ToggleRight' is defined but never used  @typescript-eslint/no-unused-vars
+  4:47  error  'Search' is defined but never used       @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\exam\ManageScores.tsx
+   80:12  error    Unexpected any. Specify a different type                                                                                                                          @typescript-eslint/no-explicit-any
+   81:18  error    Unexpected any. Specify a different type                                                                                                                          @typescript-eslint/no-explicit-any
+  125:6   warning  React Hook useEffect has a missing dependency: 'fetchInitialData'. Either include it or remove the dependency array                                               react-hooks/exhaustive-deps
+  193:6   warning  React Hook useEffect has a missing dependency: 'handleError'. Either include it or remove the dependency array                                                    react-hooks/exhaustive-deps
+  220:6   warning  React Hook useEffect has a missing dependency: 'handleError'. Either include it or remove the dependency array                                                    react-hooks/exhaustive-deps
+  257:6   warning  React Hook useEffect has a missing dependency: 'handleError'. Either include it or remove the dependency array                                                    react-hooks/exhaustive-deps
+  297:6   warning  React Hook useEffect has missing dependencies: 'fetchExistingScores', 'handleError', and 'selectedSubjectId'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  310:60  error    Unexpected any. Specify a different type                                                                                                                          @typescript-eslint/no-explicit-any
+  318:14  error    'err' is defined but never used                                                                                                                                   @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\exam\ViewMarksheet.tsx
+    3:21  error  'Download' is defined but never used                  @typescript-eslint/no-unused-vars
+   87:48  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+   88:10  error  'students' is assigned a value but never used         @typescript-eslint/no-unused-vars
+   88:44  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+   89:44  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+   90:54  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+   91:50  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+   92:54  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+   93:10  error  'gradingSettings' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   93:58  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  134:16  error  'err' is defined but never used                       @typescript-eslint/no-unused-vars
+  200:85  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  264:68  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  265:32  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  279:65  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  290:22  error  'err' is defined but never used                       @typescript-eslint/no-unused-vars
+  302:70  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  369:9   error  'getGradePoint' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  400:36  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  610:64  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  626:51  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  631:66  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  704:60  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  901:64  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\settings\AcademicSettings.tsx
+    7:10  error    'BookOpen' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+   83:75  error    'watch' is assigned a value but never used                                                                            @typescript-eslint/no-unused-vars
+  132:6   warning  React Hook useEffect has a missing dependency: 'fetchAcademicData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  168:72  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  191:21  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  232:21  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  285:21  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  332:21  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  504:72  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\settings\AdmissionFees.tsx
+   62:6   warning  React Hook useEffect has a missing dependency: 'loadInitialData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   75:72  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  115:21  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  171:72  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\settings\CampusSettings.tsx
+   97:6   warning  React Hook useEffect has a missing dependency: 'fetchCampusData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  110:72  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  175:21  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  220:21  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  269:21  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  314:21  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  408:72  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\settings\DefaultValues.tsx
+   51:65  error    'setValue' is assigned a value but never used                                                                            @typescript-eslint/no-unused-vars
+   71:6   warning  React Hook useEffect has a missing dependency: 'fetchDefaultSettings'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   92:72  error    Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+  155:72  error    Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\settings\Notifications.tsx
+   74:6   warning  React Hook useEffect has a missing dependency: 'fetchNotificationData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   88:72  error    Unexpected any. Specify a different type                                                                                  @typescript-eslint/no-explicit-any
+  213:72  error    Unexpected any. Specify a different type                                                                                  @typescript-eslint/no-explicit-any
+  246:72  error    Unexpected any. Specify a different type                                                                                  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\settings\RolesPermissions.tsx
+   57:14  error  'err' is defined but never used  @typescript-eslint/no-unused-vars
+   81:14  error  'err' is defined but never used  @typescript-eslint/no-unused-vars
+  103:14  error  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\settings\SchoolInfo.tsx
+    8:10  error    'School' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+   60:6   warning  React Hook useEffect has a missing dependency: 'fetchSchoolData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   78:19  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  146:19  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\settings\SessionConfig.tsx
+   51:18  error    Unexpected any. Specify a different type                                                                                             @typescript-eslint/no-explicit-any
+   89:6   warning  React Hook useEffect has a missing dependency: 'fetchSessions'. Either include it or remove the dependency array                     react-hooks/exhaustive-deps
+   97:6   warning  React Hook useEffect has missing dependencies: 'fetchHolidays' and 'fetchTerms'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  109:72  error    Unexpected any. Specify a different type                                                                                             @typescript-eslint/no-explicit-any
+  134:72  error    Unexpected any. Specify a different type                                                                                             @typescript-eslint/no-explicit-any
+  159:72  error    Unexpected any. Specify a different type                                                                                             @typescript-eslint/no-explicit-any
+  371:72  error    Unexpected any. Specify a different type                                                                                             @typescript-eslint/no-explicit-any
+  407:72  error    Unexpected any. Specify a different type                                                                                             @typescript-eslint/no-explicit-any
+  445:72  error    Unexpected any. Specify a different type                                                                                             @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\settings\StaffManagementSettings.tsx
+    7:10  error    'Users' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+  120:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  135:72  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  157:21  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  199:21  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  239:21  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  318:72  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\settings\TimezoneLocale.tsx
+    8:10  error    'Globe' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+   39:5   error    'setValue' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+   51:10  error    'localeData' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+   63:6   warning  React Hook useEffect has a missing dependency: 'fetchLocaleData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   74:19  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  114:19  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\admin\settings\index.tsx
+  9:3  error  'Lock' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\auth\Login.tsx
+  54:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\dashboard\AdminDashboard.tsx
+   7:3   error  'BookOpen' is defined but never used      @typescript-eslint/no-unused-vars
+   8:3   error  'DollarSign' is defined but never used    @typescript-eslint/no-unused-vars
+  10:3   error  'Calendar' is defined but never used      @typescript-eslint/no-unused-vars
+  52:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  62:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  80:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\parent\Assignments.tsx
+  85:23  error  'setAssignments' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\parent\Attendance.tsx
+   3:10  error  'Calendar' is defined but never used                    @typescript-eslint/no-unused-vars
+   3:72  error  'Filter' is defined but never used                      @typescript-eslint/no-unused-vars
+  40:26  error  'setAttendanceData' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\parent\ChildClasses.tsx
+  79:21  error  'setClassInfo' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\parent\Children.tsx
+  50:24  error  'setChildrenList' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\parent\Complaints.tsx
+  4:37  error  'Filter' is defined but never used       @typescript-eslint/no-unused-vars
+  4:69  error  'AlertCircle' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\parent\Fees.tsx
+   4:48  error  'Calendar' is defined but never used                        @typescript-eslint/no-unused-vars
+  78:22  error  'setFeeRecords' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  79:10  error  'showPaymentModal' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  79:28  error  'setShowPaymentModal' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  80:10  error  'selectedFeeForPayment' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\parent\LeaveRequests.tsx
+  4:36  error  'Filter' is defined but never used  @typescript-eslint/no-unused-vars
+  4:50  error  'Eye' is defined but never used     @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\parent\Notices.tsx
+   4:31  error  'Filter' is defined but never used               @typescript-eslint/no-unused-vars
+  76:19  error  'setNotices' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\parent\Results.tsx
+   4:38  error  'Filter' is defined but never used                   @typescript-eslint/no-unused-vars
+   4:56  error  'TrendingUp' is defined but never used               @typescript-eslint/no-unused-vars
+   4:68  error  'TrendingDown' is defined but never used             @typescript-eslint/no-unused-vars
+   4:82  error  'Percent' is defined but never used                  @typescript-eslint/no-unused-vars
+   5:10  error  'format' is defined but never used                   @typescript-eslint/no-unused-vars
+   5:18  error  'parseISO' is defined but never used                 @typescript-eslint/no-unused-vars
+  74:23  error  'setResultsData' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\parent\Timetable.tsx
+    4:17  error  'BookOpen' is defined but never used                   @typescript-eslint/no-unused-vars
+    4:27  error  'User' is defined but never used                       @typescript-eslint/no-unused-vars
+    4:47  error  'ChevronLeft' is defined but never used                @typescript-eslint/no-unused-vars
+    4:60  error  'ChevronRight' is defined but never used               @typescript-eslint/no-unused-vars
+    5:49  error  'isSameDay' is defined but never used                  @typescript-eslint/no-unused-vars
+  101:25  error  'setTimetableData' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  102:23  error  'setCurrentDate' is assigned a value but never used    @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\student\Assignments.tsx
+    4:80  error  'Download' is defined but never used                    @typescript-eslint/no-unused-vars
+    5:28  error  'isPast' is defined but never used                      @typescript-eslint/no-unused-vars
+    5:36  error  'isSameDay' is defined but never used                   @typescript-eslint/no-unused-vars
+  220:7   error  'commonInputStyles' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\student\Attendance.tsx
+   4:10  error  'Calendar' is defined but never used                    @typescript-eslint/no-unused-vars
+  52:26  error  'setAttendanceData' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\student\Complaints.tsx
+  4:37  error  'Filter' is defined but never used       @typescript-eslint/no-unused-vars
+  4:69  error  'AlertCircle' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\student\Fees.tsx
+   4:48  error  'Calendar' is defined but never used                @typescript-eslint/no-unused-vars
+  85:22  error  'setFeeRecords' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\student\LeaveRequests.tsx
+  4:36  error  'Filter' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\student\MyClasses.tsx
+   3:8   error  'Button' is defined but never used                 @typescript-eslint/no-unused-vars
+  93:21  error  'setClassInfo' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\student\Notices.tsx
+   4:31  error  'Filter' is defined but never used               @typescript-eslint/no-unused-vars
+  68:19  error  'setNotices' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\student\Results.tsx
+   4:27  error  'BarChart2' is defined but never used                @typescript-eslint/no-unused-vars
+   4:38  error  'Filter' is defined but never used                   @typescript-eslint/no-unused-vars
+   4:56  error  'TrendingUp' is defined but never used               @typescript-eslint/no-unused-vars
+   4:68  error  'TrendingDown' is defined but never used             @typescript-eslint/no-unused-vars
+   4:82  error  'Percent' is defined but never used                  @typescript-eslint/no-unused-vars
+   5:10  error  'format' is defined but never used                   @typescript-eslint/no-unused-vars
+   5:18  error  'parseISO' is defined but never used                 @typescript-eslint/no-unused-vars
+  59:23  error  'setResultsData' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\student\Timetable.tsx
+  4:17  error  'BookOpen' is defined but never used      @typescript-eslint/no-unused-vars
+  4:27  error  'User' is defined but never used          @typescript-eslint/no-unused-vars
+  4:47  error  'ChevronLeft' is defined but never used   @typescript-eslint/no-unused-vars
+  4:60  error  'ChevronRight' is defined but never used  @typescript-eslint/no-unused-vars
+  5:49  error  'isSameDay' is defined but never used     @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\superadmin\AddSchool.tsx
+  89:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\superadmin\SubscriptionManagement.tsx
+    3:10  error  'CreditCard' is defined but never used         @typescript-eslint/no-unused-vars
+    3:22  error  'Calendar' is defined but never used           @typescript-eslint/no-unused-vars
+   80:19  error  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+   98:19  error  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  113:13  error  'response' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  124:19  error  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\teacher\Announcements.tsx
+    4:22   error  'BellRing' is defined but never used      @typescript-eslint/no-unused-vars
+  142:101  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\teacher\Assignments.tsx
+    9:3   error  'Trash' is defined but never used         @typescript-eslint/no-unused-vars
+   72:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   99:75  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  107:78  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\teacher\Attendance.tsx
+   42:62  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   44:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   69:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  451:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  488:51  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\teacher\ExamMarks.tsx
+  189:14  error  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\teacher\Grades.tsx
+   2:41  error    'Calendar' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+  60:6   warning  React Hook useEffect has a missing dependency: 'fetchStudents'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Suraj\Desktop\school_management\school\src\pages\teacher\MyClasses.tsx
+    3:27  error  'Edit3' is defined but never used                      @typescript-eslint/no-unused-vars
+   96:19  error  Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+  124:19  error  Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+  142:9   error  'handleAddRemarks' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  171:19  error  Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+
+✖ 438 problems (412 errors, 26 warnings)
+

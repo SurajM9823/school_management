@@ -1,0 +1,26 @@
+﻿ID,Priority,Status,Task,Owner,Depends on,Size,Acceptance criteria
+T01,P0,Open,Reproducible local baseline and sanitized seed data,A + B,—,M,"Fresh frontend/backend installs; Django check, migrations and local login documented; two schools and all roles seeded without real personal data"
+T02,P0,Open,Environment config and secret/log cleanup (F05),A + B,T01,M,Local frontend calls local API; production config externalized; no tokens/passwords in logs; exposed secrets rotated by owner
+T03,P0,Open,Remove plaintext credential lifecycle (F01),A; B updates credential UI,T01,L,"No plaintext writes/reads; safe migration, reset/invitation UX and recovery tests; existing-password handling agreed"
+T04,P0,Open,"Transport/attendance/homework role and school isolation (F02–F04, F13)",A,T01,L,"Wrong-role/cross-school access denied for list, detail, mutation and export; related-field validation covered by tests"
+T05,P1,Open,"Repair auth initialization and refresh (F06–F07, F19)",B; A reviews token contract,T01,M,Login/reload/logout/expiry/invalid refresh/network error work; one bounded refresh flow; concurrent 401 tests pass
+T06,P1,Open,"Establish build, typecheck, lint and critical test gates (F16, F20)",B frontend; A backend,T01,M,Baseline failures visible; blocking errors resolved; repeatable commands/CI recorded; tests cover real permissions and persistence
+T07,P1,Open,Fix API path/method/query mismatches (F09–F12),A + B,"T01, T05",M,Class-teacher IDs unambiguous; exam status save and marksheet load work; missing activities/remarks either implemented or explicitly deferred
+T08,P1,Open,Add OpenAPI + Swagger/ReDoc documentation,A,"T01, T04, T07",M,Schema validates; manual APIViews annotated; representative requests/responses/errors correct; docs access restricted appropriately
+T09,P1,Open,School setup and admission acceptance slice,B integration; A repairs,T02–T07,L,New school/session/classes → admission → parents/documents/fees → reload; rollback and duplicate-email cases verified
+T10,P1,Open,Staff/teacher/class assignment acceptance slice,B integration; A repairs,T09,M,Teacher created from both entrypoints; one consistent Staff/Teacher identity; class/subject assignments and detail/edit verified
+T11,P1,Open,Attendance end-to-end,B integration; A rules,"T04, T10",M,Teacher saves/edits own authorized class; summaries agree; no foreign IDs accepted; persisted after reload
+T12,P1,Open,Homework identity and full submission/grade flow,A model/API; B integration,"T04, T10",L,"Durable assignment linkage; two equal titles stay separate; upload, submit, grade, feedback and resubmission policy tested"
+T13,P1,Open,"Exams, marks and published results",A + B,"T07, T10",L,Valid marks saved; bounds enforced; formulas approved; marksheet matches source scores; student visibility follows publication rule
+T14,P1,Open,Persist notices/events and audience filtering,B integration; A access/contracts,"T04, T08, T09",M,Create/edit/delete/participation survive reload; audience and school rules verified; sample rows removed
+T15,P1,Open,Student/parent read APIs and screen integration,A APIs; B screens,"T09, T11–T14",L,Real linked children/classes/attendance/homework/results/notices; parent cannot read another family; empty/error/loading states handled
+T16,P1 if finance in release,Open,Agree finance rules and design persistent ledger,A with lead; B UI contract,T09,L,"Approved model for structures/packages/invoices/payments/allocations/refunds/discounts; decimal precision, period policy and audit rules documented"
+T17,P1 if finance in release,Open,"Implement fee setup, assignments and billing",A + B,T16,L,Server totals; idempotent billing per student/period; scoped ledger; no duplicate invoices; approved adjustments
+T18,P1 if finance in release,Open,"Collections, balances, receipts and fee portals",A + B,T17,L,Partial/full payment reconciles; reversal audit; student/parent only own balances; any provider webhook verified and idempotent
+T19,P2,Open,"Payroll, expenses, financial reports",A + B,T16–T18,L,Persisted workflows; approvals; report totals reconcile; no simulated save/payment states
+T20,P2,Open,Real dashboards and reporting,B; A aggregate APIs,Relevant completed workflows,M,Every displayed metric has a defined query/period; totals reconcile and respect scope
+T21,P2,Open,Profile and admin user management,A APIs; B screens,T03–T05,M,Real profile/password/user-status changes with validation; no timer-only success; reset authorization tested
+T22,P2,Open,Leave requests and complaints,A + B; lead defines process,"T09, T15",L,Persisted submission/review/status workflow; linked-child controls; approval audit and notification policy
+T23,P2,Open,Materials and announcements,A + B,"T10, T14",M,Scoped upload/download; CRUD; announcement audience; reuse notice service if approved
+T24,Scope decision,Open,Restore scheduling,A + B,Lead approves; T10,L,Persistent timetable and conflict rules; admin/teacher/student/parent views agree; disabled links restored only after acceptance
+T25,P1 release gate,Open,"Deployment, backup, restore and release rehearsal",A + B; lead accepts,All in-scope work,L,Clean build/checks; production config; TLS; static/media setup; backup restore demonstration; smoke tests; rollback instructions

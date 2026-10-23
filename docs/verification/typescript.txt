@@ -1,0 +1,416 @@
+src/App.tsx(18,1): error TS6133: 'RolesPermissions' is declared but its value is never read.
+src/App.tsx(38,1): error TS6133: 'ClassSchedule' is declared but its value is never read.
+src/App.tsx(42,1): error TS6133: 'Schedule' is declared but its value is never read.
+src/components/common/LiveChatWidget.tsx(2,45): error TS6133: 'Maximize2' is declared but its value is never read.
+src/components/layout/Breadcrumbs.tsx(3,24): error TS6133: 'Home' is declared but its value is never read.
+src/components/layout/FooterBar.tsx(7,7): error TS6133: 'BACKEND_BASE_URL' is declared but its value is never read.
+src/components/layout/FooterBar.tsx(19,10): error TS6133: 'error' is declared but its value is never read.
+src/components/layout/Sidebar.tsx(17,3): error TS6133: 'User' is declared but its value is never read.
+src/components/layout/Sidebar.tsx(21,3): error TS6133: 'Briefcase' is declared but its value is never read.
+src/components/layout/Sidebar.tsx(22,3): error TS6133: 'Bus' is declared but its value is never read.
+src/components/layout/Sidebar.tsx(24,3): error TS6133: 'CreditCard' is declared but its value is never read.
+src/components/layout/Sidebar.tsx(25,3): error TS6133: 'Activity' is declared but its value is never read.
+src/components/layout/Sidebar.tsx(26,3): error TS6133: 'Bell' is declared but its value is never read.
+src/components/layout/TopBar.tsx(3,22): error TS6133: 'MessageSquare' is declared but its value is never read.
+src/components/layout/TopBar.tsx(26,10): error TS6133: 'error' is declared but its value is never read.
+src/contexts/AuthContext.tsx(114,52): error TS2304: Cannot find name 'parsedUser'.
+src/contexts/AuthContext.tsx(115,19): error TS2304: Cannot find name 'parsedUser'.
+src/pages/accountant/billing/GenerateMonthlyBills.tsx(74,7): error TS2353: Object literal may only specify known properties, and 'feeTypes' does not exist in type 'FeeAssignment'.
+src/pages/accountant/billing/GenerateMonthlyBills.tsx(88,7): error TS2353: Object literal may only specify known properties, and 'feeTypes' does not exist in type 'FeeAssignment'.
+src/pages/accountant/billing/GenerateMonthlyBills.tsx(159,82): error TS2304: Cannot find name 'feePackages'.
+src/pages/accountant/billing/GenerateMonthlyBills.tsx(159,99): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/pages/accountant/billing/GenerateMonthlyBills.tsx(262,11): error TS6133: 'student' is declared but its value is never read.
+src/pages/accountant/billing/StudentBillingLedger.tsx(5,10): error TS6133: 'FileText' is declared but its value is never read.
+src/pages/accountant/Expenses.tsx(4,36): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/accountant/Expenses.tsx(4,44): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/accountant/Expenses.tsx(4,54): error TS6133: 'Tag' is declared but its value is never read.
+src/pages/accountant/fee-management/FeePackagePlans.tsx(5,43): error TS6133: 'Users' is declared but its value is never read.
+src/pages/accountant/fee-management/FeePackagePlans.tsx(5,50): error TS6133: 'FileText' is declared but its value is never read.
+src/pages/accountant/Fees.tsx(6,3): error TS6133: 'Users' is declared but its value is never read.
+src/pages/accountant/Fees.tsx(7,3): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/pages/accountant/Fees.tsx(112,61): error TS2345: Argument of type '({ id: number; studentId: number; studentName: string; class: string; feeType: string; amount: number; dueDate: string; status: string; paymentDate: string; } | { id: number; studentId: number; studentName: string; ... 5 more ...; paymentDate: null; })[]' is not assignable to parameter of type 'FeeRecord[] | (() => FeeRecord[])'.
+  Type '({ id: number; studentId: number; studentName: string; class: string; feeType: string; amount: number; dueDate: string; status: string; paymentDate: string; } | { id: number; studentId: number; studentName: string; ... 5 more ...; paymentDate: null; })[]' is not assignable to type 'FeeRecord[]'.
+    Type '{ id: number; studentId: number; studentName: string; class: string; feeType: string; amount: number; dueDate: string; status: string; paymentDate: string; } | { id: number; studentId: number; studentName: string; ... 5 more ...; paymentDate: null; }' is not assignable to type 'FeeRecord'.
+      Type '{ id: number; studentId: number; studentName: string; class: string; feeType: string; amount: number; dueDate: string; status: string; paymentDate: string; }' is not assignable to type 'FeeRecord'.
+        Types of property 'status' are incompatible.
+          Type 'string' is not assignable to type '"paid" | "unpaid" | "overdue"'.
+src/pages/accountant/Payroll.tsx(4,10): error TS6133: 'Users' is declared but its value is never read.
+src/pages/accountant/Payroll.tsx(4,17): error TS6133: 'DollarSign' is declared but its value is never read.
+src/pages/accountant/Reports.tsx(4,20): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/accountant/Reports.tsx(4,51): error TS6133: 'PieChart' is declared but its value is never read.
+src/pages/accountant/Scholarships.tsx(4,36): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/accountant/Scholarships.tsx(4,44): error TS6133: 'Award' is declared but its value is never read.
+src/pages/accountant/Scholarships.tsx(4,70): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/accountant/Scholarships.tsx(4,80): error TS6133: 'Percent' is declared but its value is never read.
+src/pages/accountant/Scholarships.tsx(74,7): error TS6133: 'scholarshipTypes' is declared but its value is never read.
+src/pages/accountant/Scholarships.tsx(79,23): error TS6133: 'setAwardedList' is declared but its value is never read.
+src/pages/accountant/Settings.tsx(4,16): error TS6133: 'Edit' is declared but its value is never read.
+src/pages/accountant/Settings.tsx(26,10): error TS6133: 'currentFinancialYear' is declared but its value is never read.
+src/pages/accountant/Settings.tsx(38,9): error TS6133: 'handleSaveFinancialYear' is declared but its value is never read.
+src/pages/admin/Admissions.tsx(184,10): error TS6133: 'editProfilePicture' is declared but its value is never read.
+src/pages/admin/Admissions.tsx(190,10): error TS6133: 'certificateFormType' is declared but its value is never read.
+src/pages/admin/Admissions.tsx(215,26): error TS6133: 'isValid' is declared but its value is never read.
+src/pages/admin/Admissions.tsx(278,13): error TS6133: 'registerPromotion' is declared but its value is never read.
+src/pages/admin/Admissions.tsx(318,9): error TS6133: 'editClassId' is declared but its value is never read.
+src/pages/admin/Admissions.tsx(1282,50): error TS2339: Property 'student_name' does not exist on type 'Parent'.
+src/pages/admin/Admissions.tsx(2241,52): error TS2339: Property 'studentPassword' does not exist on type 'EventTarget'.
+src/pages/admin/Admissions.tsx(2242,51): error TS2339: Property 'parentPassword' does not exist on type 'EventTarget'.
+src/pages/admin/Admissions.tsx(2243,40): error TS18047: 'selectedStudent' is possibly 'null'.
+src/pages/admin/Classes.tsx(3,31): error TS2305: Module '"react-hook-form"' has no exported member 'setValue'.
+src/pages/admin/Classes.tsx(3,31): error TS6133: 'setValue' is declared but its value is never read.
+src/pages/admin/Classes.tsx(110,136): error TS6133: 'subjectErrors' is declared but its value is never read.
+src/pages/admin/Classes.tsx(615,38): error TS18048: 'c.subjects.length' is possibly 'undefined'.
+src/pages/admin/ClassSchedule.tsx(142,55): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/pages/admin/ClassSchedule.tsx(159,47): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/pages/admin/ClassSchedule.tsx(171,58): error TS7006: Parameter 'campus' implicitly has an 'any' type.
+src/pages/admin/ClassSchedule.tsx(208,57): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/ClassSchedule.tsx(208,87): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/ClassSchedule.tsx(266,18): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/pages/admin/ClassSchedule.tsx(325,64): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/ClassSchedule.tsx(325,94): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/ClassSchedule.tsx(334,7): error TS6133: 'isTimeWithinRange' is declared but its value is never read.
+src/pages/admin/ClassSchedule.tsx(459,15): error TS7034: Variable 'createdSchedules' implicitly has type 'any[]' in some locations where its type cannot be determined.
+src/pages/admin/ClassSchedule.tsx(469,48): error TS7005: Variable 'createdSchedules' implicitly has an 'any[]' type.
+src/pages/admin/ClassSchedule.tsx(477,65): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/ClassSchedule.tsx(477,95): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/ClassSchedule.tsx(517,61): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/ClassSchedule.tsx(517,91): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/ClassSchedule.tsx(557,64): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/ClassSchedule.tsx(557,94): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/ClassSchedule.tsx(581,68): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/ClassSchedule.tsx(581,98): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/ClassSchedule.tsx(611,59): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/ClassSchedule.tsx(611,89): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/ClassScheduleForm.tsx(2,1): error TS6133: 'Button' is declared but its value is never read.
+src/pages/admin/ClassScheduleForm.tsx(3,1): error TS6133: 'api' is declared but its value is never read.
+src/pages/admin/ClassScheduleForm.tsx(29,10): error TS6133: 'classSubjects' is declared but its value is never read.
+src/pages/admin/ClassScheduleForm.tsx(49,13): error TS6133: 'classId' is declared but its value is never read.
+src/pages/admin/ClassScheduleForm.tsx(50,13): error TS6133: 'sectionId' is declared but its value is never read.
+src/pages/admin/ClassScheduleForm.tsx(57,48): error TS6133: 'subject' is declared but its value is never read.
+src/pages/admin/ClassScheduleForm.tsx(168,41): error TS7006: Parameter 'd' implicitly has an 'any' type.
+src/pages/admin/Events.tsx(2,26): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/admin/Events.tsx(124,19): error TS2345: Argument of type '({ id: number; name: string; description: string; event_type: string; academic_session: { id: any; name: any; }; start_date: string; end_date: string; is_open_for_applications: boolean; number_of_participants: number; assignments: never[]; } | { ...; })[]' is not assignable to parameter of type 'SetStateAction<EventDetails[]>'.
+  Type '({ id: number; name: string; description: string; event_type: string; academic_session: { id: any; name: any; }; start_date: string; end_date: string; is_open_for_applications: boolean; number_of_participants: number; assignments: never[]; } | { ...; })[]' is not assignable to type 'EventDetails[]'.
+    Type '{ id: number; name: string; description: string; event_type: string; academic_session: { id: any; name: any; }; start_date: string; end_date: string; is_open_for_applications: boolean; number_of_participants: number; assignments: never[]; } | { ...; }' is not assignable to type 'EventDetails'.
+      Type '{ id: number; name: string; description: string; event_type: string; academic_session: { id: any; name: any; }; start_date: string; end_date: string; is_open_for_applications: boolean; number_of_participants: number; assignments: never[]; }' is not assignable to type 'EventDetails'.
+        Types of property 'event_type' are incompatible.
+          Type 'string' is not assignable to type '"other" | "academic" | "sports" | "cultural"'.
+src/pages/admin/Events.tsx(131,45): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/Events.tsx(131,75): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/Events.tsx(192,79): error TS2367: This comparison appears to be unintentional because the types 'number' and '{ id: number; name: string; } | undefined' have no overlap.
+src/pages/admin/Events.tsx(202,79): error TS2367: This comparison appears to be unintentional because the types 'number' and '{ id: number; name: string; } | undefined' have no overlap.
+src/pages/admin/Events.tsx(206,19): error TS2345: Argument of type '(prev: EventDetails[]) => (EventDetails | { id: number; academic_session: { id: number; name: string; }; number_of_participants: number; assignments: never[]; name?: string | undefined; ... 4 more ...; is_open_for_applications?: boolean | undefined; })[]' is not assignable to parameter of type 'SetStateAction<EventDetails[]>'.
+  Type '(prev: EventDetails[]) => (EventDetails | { id: number; academic_session: { id: number; name: string; }; number_of_participants: number; assignments: never[]; name?: string | undefined; ... 4 more ...; is_open_for_applications?: boolean | undefined; })[]' is not assignable to type '(prevState: EventDetails[]) => EventDetails[]'.
+    Type '(EventDetails | { id: number; academic_session: { id: number; name: string; }; number_of_participants: number; assignments: never[]; name?: string | undefined; description?: string | undefined; event_type?: "other" | ... 3 more ... | undefined; start_date?: string | undefined; end_date?: string | ... 1 more ... | un...' is not assignable to type 'EventDetails[]'.
+      Type 'EventDetails | { id: number; academic_session: { id: number; name: string; }; number_of_participants: number; assignments: never[]; name?: string | undefined; description?: string | undefined; event_type?: "other" | ... 3 more ... | undefined; start_date?: string | undefined; end_date?: string | ... 1 more ... | und...' is not assignable to type 'EventDetails'.
+        Type '{ id: number; academic_session: { id: number; name: string; }; number_of_participants: number; assignments: never[]; name?: string | undefined; description?: string | undefined; event_type?: "other" | ... 3 more ... | undefined; start_date?: string | undefined; end_date?: string | ... 1 more ... | undefined; is_open...' is not assignable to type 'EventDetails'.
+          Types of property 'name' are incompatible.
+            Type 'string | undefined' is not assignable to type 'string'.
+              Type 'undefined' is not assignable to type 'string'.
+src/pages/admin/Events.tsx(210,48): error TS2322: Type 'number' is not assignable to type '{ id: number; name: string; }'.
+src/pages/admin/Events.tsx(212,44): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/Events.tsx(212,74): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/Events.tsx(224,48): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/Events.tsx(279,30): error TS18048: 'updatedEvent.assignments' is possibly 'undefined'.
+src/pages/admin/Events.tsx(293,7): error TS2322: Type '(EventAssignmentDetails | { id: number; event: { id?: number | undefined; name?: string | undefined; description?: string | undefined; event_type?: "other" | "academic" | "sports" | "cultural" | undefined; ... 5 more ...; assignments?: EventAssignmentDetails[] | undefined; }; student: { ...; }; is_active: boolean; a...' is not assignable to type 'EventAssignmentDetails[]'.
+  Type 'EventAssignmentDetails | { id: number; event: { id?: number | undefined; name?: string | undefined; description?: string | undefined; event_type?: "other" | "academic" | "sports" | "cultural" | undefined; ... 5 more ...; assignments?: EventAssignmentDetails[] | undefined; }; student: { ...; }; is_active: boolean; as...' is not assignable to type 'EventAssignmentDetails'.
+    Type 'null' is not assignable to type 'EventAssignmentDetails'.
+src/pages/admin/Events.tsx(301,45): error TS18048: 'updatedEvent.assignments' is possibly 'undefined'.
+src/pages/admin/Events.tsx(306,17): error TS2345: Argument of type '(prev: EventDetails[]) => { id?: number | undefined; name?: string | undefined; description?: string | undefined; event_type?: "other" | "academic" | "sports" | "cultural" | undefined; ... 5 more ...; assignments?: EventAssignmentDetails[] | undefined; }[]' is not assignable to parameter of type 'SetStateAction<EventDetails[]>'.
+  Type '(prev: EventDetails[]) => { id?: number | undefined; name?: string | undefined; description?: string | undefined; event_type?: "other" | "academic" | "sports" | "cultural" | undefined; ... 5 more ...; assignments?: EventAssignmentDetails[] | undefined; }[]' is not assignable to type '(prevState: EventDetails[]) => EventDetails[]'.
+    Type '{ id?: number | undefined; name?: string | undefined; description?: string | undefined; event_type?: "other" | "academic" | "sports" | "cultural" | undefined; academic_session?: { ...; } | undefined; ... 4 more ...; assignments?: EventAssignmentDetails[] | undefined; }[]' is not assignable to type 'EventDetails[]'.
+      Type '{ id?: number | undefined; name?: string | undefined; description?: string | undefined; event_type?: "other" | "academic" | "sports" | "cultural" | undefined; academic_session?: { ...; } | undefined; ... 4 more ...; assignments?: EventAssignmentDetails[]; }' is not assignable to type 'EventDetails'.
+        Types of property 'id' are incompatible.
+          Type 'number | undefined' is not assignable to type 'number'.
+            Type 'undefined' is not assignable to type 'number'.
+src/pages/admin/Events.tsx(307,24): error TS2345: Argument of type '{ id?: number | undefined; name?: string | undefined; description?: string | undefined; event_type?: "other" | "academic" | "sports" | "cultural" | undefined; academic_session?: { ...; } | undefined; ... 4 more ...; assignments?: EventAssignmentDetails[]; }' is not assignable to parameter of type 'SetStateAction<EventDetails | null>'.
+  Type '{ id?: number | undefined; name?: string | undefined; description?: string | undefined; event_type?: "other" | "academic" | "sports" | "cultural" | undefined; academic_session?: { ...; } | undefined; ... 4 more ...; assignments?: EventAssignmentDetails[]; }' is not assignable to type 'EventDetails'.
+    Types of property 'id' are incompatible.
+      Type 'number | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+src/pages/admin/Events.tsx(312,28): error TS18048: 'updatedEvent.assignments' is possibly 'undefined'.
+src/pages/admin/Events.tsx(323,52): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/Events.tsx(389,15): error TS2322: Type 'string | { id: number; name: string; }' is not assignable to type 'string | number | readonly string[] | undefined'.
+  Type '{ id: number; name: string; }' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/pages/admin/Events.tsx(590,54): error TS2322: Type 'number' is not assignable to type '{ id: number; name: string; }'.
+src/pages/admin/Events.tsx(675,60): error TS2322: Type 'number' is not assignable to type '{ id: number; name: string; }'.
+src/pages/admin/exam/ManageScores.tsx(143,31): error TS2339: Property 'status' does not exist on type 'Exam'.
+src/pages/admin/exam/ManageScores.tsx(207,51): error TS2339: Property 'status' does not exist on type 'Exam'.
+src/pages/admin/exam/ManageScores.tsx(207,90): error TS2339: Property 'status' does not exist on type 'Exam'.
+src/pages/admin/exam/ViewMarksheet.tsx(3,21): error TS6133: 'Download' is declared but its value is never read.
+src/pages/admin/exam/ViewMarksheet.tsx(88,10): error TS6133: 'students' is declared but its value is never read.
+src/pages/admin/exam/ViewMarksheet.tsx(93,10): error TS6133: 'gradingSettings' is declared but its value is never read.
+src/pages/admin/exam/ViewMarksheet.tsx(369,9): error TS6133: 'getGradePoint' is declared but its value is never read.
+src/pages/admin/Exams.tsx(19,3): error TS6133: 'UploadCloud' is declared but its value is never read.
+src/pages/admin/Exams.tsx(20,3): error TS6133: 'DownloadCloud' is declared but its value is never read.
+src/pages/admin/Exams.tsx(25,12): error TS6133: 'AwardIcon' is declared but its value is never read.
+src/pages/admin/Exams.tsx(138,10): error TS6133: 'currentStudentScores' is declared but its value is never read.
+src/pages/admin/Exams.tsx(138,32): error TS6133: 'setCurrentStudentScores' is declared but its value is never read.
+src/pages/admin/Exams.tsx(139,10): error TS6133: 'showMarksheetModal' is declared but its value is never read.
+src/pages/admin/Exams.tsx(140,10): error TS6133: 'selectedStudentForMarksheet' is declared but its value is never read.
+src/pages/admin/Exams.tsx(140,39): error TS6133: 'setSelectedStudentForMarksheet' is declared but its value is never read.
+src/pages/admin/Exams.tsx(141,10): error TS6133: 'selectedExamForMarksheet' is declared but its value is never read.
+src/pages/admin/Exams.tsx(142,10): error TS6133: 'schoolInfo' is declared but its value is never read.
+src/pages/admin/Exams.tsx(143,10): error TS6133: 'marksheetData' is declared but its value is never read.
+src/pages/admin/Exams.tsx(144,10): error TS6133: 'selectedClassForMarksheet' is declared but its value is never read.
+src/pages/admin/Exams.tsx(147,10): error TS6133: 'rankedStudents' is declared but its value is never read.
+src/pages/admin/Exams.tsx(147,26): error TS6133: 'setRankedStudents' is declared but its value is never read.
+src/pages/admin/Exams.tsx(198,16): error TS2345: Argument of type '{ status: string; id: number; name: string; classes: { id: number; name: string; }[]; subjects: ExamSubjectDetail[]; session_id: number; term_id: number; session_id_read?: number | undefined; ... 5 more ...; passing_marks?: number | undefined; }[]' is not assignable to parameter of type 'SetStateAction<Exam[]>'.
+  Type '{ status: string; id: number; name: string; classes: { id: number; name: string; }[]; subjects: ExamSubjectDetail[]; session_id: number; term_id: number; session_id_read?: number | undefined; ... 5 more ...; passing_marks?: number | undefined; }[]' is not assignable to type 'Exam[]'.
+    Type '{ status: string; id: number; name: string; classes: { id: number; name: string; }[]; subjects: ExamSubjectDetail[]; session_id: number; term_id: number; session_id_read?: number; term_id_read?: number; ... 4 more ...; passing_marks?: number; }' is not assignable to type 'Exam'.
+      Types of property 'status' are incompatible.
+        Type 'string' is not assignable to type '"completed" | "scheduled" | "ongoing" | "results_published" | "cancelled"'.
+src/pages/admin/Exams.tsx(345,13): error TS6133: 'response' is declared but its value is never read.
+src/pages/admin/Exams.tsx(350,16): error TS2345: Argument of type '{ status: string; id: number; name: string; classes: { id: number; name: string; }[]; subjects: ExamSubjectDetail[]; session_id: number; term_id: number; session_id_read?: number | undefined; ... 5 more ...; passing_marks?: number | undefined; }[]' is not assignable to parameter of type 'SetStateAction<Exam[]>'.
+  Type '{ status: string; id: number; name: string; classes: { id: number; name: string; }[]; subjects: ExamSubjectDetail[]; session_id: number; term_id: number; session_id_read?: number | undefined; ... 5 more ...; passing_marks?: number | undefined; }[]' is not assignable to type 'Exam[]'.
+    Type '{ status: string; id: number; name: string; classes: { id: number; name: string; }[]; subjects: ExamSubjectDetail[]; session_id: number; term_id: number; session_id_read?: number; term_id_read?: number; ... 4 more ...; passing_marks?: number; }' is not assignable to type 'Exam'.
+      Types of property 'status' are incompatible.
+        Type 'string' is not assignable to type '"completed" | "scheduled" | "ongoing" | "results_published" | "cancelled"'.
+src/pages/admin/Exams.tsx(360,9): error TS6133: 'handleUpdateStatus' is declared but its value is never read.
+src/pages/admin/Exams.tsx(456,9): error TS6133: 'handleOpenScoreModal' is declared but its value is never read.
+src/pages/admin/Exams.tsx(463,9): error TS6133: 'handleOpenMarksheetModal' is declared but its value is never read.
+src/pages/admin/Exams.tsx(527,9): error TS6133: 'handleOpenRankingsModal' is declared but its value is never read.
+src/pages/admin/Exams.tsx(771,41): error TS6133: 'index' is declared but its value is never read.
+src/pages/admin/Notices.tsx(120,45): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/Notices.tsx(120,75): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/Notices.tsx(211,45): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/Notices.tsx(223,49): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/Scholarships.tsx(13,3): error TS6133: 'XCircle' is declared but its value is never read.
+src/pages/admin/Scholarships.tsx(14,3): error TS6133: 'CalendarDays' is declared but its value is never read.
+src/pages/admin/Scholarships.tsx(18,1): error TS6133: 'format' is declared but its value is never read.
+src/pages/admin/Scholarships.tsx(21,11): error TS6196: 'ScholarshipEligibilityCriteria' is declared but never used.
+src/pages/admin/Scholarships.tsx(65,10): error TS6133: 'exams' is declared but its value is never read.
+src/pages/admin/Scholarships.tsx(72,10): error TS6133: 'classFilter' is declared but its value is never read.
+src/pages/admin/Scholarships.tsx(72,23): error TS6133: 'setClassFilter' is declared but its value is never read.
+src/pages/admin/Scholarships.tsx(73,10): error TS6133: 'sectionFilter' is declared but its value is never read.
+src/pages/admin/Scholarships.tsx(73,25): error TS6133: 'setSectionFilter' is declared but its value is never read.
+src/pages/admin/Scholarships.tsx(142,53): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/Scholarships.tsx(185,28): error TS2367: This comparison appears to be unintentional because the types '"merit-based"' and '"partial-waiver"' have no overlap.
+src/pages/admin/Scholarships.tsx(189,25): error TS2345: Argument of type '(Scholarship | { amount: number | null; percentage_waiver: number | null; name: string; description: string; scholarship_type: "merit-based"; is_full_waiver: boolean; ... 14 more ...; awarded_to: { ...; }[]; })[]' is not assignable to parameter of type 'SetStateAction<Scholarship[]>'.
+  Type '(Scholarship | { amount: number | null; percentage_waiver: number | null; name: string; description: string; scholarship_type: "merit-based"; is_full_waiver: boolean; ... 14 more ...; awarded_to: { ...; }[]; })[]' is not assignable to type 'Scholarship[]'.
+    Type 'Scholarship | { amount: number | null; percentage_waiver: number | null; name: string; description: string; scholarship_type: "merit-based"; is_full_waiver: boolean; ... 14 more ...; awarded_to: { ...; }[]; }' is not assignable to type 'Scholarship'.
+      Type '{ amount: number | null; percentage_waiver: number | null; name: string; description: string; scholarship_type: "merit-based"; is_full_waiver: boolean; academic_session_id: number; term_id: number | null; ... 12 more ...; awarded_to: { id: number; student_id: string; student_name: string; assignment_type: string; as...' is not assignable to type 'Scholarship'.
+        Types of property 'amount' are incompatible.
+          Type 'number | null' is not assignable to type 'number | undefined'.
+            Type 'null' is not assignable to type 'number | undefined'.
+src/pages/admin/Scholarships.tsx(230,7): error TS2322: Type '"open" | "closed" | "under_review" | "awarded" | "discontinued"' is not assignable to type '"open"'.
+  Type '"closed"' is not assignable to type '"open"'.
+src/pages/admin/Scholarships.tsx(245,9): error TS6133: 'handleAutoAssign' is declared but its value is never read.
+src/pages/admin/Scholarships.tsx(260,9): error TS6133: 'handleAssignScholarship' is declared but its value is never read.
+src/pages/admin/Scholarships.tsx(286,9): error TS6133: 'handleRevokeScholarship' is declared but its value is never read.
+src/pages/admin/Scholarships.tsx(385,48): error TS7006: Parameter 'assignment' implicitly has an 'any' type.
+src/pages/admin/Scholarships.tsx(396,50): error TS18046: 'err' is of type 'unknown'.
+src/pages/admin/Scholarships.tsx(449,44): error TS2367: This comparison appears to be unintentional because the types '"merit-based"' and '"partial-waiver"' have no overlap.
+src/pages/admin/settings/AcademicSettings.tsx(7,10): error TS6133: 'BookOpen' is declared but its value is never read.
+src/pages/admin/settings/AcademicSettings.tsx(83,75): error TS6133: 'watch' is declared but its value is never read.
+src/pages/admin/settings/AcademicSettings.tsx(205,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/AcademicSettings.tsx(253,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/AcademicSettings.tsx(299,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/AcademicSettings.tsx(346,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/AcademicSettings.tsx(386,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/AcademicSettings.tsx(422,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/AdmissionFees.tsx(129,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/CampusSettings.tsx(189,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/CampusSettings.tsx(234,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/CampusSettings.tsx(283,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/CampusSettings.tsx(328,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/DefaultValues.tsx(51,65): error TS6133: 'setValue' is declared but its value is never read.
+src/pages/admin/settings/DefaultValues.tsx(128,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/DefaultValues.tsx(184,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/index.tsx(9,3): error TS6133: 'Lock' is declared but its value is never read.
+src/pages/admin/settings/Notifications.tsx(142,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/Notifications.tsx(185,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/SchoolInfo.tsx(8,10): error TS6133: 'School' is declared but its value is never read.
+src/pages/admin/settings/SessionConfig.tsx(203,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/SessionConfig.tsx(258,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/SessionConfig.tsx(319,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/StaffManagementSettings.tsx(7,10): error TS6133: 'Users' is declared but its value is never read.
+src/pages/admin/settings/StaffManagementSettings.tsx(171,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/StaffManagementSettings.tsx(213,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/StaffManagementSettings.tsx(253,41): error TS2411: Property 'error' of type 'string | undefined' is not assignable to 'string' index type 'string | string[]'.
+src/pages/admin/settings/TimezoneLocale.tsx(8,10): error TS6133: 'Globe' is declared but its value is never read.
+src/pages/admin/settings/TimezoneLocale.tsx(39,5): error TS6133: 'setValue' is declared but its value is never read.
+src/pages/admin/settings/TimezoneLocale.tsx(51,10): error TS6133: 'localeData' is declared but its value is never read.
+src/pages/admin/settings/TimezoneLocale.tsx(83,9): error TS2304: Cannot find name 'logger'.
+src/pages/admin/StaffManagement.tsx(9,31): error TS6133: 'Search' is declared but its value is never read.
+src/pages/admin/StaffManagement.tsx(188,10): error TS6133: 'schools' is declared but its value is never read.
+src/pages/admin/StaffManagement.tsx(300,11): error TS6133: 'effectiveSchoolId' is declared but its value is never read.
+src/pages/admin/StaffManagement.tsx(425,9): error TS7034: Variable 'response' implicitly has type 'any' in some locations where its type cannot be determined.
+src/pages/admin/StaffManagement.tsx(489,28): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(490,29): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(491,24): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(492,28): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(493,34): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(494,33): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(495,28): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(496,25): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(497,29): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(498,28): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(499,32): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(500,32): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(501,32): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(502,25): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(503,26): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(504,41): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(505,42): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(506,34): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(507,36): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(508,30): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(509,31): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(510,30): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(511,32): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(512,29): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(513,29): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(514,29): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(515,38): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(516,28): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(517,30): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(518,42): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(519,38): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(520,40): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(530,15): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(531,22): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(532,23): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(533,18): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(534,22): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(535,28): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(536,27): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(537,22): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(538,19): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(539,23): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(540,22): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(541,26): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(542,26): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(543,26): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(544,19): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(545,20): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(546,35): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(547,36): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(548,28): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(549,30): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(550,24): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(551,25): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(552,24): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(553,26): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(554,23): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(555,23): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(556,23): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(557,32): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(558,22): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(559,24): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(560,36): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(561,32): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(562,34): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(563,31): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(564,26): error TS7005: Variable 'response' implicitly has an 'any' type.
+src/pages/admin/StaffManagement.tsx(712,11): error TS6133: 'response' is declared but its value is never read.
+src/pages/admin/StaffManagement.tsx(1553,13): error TS2322: Type '"button"' is not assignable to type '"icon" | "success" | "warning" | "primary" | "secondary" | "danger" | "outline" | undefined'.
+src/pages/admin/StudentDetail.tsx(3,37): error TS6133: 'Book' is declared but its value is never read.
+src/pages/admin/StudentDetail.tsx(3,43): error TS6133: 'Award' is declared but its value is never read.
+src/pages/admin/StudentDetail.tsx(3,112): error TS6133: 'Trash2' is declared but its value is never read.
+src/pages/admin/TeacherDetail.tsx(21,3): error TS6133: 'Save' is declared but its value is never read.
+src/pages/admin/TeacherDetail.tsx(22,3): error TS6133: 'X' is declared but its value is never read.
+src/pages/admin/TeacherDetail.tsx(313,96): error TS7006: Parameter 'word' implicitly has an 'any' type.
+src/pages/admin/TeacherDetail.tsx(394,9): error TS2322: Type '{ children: Element; title: string; action: Element; }' is not assignable to type 'IntrinsicAttributes & CardProps'.
+  Property 'action' does not exist on type 'IntrinsicAttributes & CardProps'.
+src/pages/admin/TeacherEdit.tsx(13,1): error TS6133: 'TeacherAssignments' is declared but its value is never read.
+src/pages/admin/TeacherEdit.tsx(21,10): error TS6133: 'classes' is declared but its value is never read.
+src/pages/admin/TeacherEdit.tsx(22,10): error TS6133: 'sections' is declared but its value is never read.
+src/pages/admin/TeacherEdit.tsx(24,10): error TS6133: 'staffRoles' is declared but its value is never read.
+src/pages/admin/TeacherEdit.tsx(25,10): error TS6133: 'departments' is declared but its value is never read.
+src/pages/admin/TeacherEdit.tsx(100,24): error TS2322: Type '{ id: number; name: string; }' is not assignable to type 'never'.
+src/pages/admin/TeacherEdit.tsx(101,25): error TS2322: Type '{ id: number; name: string; }' is not assignable to type 'never'.
+src/pages/admin/TeacherEdit.tsx(114,9): error TS6133: 'fetchSections' is declared but its value is never read.
+src/pages/admin/TeacherEditSimple.tsx(486,11): error TS2322: Type '{ children: Element; title: string; action: Element; }' is not assignable to type 'IntrinsicAttributes & CardProps'.
+  Property 'action' does not exist on type 'IntrinsicAttributes & CardProps'.
+src/pages/admin/Teachers.tsx(13,3): error TS6133: 'X' is declared but its value is never read.
+src/pages/admin/Teachers.tsx(15,3): error TS6133: 'Download' is declared but its value is never read.
+src/pages/admin/Teachers.tsx(92,10): error TS6133: 'isLoading' is declared but its value is never read.
+src/pages/admin/Teachers.tsx(93,10): error TS6133: 'error' is declared but its value is never read.
+src/pages/admin/Teachers.tsx(117,32): error TS7006: Parameter 'classId' implicitly has an 'any' type.
+src/pages/admin/Teachers.tsx(315,21): error TS2345: Argument of type '{ name: string; email: string; phone: string; subject: string; qualification: string; joiningDate: string; experience: string; address: string; gender: string; dob: string; salary: string; panNumber: string; ... 9 more ...; otherDeductions: { ...; }[]; }' is not assignable to parameter of type 'SetStateAction<{ name: string; email: string; phone: string; subject: string; qualification: string; joiningDate: string; experience: string; address: string; gender: string; dob: string; salary: string; panNumber: string; ... 10 more ...; assignments: { ...; }[]; }>'.
+  Property 'assignments' is missing in type '{ name: string; email: string; phone: string; subject: string; qualification: string; joiningDate: string; experience: string; address: string; gender: string; dob: string; salary: string; panNumber: string; ... 9 more ...; otherDeductions: { ...; }[]; }' but required in type '{ name: string; email: string; phone: string; subject: string; qualification: string; joiningDate: string; experience: string; address: string; gender: string; dob: string; salary: string; panNumber: string; ... 10 more ...; assignments: { ...; }[]; }'.
+src/pages/admin/Teachers.tsx(367,5): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ class_id: number; section_id: number; subject_id: number; is_primary: boolean; hours_per_week: number; }'.
+  No index signature with a parameter of type 'string' was found on type '{ class_id: number; section_id: number; subject_id: number; is_primary: boolean; hours_per_week: number; }'.
+src/pages/admin/Teachers.tsx(394,9): error TS6133: 'handleEditTeacher' is declared but its value is never read.
+src/pages/admin/Teachers.tsx(394,30): error TS6133: 'teacher' is declared but its value is never read.
+src/pages/admin/Teachers.tsx(399,9): error TS6133: 'handleDeleteTeacher' is declared but its value is never read.
+src/pages/admin/Teachers.tsx(417,9): error TS6133: 'handleViewCredentials' is declared but its value is never read.
+src/pages/admin/TransportManagement.tsx(2,25): error TS6133: 'Search' is declared but its value is never read.
+src/pages/admin/TransportManagement.tsx(359,54): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/pages/admin/TransportManagement.tsx(886,101): error TS2339: Property 'class_name' does not exist on type '{ id: number; user_name: string; }'.
+src/pages/admin/TransportManagement.tsx(887,101): error TS2339: Property 'section_name' does not exist on type '{ id: number; user_name: string; }'.
+src/pages/admin/UserManagement.tsx(4,22): error TS6133: 'ToggleLeft' is declared but its value is never read.
+src/pages/admin/UserManagement.tsx(4,34): error TS6133: 'ToggleRight' is declared but its value is never read.
+src/pages/admin/UserManagement.tsx(4,47): error TS6133: 'Search' is declared but its value is never read.
+src/pages/dashboard/AdminDashboard.tsx(7,3): error TS6133: 'BookOpen' is declared but its value is never read.
+src/pages/dashboard/AdminDashboard.tsx(8,3): error TS6133: 'DollarSign' is declared but its value is never read.
+src/pages/dashboard/AdminDashboard.tsx(10,3): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/parent/Assignments.tsx(85,23): error TS6133: 'setAssignments' is declared but its value is never read.
+src/pages/parent/Attendance.tsx(3,10): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/parent/Attendance.tsx(3,72): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/parent/Attendance.tsx(40,26): error TS6133: 'setAttendanceData' is declared but its value is never read.
+src/pages/parent/ChildClasses.tsx(79,21): error TS6133: 'setClassInfo' is declared but its value is never read.
+src/pages/parent/Children.tsx(50,24): error TS6133: 'setChildrenList' is declared but its value is never read.
+src/pages/parent/Complaints.tsx(4,37): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/parent/Complaints.tsx(4,69): error TS6133: 'AlertCircle' is declared but its value is never read.
+src/pages/parent/Fees.tsx(4,48): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/parent/Fees.tsx(78,22): error TS6133: 'setFeeRecords' is declared but its value is never read.
+src/pages/parent/Fees.tsx(79,10): error TS6133: 'showPaymentModal' is declared but its value is never read.
+src/pages/parent/Fees.tsx(79,28): error TS6133: 'setShowPaymentModal' is declared but its value is never read.
+src/pages/parent/Fees.tsx(80,10): error TS6133: 'selectedFeeForPayment' is declared but its value is never read.
+src/pages/parent/LeaveRequests.tsx(4,36): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/parent/LeaveRequests.tsx(4,50): error TS6133: 'Eye' is declared but its value is never read.
+src/pages/parent/Notices.tsx(4,31): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/parent/Notices.tsx(76,19): error TS6133: 'setNotices' is declared but its value is never read.
+src/pages/parent/Results.tsx(4,38): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/parent/Results.tsx(4,56): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/pages/parent/Results.tsx(4,68): error TS6133: 'TrendingDown' is declared but its value is never read.
+src/pages/parent/Results.tsx(4,82): error TS6133: 'Percent' is declared but its value is never read.
+src/pages/parent/Results.tsx(5,1): error TS6192: All imports in import declaration are unused.
+src/pages/parent/Results.tsx(74,23): error TS6133: 'setResultsData' is declared but its value is never read.
+src/pages/parent/Timetable.tsx(4,17): error TS6133: 'BookOpen' is declared but its value is never read.
+src/pages/parent/Timetable.tsx(4,27): error TS6133: 'User' is declared but its value is never read.
+src/pages/parent/Timetable.tsx(4,47): error TS6133: 'ChevronLeft' is declared but its value is never read.
+src/pages/parent/Timetable.tsx(4,60): error TS6133: 'ChevronRight' is declared but its value is never read.
+src/pages/parent/Timetable.tsx(5,49): error TS6133: 'isSameDay' is declared but its value is never read.
+src/pages/parent/Timetable.tsx(101,25): error TS6133: 'setTimetableData' is declared but its value is never read.
+src/pages/parent/Timetable.tsx(102,23): error TS6133: 'setCurrentDate' is declared but its value is never read.
+src/pages/student/Assignments.tsx(4,80): error TS6133: 'Download' is declared but its value is never read.
+src/pages/student/Assignments.tsx(5,28): error TS6133: 'isPast' is declared but its value is never read.
+src/pages/student/Assignments.tsx(5,36): error TS6133: 'isSameDay' is declared but its value is never read.
+src/pages/student/Assignments.tsx(220,7): error TS6133: 'commonInputStyles' is declared but its value is never read.
+src/pages/student/Attendance.tsx(4,10): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/student/Attendance.tsx(52,26): error TS6133: 'setAttendanceData' is declared but its value is never read.
+src/pages/student/Complaints.tsx(4,37): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/student/Complaints.tsx(4,69): error TS6133: 'AlertCircle' is declared but its value is never read.
+src/pages/student/Fees.tsx(4,48): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/student/Fees.tsx(85,22): error TS6133: 'setFeeRecords' is declared but its value is never read.
+src/pages/student/LeaveRequests.tsx(4,36): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/student/MyClasses.tsx(3,1): error TS6133: 'Button' is declared but its value is never read.
+src/pages/student/MyClasses.tsx(93,21): error TS6133: 'setClassInfo' is declared but its value is never read.
+src/pages/student/Notices.tsx(4,31): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/student/Notices.tsx(68,19): error TS6133: 'setNotices' is declared but its value is never read.
+src/pages/student/Results.tsx(4,27): error TS6133: 'BarChart2' is declared but its value is never read.
+src/pages/student/Results.tsx(4,38): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/student/Results.tsx(4,56): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/pages/student/Results.tsx(4,68): error TS6133: 'TrendingDown' is declared but its value is never read.
+src/pages/student/Results.tsx(4,82): error TS6133: 'Percent' is declared but its value is never read.
+src/pages/student/Results.tsx(5,1): error TS6192: All imports in import declaration are unused.
+src/pages/student/Results.tsx(59,23): error TS6133: 'setResultsData' is declared but its value is never read.
+src/pages/student/Timetable.tsx(4,17): error TS6133: 'BookOpen' is declared but its value is never read.
+src/pages/student/Timetable.tsx(4,27): error TS6133: 'User' is declared but its value is never read.
+src/pages/student/Timetable.tsx(4,47): error TS6133: 'ChevronLeft' is declared but its value is never read.
+src/pages/student/Timetable.tsx(4,60): error TS6133: 'ChevronRight' is declared but its value is never read.
+src/pages/student/Timetable.tsx(5,49): error TS6133: 'isSameDay' is declared but its value is never read.
+src/pages/superadmin/SubscriptionManagement.tsx(3,10): error TS6133: 'CreditCard' is declared but its value is never read.
+src/pages/superadmin/SubscriptionManagement.tsx(3,22): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/superadmin/SubscriptionManagement.tsx(113,13): error TS6133: 'response' is declared but its value is never read.
+src/pages/teacher/Announcements.tsx(4,22): error TS6133: 'BellRing' is declared but its value is never read.
+src/pages/teacher/Assignments.tsx(9,3): error TS6133: 'Trash' is declared but its value is never read.
+src/pages/teacher/Assignments.tsx(12,3): error TS6133: 'File' is declared but its value is never read.
+src/pages/teacher/Grades.tsx(2,41): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/teacher/MyClasses.tsx(3,27): error TS6133: 'Edit3' is declared but its value is never read.
+src/pages/teacher/MyClasses.tsx(142,9): error TS6133: 'handleAddRemarks' is declared but its value is never read.
+src/pages/teacher/MyClasses.tsx(329,27): error TS2322: Type '{ children: string; variante: string; size: "sm"; onClick: () => void; }' is not assignable to type 'IntrinsicAttributes & ButtonProps'.
+  Property 'variante' does not exist on type 'IntrinsicAttributes & ButtonProps'. Did you mean 'variant'?

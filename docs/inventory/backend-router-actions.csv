@@ -1,0 +1,33 @@
+﻿route,methods_or_scope,target,source,line
+/api/students/,Standard ModelViewSet routes; inspect overrides,StudentView,backend/core/view/admin/admissions.py,98
+/api/students/{pk}/documents/,"GET, POST",StudentView.documents,backend/core/view/admin/admissions.py,185
+/api/students/{pk}/documents/(?P<doc_id>\d+)/,"PUT, DELETE",StudentView.document_detail,backend/core/view/admin/admissions.py,225
+/api/students/{pk}/parents/,"GET, POST",StudentView.parents,backend/core/view/admin/admissions.py,254
+/api/students/{pk}/promote/,POST,StudentView.promote,backend/core/view/admin/admissions.py,276
+/api/teachers/,Standard ModelViewSet routes; inspect overrides,TeacherViewSet,backend/core/view/admin/teacher_views.py,15
+/api/teachers/{pk}/upload_documents/,POST,TeacherViewSet.upload_documents,backend/core/view/admin/teacher_views.py,106
+/api/teachers/{pk}/reset_password/,POST,TeacherViewSet.reset_password,backend/core/view/admin/teacher_views.py,120
+/api/teachers/{pk}/get_credentials/,GET,TeacherViewSet.get_credentials,backend/core/view/admin/teacher_views.py,142
+/api/teachers/{pk}/assignments/,GET,TeacherViewSet.assignments,backend/core/view/admin/teacher_views.py,155
+/api/teachers/{pk}/update_assignment/,PUT,TeacherViewSet.update_assignment,backend/core/view/admin/teacher_views.py,168
+/api/teachers/{pk}/delete_assignment/,DELETE,TeacherViewSet.delete_assignment,backend/core/view/admin/teacher_views.py,193
+/api/teachers/{pk}/add_assignment/,POST,TeacherViewSet.add_assignment,backend/core/view/admin/teacher_views.py,213
+/api/routes/,Standard ModelViewSet routes; inspect overrides,RouteViewSet,backend/core/view/admin/transportview.py,19
+/api/buses/,Standard ModelViewSet routes; inspect overrides,BusViewSet,backend/core/view/admin/transportview.py,23
+/api/bus-fees/,Standard ModelViewSet routes; inspect overrides,BusFeeViewSet,backend/core/view/admin/transportview.py,27
+/api/bus-fees/{pk}/for_route/,GET,BusFeeViewSet.for_route,backend/core/view/admin/transportview.py,32
+/api/bus-assignments/,Standard ModelViewSet routes; inspect overrides,BusAssignmentViewSet,backend/core/view/admin/transportview.py,43
+/api/bus-assignments/students/,GET,BusAssignmentViewSet.students,backend/core/view/admin/transportview.py,67
+/api/bus-assignments/{pk}/revoke/,POST,BusAssignmentViewSet.revoke,backend/core/view/admin/transportview.py,99
+/api/bus-assignments/transport_report/,GET,BusAssignmentViewSet.transport_report,backend/core/view/admin/transportview.py,109
+/api/bus-assignments/transport-report-data/,GET,BusAssignmentViewSet.transport_report_data,backend/core/view/admin/transportview.py,252
+/api/events/,Standard ModelViewSet routes; inspect overrides,EventViewSet,backend/core/view/admin/eventViews.py,11
+/api/event-assignments/,Standard ModelViewSet routes; inspect overrides,EventAssignmentViewSet,backend/core/view/admin/eventViews.py,15
+/api/event-assignments/{pk}/revoke/,POST,EventAssignmentViewSet.revoke,backend/core/view/admin/eventViews.py,30
+/api/notices/,Standard ModelViewSet routes; inspect overrides,NoticeViewSet,backend/core/view/admin/noticeView.py,9
+/api/teacher-assignments/,Standard ModelViewSet routes; inspect overrides,TeacherAssignmentViewSet,backend/core/serial/teacher/teacher_assignment_views.py,9
+/api/teacher-assignments/teacher_classes_subjects/,GET,TeacherAssignmentViewSet.teacher_classes_subjects,backend/core/serial/teacher/teacher_assignment_views.py,39
+/api/teacher-assignments/teacher_assignments/,GET,TeacherAssignmentViewSet.teacher_assignments,backend/core/serial/teacher/teacher_assignment_views.py,49
+/api/teacher-assignments/{pk}/submit/,POST,TeacherAssignmentViewSet.submit,backend/core/serial/teacher/teacher_assignment_views.py,97
+/api/teacher-assignments/{pk}/grade/,POST,TeacherAssignmentViewSet.grade,backend/core/serial/teacher/teacher_assignment_views.py,134
+/api/teacher-assignments/bulk_update/,POST,TeacherAssignmentViewSet.bulk_update,backend/core/serial/teacher/teacher_assignment_views.py,152
