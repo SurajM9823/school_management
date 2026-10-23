@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api/', // Remove /api/
+  baseURL: 'http://46.62.154.229/api/', // Remove /api/
   headers: {
     'Content-Type': 'application/json',
   },
@@ -29,7 +29,7 @@ api.interceptors.response.use(
         const refreshToken = localStorage.getItem('refreshToken');
         if (!refreshToken) throw new Error('No refresh token');
         console.log('Refreshing token with:', refreshToken);
-        const response = await axios.post('http://localhost:8000/api/token/refresh/', { refresh: refreshToken });
+        const response = await api.post('token/refresh/', { refresh: refreshToken })
         const { access } = response.data;
         localStorage.setItem('accessToken', access);
         api.defaults.headers.common['Authorization'] = `Bearer ${access}`;

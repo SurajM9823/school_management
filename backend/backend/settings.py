@@ -6,9 +6,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security settings
 SECRET_KEY = 't5q#!%w5^gu831pg7++@ro3uk5m(2&jr*@nd)cz@56pcopdm5^'
 DEBUG = True
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
-CORS_ALLOWED_ORIGINS = ["http://localhost:5173",]
-CSRF_TRUSTED_ORIGINS = ['http://localhost:5173', 'http://localhost:5173', 'http://localhost']
+ALLOWED_HOSTS = [
+    '127.0.0.1',
+    'localhost',
+    '46.62.154.229'
+]
+CORS_ALLOWED_ORIGINS = ["http://localhost:5173", "http://46.62.154.229",]
+CSRF_TRUSTED_ORIGINS = ['http://localhost:5173', 'http://localhost:5173', 'http://localhost', 'http://46.62.154.229/']
 
 # Application definition
 INSTALLED_APPS = [
