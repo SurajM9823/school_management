@@ -59,11 +59,33 @@ class FinancialYear(TimeStampedMixin):
     def __str__(self):
         return f"{self.name} - {self.school}"
 
+    def clean(self):
+        super().clean()
+
+        if not self.school_id or not self.start_date or not self.end_date:
+            return
+
+        overlapping = FinancialYear.objects.filter(
+            school_id=self.school_id, start_date__lte=self.end_date, end_date__gte=self.start_date
+        )
+
+        if self.pk:
+            overlapping = overlapping.exclude(pk=self.pk)
+
+        if overlapping.exists():
+            raise ValidationError(
+                {"start_date": "This financial year overlaps with an existing financial year for this school."}
+            )
+
     def save(self, *args, **kwargs):
-        if self.status == self.Status.ACTIVE:
-            with transaction.atomic():
-                # Lock the school row to serialize activations for this school.
-                type(self.school).objects.select_for_update().get(pk=self.school_id)
+        with transaction.atomic():
+            # Serialize financial-year changes for this school.
+            type(self.school).objects.select_for_update().get(pk=self.school_id)
+
+            # Validate fields, date ranges, and overlapping financial years.
+            self.full_clean()
+
+            if self.status == self.Status.ACTIVE:
                 active_years = type(self).objects.filter(school_id=self.school_id, status=self.Status.ACTIVE)
 
                 if self.pk:
@@ -72,8 +94,7 @@ class FinancialYear(TimeStampedMixin):
                 if active_years.exists():
                     raise ValidationError("This school already has an active financial year.")
 
-                return super().save(*args, **kwargs)
-        return super().save(*args, **kwargs)
+            return super().save(*args, **kwargs)
 
 
 class FinanceSettings(TimeStampedMixin, UserAuditMixin):

@@ -1,5 +1,7 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
+from core.validation import handle_django_validation_error
 from finance.models import Account, AccountingPeriod, FinanceSettings, FinancialYear
 
 
@@ -7,6 +9,18 @@ class FinancialYearWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = FinancialYear
         fields = ["name", "start_date", "end_date"]
+
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except DjangoValidationError as exc:
+            handle_django_validation_error(exc)
+
+    def update(self, instance, validated_data):
+        try:
+            return super().update(instance, validated_data)
+        except DjangoValidationError as exc:
+            handle_django_validation_error(exc)
 
 
 class FinancialYearReadSerializer(serializers.ModelSerializer):

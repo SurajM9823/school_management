@@ -9,6 +9,7 @@ import {
   SettingsIcon,
   Trash2,
 } from "lucide-react";
+import axios from "axios";
 import z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { toast, ToastContainer } from "react-toastify";
@@ -105,6 +106,7 @@ const Settings: React.FC = () => {
   const [editingAccountingPeriodId, setEditingAccountingPeriodId] = useState<number | null>(null);
   const [editingAccountId, setEditingAccountId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [financialYearError, setFinancialYearError] = useState("");
   const [error, setError] = useState("");
 
   // dummy states (should be removed)
@@ -191,7 +193,7 @@ const Settings: React.FC = () => {
   });
 
   const onFinancialYearSubmit: SubmitHandler<FinancialYearWriteRequest> = async (data) => {
-    setError("");
+    setFinancialYearError("");
 
     try {
       if (editingFinancialYearId) {
@@ -205,9 +207,17 @@ const Settings: React.FC = () => {
       setShowFinancialYearModal(false);
       setEditingFinancialYearId(null);
       resetFinancialYear({ name: "", start_date: "", end_date: "" });
-    } catch (err: any) {
-      setError(err);
-      toast.error("An error occurred while saving.");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data;
+
+        const message =
+          data?.detail ?? data?.start_date?.[0] ?? data?.non_field_errors?.[0] ?? "Failed to save financial year.";
+
+        setFinancialYearError(message);
+      } else {
+        setFinancialYearError("An unexpected error occurred.");
+      }
     }
   };
 
@@ -1003,6 +1013,11 @@ const Settings: React.FC = () => {
               className="space-y-4"
               onSubmit={handleFinancialYearSubmit(onFinancialYearSubmit)}
             >
+              {financialYearError && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                  {financialYearError}
+                </div>
+              )}
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                   Name
@@ -1057,6 +1072,7 @@ const Settings: React.FC = () => {
                   onClick={() => {
                     setShowFinancialYearModal(false);
                     setEditingFinancialYearId(null);
+                    setFinancialYearError("");
                     resetFinancialYear({ name: "", start_date: "", end_date: "" });
                   }}
                 >
