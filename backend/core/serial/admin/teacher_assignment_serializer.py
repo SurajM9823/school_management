@@ -16,7 +16,7 @@ class TeacherAssignmentSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'teacher', 'class_obj', 'section', 'subject',
             'is_primary', 'hours_per_week', 'class_name',
-            'section_name', 'subject_name'
+            'section_name', 'subject_name',
         ]
     
     def get_class_name(self, obj):

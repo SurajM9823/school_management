@@ -10,7 +10,7 @@ class NoticeSerializer(serializers.ModelSerializer):
         queryset=AcademicSession.objects.all(), source='academic_session'
     )
     class_id = serializers.PrimaryKeyRelatedField(
-        queryset=Class.objects.all(), source='class_id', required=False, allow_null=True
+        queryset=Class.objects.all(), required=False, allow_null=True
     )
     section_id = serializers.PrimaryKeyRelatedField(
         queryset=Section.objects.all(), source='section', required=False, allow_null=True

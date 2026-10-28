@@ -83,6 +83,7 @@ import SuperadminDashboard from "./pages/superadmin/SuperadminDashboard";
 import AddSchool from "./pages/superadmin/AddSchool";
 import SubscriptionManagement from "./pages/superadmin/SubscriptionManagement";
 import ActivityTracker from "./pages/superadmin/ActivityTracker";
+import FinancialSettings from "./pages/admin/settings/FinancialSettings";
 
 const AutoRedirect: React.FC = () => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -203,6 +204,7 @@ function App() {
             <Route path="academic" element={<AcademicSettings />} />
             <Route path="campus" element={<CampusSettings />} />
             <Route path="admission-fees" element={<AdmissionFees />} />
+            <Route path="finance" element={<FinancialSettings />} />
           </Route>
           <Route
             path="/admin/teachers"

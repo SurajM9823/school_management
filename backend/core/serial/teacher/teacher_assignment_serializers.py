@@ -9,7 +9,7 @@ class TeacherAssignmentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = TeacherAssignmentToStudent
-        fields = ['id', 'title', 'description', 'class_assigned', 'subject', 'due_date', 'status']
+        fields = ['id', 'title', 'description', 'class_assigned', 'subject', 'due_date', 'status', 'teacher_name', 'class_name', 'subject_name', 'student_name']
         
     def create(self, validated_data):
         # This won't be used since we override create in the viewset
