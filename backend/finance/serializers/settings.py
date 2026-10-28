@@ -62,6 +62,18 @@ class AccountingPeriodWriteSerializer(serializers.ModelSerializer):
         model = AccountingPeriod
         fields = ["financial_year", "name", "start_date", "end_date"]
 
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except DjangoValidationError as exc:
+            handle_django_validation_error(exc)
+
+    def update(self, instance, validated_data):
+        try:
+            return super().update(instance, validated_data)
+        except DjangoValidationError as exc:
+            handle_django_validation_error(exc)
+
 
 class AccountingPeriodReadSerializer(serializers.ModelSerializer):
     financial_year = FinancialYearReadSerializer(read_only=True)

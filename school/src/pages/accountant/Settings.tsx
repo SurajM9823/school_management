@@ -9,7 +9,6 @@ import {
   SettingsIcon,
   Trash2,
 } from "lucide-react";
-import axios from "axios";
 import z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { toast, ToastContainer } from "react-toastify";
@@ -300,6 +299,7 @@ const Settings: React.FC = () => {
   const {
     register: registerAccountingPeriod,
     handleSubmit: handleAccountingPeriodSubmit,
+    setError: setAccountingPeriodError,
     reset: resetAccountingPeriod,
     formState: { errors: accountingPeriodErrors, isSubmitting: isAccountingPeriodSubmitting },
   } = useForm<AccountingPeriodWriteRequest>({
@@ -313,8 +313,6 @@ const Settings: React.FC = () => {
   });
 
   const onAccountingPeriodSubmit: SubmitHandler<AccountingPeriodWriteRequest> = async (data) => {
-    setError("");
-
     try {
       if (editingAccountingPeriodId) {
         await api.put(`/accounting-periods/${editingAccountingPeriodId}/`, data);
@@ -327,9 +325,8 @@ const Settings: React.FC = () => {
       setShowAccountingPeriodModal(false);
       setEditingAccountingPeriodId(null);
       resetAccountingPeriod({ financial_year: undefined, name: "", start_date: "", end_date: "" });
-    } catch (err: any) {
-      setError(err);
-      toast.error("An error occurred while saving.");
+    } catch (err: unknown) {
+      handleDrfErrors<AccountingPeriodWriteRequest>(err, setAccountingPeriodError);
     }
   };
 

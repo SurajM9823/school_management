@@ -46,13 +46,9 @@ class FinancialYear(TimeStampedMixin):
     class Meta:
         ordering = ["-start_date"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["school", "name"],
-                name="unique_financial_year_name_per_school",
-            ),
+            models.UniqueConstraint(fields=["school", "name"], name="unique_financial_year_name_per_school"),
             models.CheckConstraint(
-                condition=Q(start_date__lte=models.F("end_date")),
-                name="financial_year_start_lte_end",
+                condition=Q(start_date__lte=models.F("end_date")), name="financial_year_start_lte_end"
             ),
         ]
 
@@ -160,6 +156,29 @@ class AccountingPeriod(TimeStampedMixin, UserAuditMixin):
 
     def __str__(self):
         return f"{self.name} - {self.financial_year.name}"
+
+    def clean(self):
+        super().clean()
+
+        errors = {}
+
+        if self.financial_year_id and self.start_date and self.end_date:
+            financial_year = self.financial_year
+
+            if self.start_date < financial_year.start_date or self.end_date > financial_year.end_date:
+                errors["start_date"] = (
+                    "The accounting period must fall entirely within the financial year's date range."
+                )
+
+        if self.school_id and self.financial_year_id and self.school_id != self.financial_year.school_id:
+            errors["financial_year"] = "The financial year must belong to the same school."
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 
 class Account(TimeStampedMixin, UserAuditMixin):
