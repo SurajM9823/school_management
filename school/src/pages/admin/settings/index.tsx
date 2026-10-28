@@ -65,7 +65,6 @@ const Settings: React.FC = () => {
     { id: "academic", label: "Academic Settings", icon: <BookOpen size={20} />, to: "/admin/settings/academic" },
     { id: "campus", label: "Campus Settings", icon: <Building size={20} />, to: "/admin/settings/campus" },
     { id: "admission-fees", label: "Admission Fees", icon: <DollarSign size={20} />, to: "/admin/settings/admission-fees" }, // New tab
-    { id: "finance-settings", label: "Finance Settings", icon: <Banknote size={20} />, to: "/admin/settings/finance" }, // New tab
   ];
 
   const toggleSidebar = () => setOpen(!open);
