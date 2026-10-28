@@ -34,6 +34,7 @@ import {
   zFinanceSettingsCreateBody,
   zFinancialYearsCreateBody,
 } from "@/client/zod.gen";
+import { handleDrfErrors } from "@/utils/api-error";
 
 const financialYearCreateSchema = zFinancialYearsCreateBody
   .safeExtend({
@@ -106,8 +107,9 @@ const Settings: React.FC = () => {
   const [editingAccountingPeriodId, setEditingAccountingPeriodId] = useState<number | null>(null);
   const [editingAccountId, setEditingAccountId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [financialYearError, setFinancialYearError] = useState("");
   const [error, setError] = useState("");
+
+  const [financialYearGeneralErrors, setFinancialYearGeneralErrors] = useState<string[]>([]);
 
   // dummy states (should be removed)
   const [taxSettings, setTaxSettings] = useState<TaxSetting[]>([
@@ -181,6 +183,7 @@ const Settings: React.FC = () => {
   const {
     register: registerFinancialYear,
     handleSubmit: handleFinancialYearSubmit,
+    setError: setFinancialyearError,
     reset: resetFinancialYear,
     formState: { errors: financialYearErrors, isSubmitting: isFinancialYearSubmitting },
   } = useForm<FinancialYearWriteRequest>({
@@ -193,8 +196,6 @@ const Settings: React.FC = () => {
   });
 
   const onFinancialYearSubmit: SubmitHandler<FinancialYearWriteRequest> = async (data) => {
-    setFinancialYearError("");
-
     try {
       if (editingFinancialYearId) {
         await api.put(`/financial-years/${editingFinancialYearId}/`, data);
@@ -208,16 +209,7 @@ const Settings: React.FC = () => {
       setEditingFinancialYearId(null);
       resetFinancialYear({ name: "", start_date: "", end_date: "" });
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        const data = err.response?.data;
-
-        const message =
-          data?.detail ?? data?.start_date?.[0] ?? data?.non_field_errors?.[0] ?? "Failed to save financial year.";
-
-        setFinancialYearError(message);
-      } else {
-        setFinancialYearError("An unexpected error occurred.");
-      }
+      handleDrfErrors<FinancialYearWriteRequest>(err, setFinancialyearError, setFinancialYearGeneralErrors);
     }
   };
 
@@ -1013,11 +1005,14 @@ const Settings: React.FC = () => {
               className="space-y-4"
               onSubmit={handleFinancialYearSubmit(onFinancialYearSubmit)}
             >
-              {financialYearError && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                  {financialYearError}
+              {financialYearGeneralErrors.length > 0 && (
+                <div role="alert" className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                  {financialYearGeneralErrors.map((err, idx) => (
+                    <p key={idx}>{err}</p>
+                  ))}
                 </div>
               )}
+
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                   Name
@@ -1072,7 +1067,7 @@ const Settings: React.FC = () => {
                   onClick={() => {
                     setShowFinancialYearModal(false);
                     setEditingFinancialYearId(null);
-                    setFinancialYearError("");
+                    setFinancialYearGeneralErrors([]);
                     resetFinancialYear({ name: "", start_date: "", end_date: "" });
                   }}
                 >
