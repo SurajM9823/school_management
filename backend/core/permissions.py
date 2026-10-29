@@ -34,7 +34,7 @@ class HasSchoolTenant(BasePermission):
         return bool(user and user.is_authenticated and getattr(user, "school_id", None) is not None)
 
 
-class IsSchoolAdmin(BasePermission):
+class IsSchoolAssignedAdmin(BasePermission):
     """
     Allow access only to authenticated 'admin' role users assigned to a school.
     """

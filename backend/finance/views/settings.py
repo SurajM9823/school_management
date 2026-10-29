@@ -10,7 +10,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from core.pagination import CustomLimitOffsetPagination
-from core.permissions import IsSchoolAccountant, IsSchoolAdmin, IsSuperUser
+from core.permissions import IsSchoolAccountant, IsSchoolAssignedAdmin, IsSuperUser
 from finance.models import Account, AccountingPeriod, FinanceSettings, FinancialYear
 from finance.serializers.settings import (
     AccountingPeriodReadSerializer,
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class FinancialYearViewSet(viewsets.ModelViewSet):
     queryset = FinancialYear.objects.all()
     pagination_class = CustomLimitOffsetPagination
-    permission_classes = [IsSuperUser | IsSchoolAdmin | IsSchoolAccountant]
+    permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
     serializer_class = FinancialYearReadSerializer
     lookup_url_kwarg = "financial_year_id"
 
@@ -44,9 +44,9 @@ class FinancialYearViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            permission_classes = [IsSchoolAdmin | IsSchoolAccountant]
+            permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
         else:
-            permission_classes = [IsSuperUser | IsSchoolAdmin | IsSchoolAccountant]
+            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
         return [permission() for permission in permission_classes]
 
     def get_serializer_class(self):
@@ -110,7 +110,7 @@ class FinancialYearViewSet(viewsets.ModelViewSet):
 class FinanceSettingsView(generics.RetrieveUpdateAPIView):
     queryset = FinanceSettings.objects.all()
     serializer_class = FinanceSettingsReadSerializer
-    permission_classes = [IsSchoolAdmin | IsSchoolAccountant]
+    permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
     http_method_names = ["get", "put"]
 
     def get_object(self):
@@ -145,7 +145,7 @@ class FinanceSettingsView(generics.RetrieveUpdateAPIView):
 class AccountingPeriodViewSet(viewsets.ModelViewSet):
     queryset = AccountingPeriod.objects.select_related("financial_year")
     pagination_class = CustomLimitOffsetPagination
-    permission_classes = [IsSuperUser | IsSchoolAdmin | IsSchoolAccountant]
+    permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
     serializer_class = AccountingPeriodReadSerializer
     lookup_url_kwarg = "accounting_period_id"
 
@@ -160,9 +160,9 @@ class AccountingPeriodViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            permission_classes = [IsSchoolAdmin | IsSchoolAccountant]
+            permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
         else:
-            permission_classes = [IsSuperUser | IsSchoolAdmin | IsSchoolAccountant]
+            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
         return [permission() for permission in permission_classes]
 
     def get_serializer_class(self):
@@ -227,7 +227,7 @@ class AccountingPeriodViewSet(viewsets.ModelViewSet):
 class AccountViewSet(viewsets.ModelViewSet):
     queryset = Account.objects.all()
     pagination_class = CustomLimitOffsetPagination
-    permission_classes = [IsSuperUser | IsSchoolAdmin | IsSchoolAccountant]
+    permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
     serializer_class = AccountReadSerializer
     lookup_url_kwarg = "account_id"
 
@@ -242,9 +242,9 @@ class AccountViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            permission_classes = [IsSchoolAdmin | IsSchoolAccountant]
+            permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
         else:
-            permission_classes = [IsSuperUser | IsSchoolAdmin | IsSchoolAccountant]
+            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
         return [permission() for permission in permission_classes]
 
     def get_serializer_class(self):

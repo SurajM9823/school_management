@@ -18,7 +18,8 @@ from rest_framework.views import APIView
 from core.domain.teacher_assignment import ClassTeacher
 from core.models import Class, FeeType, School, LocaleSettings, AcademicSession, Section, Term, Holiday, GradingSettings, AttendanceSettings, FeeSettings, Subject, FeeStructure
 from core.models import NotificationSettings, NotificationTemplate, StaffRole, LeaveType, Department, Subject, GradingScale, PromotionRules, ClassCapacity, Campus, Building, Room, Resource
-from core.permissions import IsSuperUser, IsSchoolAdmin
+from core.pagination import CustomLimitOffsetPagination
+from core.permissions import IsSuperUser, IsSchoolAssignedAdmin
 from core.serializers import ClassSerializer, FeeTypeSerializer, FeeSettingsReadSerializer, FeeSettingsWriteSerializer, FeeStructureReadSerializer, FeeStructureWriteSerializer, SchoolSerializer, LocaleSettingsSerializer, AcademicSessionSerializer, SectionSerializer, TermSerializer, HolidaySerializer, GradingSettingsSerializer, AttendanceSettingsSerializer, RoleSerializer, CampusSerializer, BuildingSerializer, RoomSerializer, ResourceSerializer
 from core.serializers import NotificationSettingsSerializer, NotificationTemplateSerializer, StaffRoleSerializer, LeaveTypeSerializer, DepartmentSerializer, BulkLeaveAssignmentSerializer, SubjectSerializer, GradingScaleSerializer, PromotionRulesSerializer, ClassCapacitySerializer
 from core.serial.admin.teacher_assignment_serializer import ClassTeacherSerializer
@@ -469,7 +470,7 @@ class AttendanceSettingsView(APIView):
 class FeeTypeViewSet(viewsets.ModelViewSet):
     queryset = FeeType.objects.all()
     serializer_class = FeeTypeSerializer
-    permission_classes = [IsSuperUser | IsSchoolAdmin]
+    permission_classes = [IsSuperUser | IsSchoolAssignedAdmin]
     lookup_url_kwarg = "fee_type_id"
 
     def get_school(self):
@@ -486,9 +487,9 @@ class FeeTypeViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            permission_classes = [IsSchoolAdmin]
+            permission_classes = [IsSchoolAssignedAdmin]
         else:
-            permission_classes = [IsSuperUser | IsSchoolAdmin]
+            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin]
         return [permission() for permission in permission_classes]
 
     def create(self, request, *args, **kwargs):
@@ -506,7 +507,7 @@ class FeeTypeViewSet(viewsets.ModelViewSet):
 
 class FeeSettingsView(generics.RetrieveUpdateAPIView):
     serializer_class = FeeSettingsReadSerializer
-    permission_classes = [IsSuperUser | IsSchoolAdmin]
+    permission_classes = [IsSuperUser | IsSchoolAssignedAdmin]
     http_method_names = ["get", "put"]
 
     def get_object(self):
@@ -539,7 +540,8 @@ class FeeSettingsView(generics.RetrieveUpdateAPIView):
 class FeeStructureViewSet(viewsets.ModelViewSet):
     queryset = FeeStructure.objects.select_related("academic_session", "school_class", "fee_type")
     serializer_class = FeeStructureReadSerializer
-    permission_classes = [IsSuperUser | IsSchoolAdmin]
+    pagination_class = CustomLimitOffsetPagination
+    permission_classes = [IsSuperUser | IsSchoolAssignedAdmin]
     lookup_url_kwarg = "fee_structure_id"
 
     def get_queryset(self):
@@ -553,9 +555,9 @@ class FeeStructureViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            permission_classes = [IsSchoolAdmin]
+            permission_classes = [IsSchoolAssignedAdmin]
         else:
-            permission_classes = [IsSuperUser | IsSchoolAdmin]
+            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin]
         return [permission() for permission in permission_classes]
 
     def get_serializer_class(self):
