@@ -215,9 +215,14 @@ export type Class = {
   name: string;
   max_capacity?: number | null;
   readonly current_capacity: string;
-  readonly is_active: boolean | null;
+  readonly is_active: boolean;
   readonly teachers: string;
   readonly subjects: string;
+};
+
+export type ClassMinimal = {
+  readonly id: number;
+  readonly name: string;
 };
 
 export type ClassRequest = {
@@ -392,6 +397,34 @@ export type FeeSettingsWriteRequest = {
   reminder_days?: number;
 };
 
+export type FeeStructureRead = {
+  readonly id: number;
+  academic_session: AcademicSession;
+  school_class: ClassMinimal;
+  fee_type: FeeType;
+  readonly amount: string;
+  status: FeeStructureReadStatusEnum;
+  readonly status_label: string;
+  readonly created_by: number | null;
+  readonly updated_by: number | null;
+  readonly created_at: string;
+  readonly updated_at: string;
+};
+
+/**
+ * * `draft` - Draft
+ * * `active` - Active
+ * * `inactive` - Inactive
+ */
+export type FeeStructureReadStatusEnum = "draft" | "active" | "inactive";
+
+export type FeeStructureWriteRequest = {
+  academic_session: number;
+  school_class: number;
+  fee_type: number;
+  amount: string;
+};
+
 export type FeeType = {
   readonly id: number;
   name: string;
@@ -540,6 +573,13 @@ export type PaginatedAccountingPeriodReadList = {
   results: Array<AccountingPeriodRead>;
 };
 
+export type PaginatedFeeStructureReadList = {
+  count: number;
+  next?: string | null;
+  previous?: string | null;
+  results: Array<FeeStructureRead>;
+};
+
 export type PaginatedFinancialYearReadList = {
   count: number;
   next?: string | null;
@@ -606,6 +646,13 @@ export type PatchedEventRequest = {
   start_date?: string;
   end_date?: string | null;
   is_open_for_applications?: boolean;
+};
+
+export type PatchedFeeStructureWriteRequest = {
+  academic_session?: number;
+  school_class?: number;
+  fee_type?: number;
+  amount?: string;
 };
 
 export type PatchedFeeTypeRequest = {
@@ -1233,6 +1280,10 @@ export type ExamRequestWritable = {
   subjects: Array<ExamSubjectRequest>;
 };
 
+export type FeeStructureReadWritable = {
+  [key: string]: unknown;
+};
+
 export type FeeTypeWritable = {
   name: string;
   default_amount: string;
@@ -1273,6 +1324,13 @@ export type PaginatedAccountingPeriodReadListWritable = {
   next?: string | null;
   previous?: string | null;
   results: Array<unknown>;
+};
+
+export type PaginatedFeeStructureReadListWritable = {
+  count: number;
+  next?: string | null;
+  previous?: string | null;
+  results: Array<FeeStructureReadWritable>;
 };
 
 export type PaginatedFinancialYearReadListWritable = {
@@ -1772,7 +1830,7 @@ export type AccountingPeriodsUpdateResponses = {
 export type AccountingPeriodsUpdateResponse = AccountingPeriodsUpdateResponses[keyof AccountingPeriodsUpdateResponses];
 
 export type AccountingPeriodsCloseCreateData = {
-  body?: never;
+  body: AccountingPeriodWriteRequest;
   path: {
     /**
      * A unique integer value identifying this accounting period.
@@ -1791,7 +1849,7 @@ export type AccountingPeriodsCloseCreateResponse =
   AccountingPeriodsCloseCreateResponses[keyof AccountingPeriodsCloseCreateResponses];
 
 export type AccountingPeriodsLockCreateData = {
-  body?: never;
+  body: AccountingPeriodWriteRequest;
   path: {
     /**
      * A unique integer value identifying this accounting period.
@@ -2863,6 +2921,155 @@ export type FeeSettingsUpdateResponses = {
 
 export type FeeSettingsUpdateResponse = FeeSettingsUpdateResponses[keyof FeeSettingsUpdateResponses];
 
+export type FeeStructuresListData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Number of results to return per page.
+     */
+    limit?: number;
+    /**
+     * The initial index from which to return the results.
+     */
+    offset?: number;
+  };
+  url: "/api/fee-structures/";
+};
+
+export type FeeStructuresListResponses = {
+  200: PaginatedFeeStructureReadList;
+};
+
+export type FeeStructuresListResponse = FeeStructuresListResponses[keyof FeeStructuresListResponses];
+
+export type FeeStructuresCreateData = {
+  body: FeeStructureWriteRequest;
+  path?: never;
+  query?: never;
+  url: "/api/fee-structures/";
+};
+
+export type FeeStructuresCreateResponses = {
+  201: FeeStructureRead;
+};
+
+export type FeeStructuresCreateResponse = FeeStructuresCreateResponses[keyof FeeStructuresCreateResponses];
+
+export type FeeStructuresDestroyData = {
+  body?: never;
+  path: {
+    /**
+     * A unique integer value identifying this fee structure.
+     */
+    fee_structure_id: number;
+  };
+  query?: never;
+  url: "/api/fee-structures/{fee_structure_id}/";
+};
+
+export type FeeStructuresDestroyResponses = {
+  /**
+   * No response body
+   */
+  204: void;
+};
+
+export type FeeStructuresDestroyResponse = FeeStructuresDestroyResponses[keyof FeeStructuresDestroyResponses];
+
+export type FeeStructuresRetrieveData = {
+  body?: never;
+  path: {
+    /**
+     * A unique integer value identifying this fee structure.
+     */
+    fee_structure_id: number;
+  };
+  query?: never;
+  url: "/api/fee-structures/{fee_structure_id}/";
+};
+
+export type FeeStructuresRetrieveResponses = {
+  200: FeeStructureRead;
+};
+
+export type FeeStructuresRetrieveResponse = FeeStructuresRetrieveResponses[keyof FeeStructuresRetrieveResponses];
+
+export type FeeStructuresPartialUpdateData = {
+  body?: PatchedFeeStructureWriteRequest;
+  path: {
+    /**
+     * A unique integer value identifying this fee structure.
+     */
+    fee_structure_id: number;
+  };
+  query?: never;
+  url: "/api/fee-structures/{fee_structure_id}/";
+};
+
+export type FeeStructuresPartialUpdateResponses = {
+  200: FeeStructureRead;
+};
+
+export type FeeStructuresPartialUpdateResponse =
+  FeeStructuresPartialUpdateResponses[keyof FeeStructuresPartialUpdateResponses];
+
+export type FeeStructuresUpdateData = {
+  body: FeeStructureWriteRequest;
+  path: {
+    /**
+     * A unique integer value identifying this fee structure.
+     */
+    fee_structure_id: number;
+  };
+  query?: never;
+  url: "/api/fee-structures/{fee_structure_id}/";
+};
+
+export type FeeStructuresUpdateResponses = {
+  200: FeeStructureRead;
+};
+
+export type FeeStructuresUpdateResponse = FeeStructuresUpdateResponses[keyof FeeStructuresUpdateResponses];
+
+export type FeeStructuresActivateCreateData = {
+  body: FeeStructureWriteRequest;
+  path: {
+    /**
+     * A unique integer value identifying this fee structure.
+     */
+    fee_structure_id: number;
+  };
+  query?: never;
+  url: "/api/fee-structures/{fee_structure_id}/activate/";
+};
+
+export type FeeStructuresActivateCreateResponses = {
+  200: FeeStructureRead;
+};
+
+export type FeeStructuresActivateCreateResponse =
+  FeeStructuresActivateCreateResponses[keyof FeeStructuresActivateCreateResponses];
+
+export type FeeStructuresDeactivateCreateData = {
+  body: FeeStructureWriteRequest;
+  path: {
+    /**
+     * A unique integer value identifying this fee structure.
+     */
+    fee_structure_id: number;
+  };
+  query?: never;
+  url: "/api/fee-structures/{fee_structure_id}/deactivate/";
+};
+
+export type FeeStructuresDeactivateCreateResponses = {
+  200: FeeStructureRead;
+};
+
+export type FeeStructuresDeactivateCreateResponse =
+  FeeStructuresDeactivateCreateResponses[keyof FeeStructuresDeactivateCreateResponses];
+
 export type FeeTypesListData = {
   body?: never;
   path?: never;
@@ -3102,7 +3309,7 @@ export type FinancialYearsUpdateResponses = {
 export type FinancialYearsUpdateResponse = FinancialYearsUpdateResponses[keyof FinancialYearsUpdateResponses];
 
 export type FinancialYearsActivateCreateData = {
-  body?: never;
+  body: FinancialYearWriteRequest;
   path: {
     /**
      * A unique integer value identifying this financial year.
@@ -3121,7 +3328,7 @@ export type FinancialYearsActivateCreateResponse =
   FinancialYearsActivateCreateResponses[keyof FinancialYearsActivateCreateResponses];
 
 export type FinancialYearsCloseCreateData = {
-  body?: never;
+  body: FinancialYearWriteRequest;
   path: {
     /**
      * A unique integer value identifying this financial year.

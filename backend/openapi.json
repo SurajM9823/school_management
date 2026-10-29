@@ -168,6 +168,18 @@ paths:
         required: true
       tags:
       - accounting-periods
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountingPeriodWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AccountingPeriodWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AccountingPeriodWriteRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -189,6 +201,18 @@ paths:
         required: true
       tags:
       - accounting-periods
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountingPeriodWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AccountingPeriodWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AccountingPeriodWriteRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -1544,6 +1568,262 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/fee-settings/:
+    get:
+      operationId: fee_settings_retrieve
+      tags:
+      - fee-settings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeSettingsRead'
+          description: ''
+    put:
+      operationId: fee_settings_update
+      tags:
+      - fee-settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeeSettingsWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FeeSettingsWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FeeSettingsWriteRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeSettingsRead'
+          description: ''
+  /api/fee-structures/:
+    get:
+      operationId: fee_structures_list
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - fee-structures
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFeeStructureReadList'
+          description: ''
+    post:
+      operationId: fee_structures_create
+      tags:
+      - fee-structures
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeeStructureWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FeeStructureWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FeeStructureWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeStructureRead'
+          description: ''
+  /api/fee-structures/{fee_structure_id}/:
+    get:
+      operationId: fee_structures_retrieve
+      parameters:
+      - in: path
+        name: fee_structure_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee structure.
+        required: true
+      tags:
+      - fee-structures
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeStructureRead'
+          description: ''
+    put:
+      operationId: fee_structures_update
+      parameters:
+      - in: path
+        name: fee_structure_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee structure.
+        required: true
+      tags:
+      - fee-structures
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeeStructureWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FeeStructureWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FeeStructureWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeStructureRead'
+          description: ''
+    patch:
+      operationId: fee_structures_partial_update
+      parameters:
+      - in: path
+        name: fee_structure_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee structure.
+        required: true
+      tags:
+      - fee-structures
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFeeStructureWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFeeStructureWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFeeStructureWriteRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeStructureRead'
+          description: ''
+    delete:
+      operationId: fee_structures_destroy
+      parameters:
+      - in: path
+        name: fee_structure_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee structure.
+        required: true
+      tags:
+      - fee-structures
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/fee-structures/{fee_structure_id}/activate/:
+    post:
+      operationId: fee_structures_activate_create
+      parameters:
+      - in: path
+        name: fee_structure_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee structure.
+        required: true
+      tags:
+      - fee-structures
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeeStructureWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FeeStructureWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FeeStructureWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeStructureRead'
+          description: ''
+  /api/fee-structures/{fee_structure_id}/deactivate/:
+    post:
+      operationId: fee_structures_deactivate_create
+      parameters:
+      - in: path
+        name: fee_structure_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee structure.
+        required: true
+      tags:
+      - fee-structures
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeeStructureWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FeeStructureWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FeeStructureWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeStructureRead'
+          description: ''
   /api/fee-types/:
     get:
       operationId: fee_types_list
@@ -1889,6 +2169,18 @@ paths:
         required: true
       tags:
       - financial-years
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinancialYearWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FinancialYearWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FinancialYearWriteRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -1910,6 +2202,18 @@ paths:
         required: true
       tags:
       - financial-years
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinancialYearWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FinancialYearWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FinancialYearWriteRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -3551,44 +3855,6 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/school/settings/fee-settings/:
-    get:
-      operationId: school_settings_fee_settings_retrieve
-      tags:
-      - school
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FeeSettingsRead'
-          description: ''
-    put:
-      operationId: school_settings_fee_settings_update
-      tags:
-      - school
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/FeeSettingsWriteRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/FeeSettingsWriteRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/FeeSettingsWriteRequest'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FeeSettingsRead'
-          description: ''
   /api/school/settings/grading-scales/:
     get:
       operationId: school_settings_grading_scales_retrieve
@@ -6794,8 +7060,8 @@ components:
           maxLength: 100
         max_capacity:
           type: integer
-          maximum: 2147483647
-          minimum: -2147483648
+          maximum: 500
+          minimum: 0
           nullable: true
         current_capacity:
           type: string
@@ -6803,7 +7069,6 @@ components:
         is_active:
           type: boolean
           readOnly: true
-          nullable: true
         teachers:
           type: string
           readOnly: true
@@ -6817,6 +7082,18 @@ components:
       - name
       - subjects
       - teachers
+    ClassMinimal:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - name
     ClassRequest:
       type: object
       properties:
@@ -6826,8 +7103,8 @@ components:
           maxLength: 100
         max_capacity:
           type: integer
-          maximum: 2147483647
-          minimum: -2147483648
+          maximum: 500
+          minimum: 0
           nullable: true
       required:
       - name
@@ -7258,9 +7535,8 @@ components:
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
         grace_period_days:
           type: integer
-          maximum: 4294967295
+          maximum: 65535
           minimum: 0
-          format: int64
           description: Number of days after the fee due date before late fees are
             applied.
         allow_partial_payment:
@@ -7269,6 +7545,92 @@ components:
           type: integer
           maximum: 65535
           minimum: 0
+    FeeStructureRead:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        academic_session:
+          allOf:
+          - $ref: '#/components/schemas/AcademicSession'
+          readOnly: true
+        school_class:
+          allOf:
+          - $ref: '#/components/schemas/ClassMinimal'
+          readOnly: true
+        fee_type:
+          allOf:
+          - $ref: '#/components/schemas/FeeType'
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/FeeStructureReadStatusEnum'
+          readOnly: true
+        status_label:
+          type: string
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        updated_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - academic_session
+      - amount
+      - created_at
+      - created_by
+      - fee_type
+      - id
+      - school_class
+      - status
+      - status_label
+      - updated_at
+      - updated_by
+    FeeStructureReadStatusEnum:
+      enum:
+      - draft
+      - active
+      - inactive
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `active` - Active
+        * `inactive` - Inactive
+    FeeStructureWriteRequest:
+      type: object
+      properties:
+        academic_session:
+          type: integer
+        school_class:
+          type: integer
+        fee_type:
+          type: integer
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+      required:
+      - academic_session
+      - amount
+      - fee_type
+      - school_class
     FeeType:
       type: object
       properties:
@@ -7284,6 +7646,9 @@ components:
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
         frequency:
           $ref: '#/components/schemas/FrequencyEnum'
+        frequency_label:
+          type: string
+          readOnly: true
         is_mandatory:
           type: boolean
         created_at:
@@ -7298,6 +7663,7 @@ components:
       - created_at
       - default_amount
       - frequency
+      - frequency_label
       - id
       - name
       - updated_at
@@ -7666,6 +8032,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AccountingPeriodRead'
+    PaginatedFeeStructureReadList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeeStructureRead'
     PaginatedFinancialYearReadList:
       type: object
       required:
@@ -7840,6 +8229,19 @@ components:
           nullable: true
         is_open_for_applications:
           type: boolean
+    PatchedFeeStructureWriteRequest:
+      type: object
+      properties:
+        academic_session:
+          type: integer
+        school_class:
+          type: integer
+        fee_type:
+          type: integer
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
     PatchedFeeTypeRequest:
       type: object
       properties:

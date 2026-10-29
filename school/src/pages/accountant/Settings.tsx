@@ -207,7 +207,7 @@ const Settings: React.FC = () => {
       await fetchFinancialYears();
       setShowFinancialYearModal(false);
       setEditingFinancialYearId(null);
-      resetFinancialYear({ name: "", start_date: "", end_date: "" });
+      resetFinancialYear({});
     } catch (err: unknown) {
       handleDrfErrors<FinancialYearWriteRequest>(err, setFinancialyearError, setFinancialYearGeneralErrors);
     }
@@ -322,7 +322,7 @@ const Settings: React.FC = () => {
       await fetchAccountingPeriods();
       setShowAccountingPeriodModal(false);
       setEditingAccountingPeriodId(null);
-      resetAccountingPeriod({ financial_year: undefined, name: "", start_date: "", end_date: "" });
+      resetAccountingPeriod({});
     } catch (err: unknown) {
       handleDrfErrors<AccountingPeriodWriteRequest>(err, setAccountingPeriodError, setAccountingPeriodGeneralErrors);
     }
@@ -410,13 +410,7 @@ const Settings: React.FC = () => {
       await fetchAccounts();
       setShowAccountModal(false);
       setEditingAccountId(null);
-      resetAccount({
-        name: "",
-        account_type: "cash",
-        account_number: "",
-        opening_balance: "",
-        opening_balance_date: "",
-      });
+      resetAccount({});
     } catch (err: any) {
       handleDrfErrors<AccountWriteRequest>(err, setAccountError);
     }
@@ -560,7 +554,7 @@ const Settings: React.FC = () => {
             icon={<LucidePlusCircle size={16} />}
             onClick={() => {
               setEditingFinancialYearId(null);
-              resetFinancialYear({ name: "", start_date: "", end_date: "" });
+              resetFinancialYear({});
               setShowFinancialYearModal(true);
             }}
             disabled={isLoading}
@@ -654,7 +648,7 @@ const Settings: React.FC = () => {
             variant="primary"
             onClick={() => {
               setEditingAccountingPeriodId(null);
-              resetAccountingPeriod({ financial_year: undefined, name: "", start_date: "", end_date: "" });
+              resetAccountingPeriod({});
               setShowAccountingPeriodModal(true);
             }}
             disabled={isLoading}
@@ -754,13 +748,7 @@ const Settings: React.FC = () => {
             variant="primary"
             onClick={() => {
               setEditingAccountId(null);
-              resetAccount({
-                name: "",
-                account_type: "cash",
-                account_number: "",
-                opening_balance: "",
-                opening_balance_date: "",
-              });
+              resetAccount({});
               setShowAccountModal(true);
             }}
             disabled={isLoading}
@@ -1069,7 +1057,7 @@ const Settings: React.FC = () => {
                     setShowFinancialYearModal(false);
                     setEditingFinancialYearId(null);
                     setFinancialYearGeneralErrors([]);
-                    resetFinancialYear({ name: "", start_date: "", end_date: "" });
+                    resetFinancialYear({});
                   }}
                 >
                   Cancel
@@ -1179,7 +1167,7 @@ const Settings: React.FC = () => {
                   onClick={() => {
                     setShowAccountingPeriodModal(false);
                     setEditingAccountingPeriodId(null);
-                    resetAccountingPeriod({ financial_year: undefined, name: "", start_date: "", end_date: "" });
+                    resetAccountingPeriod({});
                   }}
                 >
                   Cancel
@@ -1292,13 +1280,7 @@ const Settings: React.FC = () => {
                   onClick={() => {
                     setShowAccountModal(false);
                     setEditingAccountId(null);
-                    resetAccount({
-                      name: "",
-                      account_type: "cash",
-                      account_number: "",
-                      opening_balance: "",
-                      opening_balance_date: "",
-                    });
+                    resetAccount({});
                   }}
                 >
                   Cancel

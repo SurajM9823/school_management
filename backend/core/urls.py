@@ -16,7 +16,7 @@ from core.view.admin.school_setting import (
     RolePermissionsView, StaffRoleView, LeaveTypeView, DepartmentView, BulkLeaveAssignmentView,
     SubjectView, GradingScaleView, PromotionRulesView, ClassCapacityView, CampusView,
     BuildingView, RoomView, ResourceView, TestSMTPView, ClassSubjectsView,
-    FeeTypeViewSet,
+    FeeTypeViewSet, FeeStructureViewSet,
 )
 from core.view.admin.admissions import (
     ParentView, StudentView, StudentParentView, AdmissionFeeView, StudentFeeView, AdmissionView
@@ -57,6 +57,7 @@ router.register(r'event-assignments', EventAssignmentViewSet)
 router.register(r'notices', NoticeViewSet, basename='notice')
 router.register(r'teacher-assignments', TeacherAssignmentViewSet, basename='teacher-assignment')
 router.register(r'fee-types', FeeTypeViewSet)
+router.register(r'fee-structures', FeeStructureViewSet)
 
 urlpatterns = [
     # Authentication URLs

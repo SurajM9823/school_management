@@ -390,13 +390,13 @@ class FeeStructure(TimeStampedMixin, UserAuditMixin):
         super().clean()
 
         related_objects = {
-            "academic_year": self.academic_year,
+            "academic_session": self.academic_session,
             "school_class": self.school_class,
             "fee_type": self.fee_type,
         }
 
         for field, obj in related_objects.items():
-            if obj and self.school_id and obj.school_id != self.school_id:
+            if obj and self.school and obj.school.school_id != self.school.school_id:
                 raise ValidationError({field: "This object must belong to the same school."})
 
     def save(self, *args, **kwargs):

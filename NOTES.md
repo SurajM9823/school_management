@@ -1,0 +1,1 @@
+- `ToastContainer` should be configured globally (currently must be configured in each page)

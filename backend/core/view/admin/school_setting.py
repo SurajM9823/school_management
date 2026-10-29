@@ -7,6 +7,7 @@ from smtplib import SMTP, SMTP_SSL, SMTPException
 from django.contrib.auth.models import Group
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
+from drf_rw_serializers import viewsets as rw_viewsets
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -19,7 +20,7 @@ from core.domain.teacher_assignment import ClassTeacher
 from core.models import Class, FeeType, School, LocaleSettings, AcademicSession, Section, Term, Holiday, GradingSettings, AttendanceSettings, FeeSettings, Subject, FeeStructure
 from core.models import NotificationSettings, NotificationTemplate, StaffRole, LeaveType, Department, Subject, GradingScale, PromotionRules, ClassCapacity, Campus, Building, Room, Resource
 from core.pagination import CustomLimitOffsetPagination
-from core.permissions import IsSuperUser, IsSchoolAssignedAdmin
+from core.permissions import IsSuperUser, IsSchoolAssignedAdmin, IsSchoolAccountant
 from core.serializers import ClassSerializer, FeeTypeSerializer, FeeSettingsReadSerializer, FeeSettingsWriteSerializer, FeeStructureReadSerializer, FeeStructureWriteSerializer, SchoolSerializer, LocaleSettingsSerializer, AcademicSessionSerializer, SectionSerializer, TermSerializer, HolidaySerializer, GradingSettingsSerializer, AttendanceSettingsSerializer, RoleSerializer, CampusSerializer, BuildingSerializer, RoomSerializer, ResourceSerializer
 from core.serializers import NotificationSettingsSerializer, NotificationTemplateSerializer, StaffRoleSerializer, LeaveTypeSerializer, DepartmentSerializer, BulkLeaveAssignmentSerializer, SubjectSerializer, GradingScaleSerializer, PromotionRulesSerializer, ClassCapacitySerializer
 from core.serial.admin.teacher_assignment_serializer import ClassTeacherSerializer
@@ -153,7 +154,7 @@ class LocaleSettingsView(APIView):
 
 
 class AcademicSessionView(APIView):
-    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+    permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
 
     def get(self, request):
         try:
@@ -470,7 +471,6 @@ class AttendanceSettingsView(APIView):
 class FeeTypeViewSet(viewsets.ModelViewSet):
     queryset = FeeType.objects.all()
     serializer_class = FeeTypeSerializer
-    permission_classes = [IsSuperUser | IsSchoolAssignedAdmin]
     lookup_url_kwarg = "fee_type_id"
 
     def get_school(self):
@@ -487,9 +487,9 @@ class FeeTypeViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            permission_classes = [IsSchoolAssignedAdmin]
+            permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
         else:
-            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin]
+            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
         return [permission() for permission in permission_classes]
 
     def create(self, request, *args, **kwargs):
@@ -537,11 +537,11 @@ class FeeSettingsView(generics.RetrieveUpdateAPIView):
         return super().put(request, *args, **kwargs)
 
 
-class FeeStructureViewSet(viewsets.ModelViewSet):
+class FeeStructureViewSet(rw_viewsets.ModelViewSet):
     queryset = FeeStructure.objects.select_related("academic_session", "school_class", "fee_type")
-    serializer_class = FeeStructureReadSerializer
     pagination_class = CustomLimitOffsetPagination
-    permission_classes = [IsSuperUser | IsSchoolAssignedAdmin]
+    read_serializer_class = FeeStructureReadSerializer
+    write_serializer_class = FeeStructureWriteSerializer
     lookup_url_kwarg = "fee_structure_id"
 
     def get_queryset(self):
@@ -555,27 +555,10 @@ class FeeStructureViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            permission_classes = [IsSchoolAssignedAdmin]
+            permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
         else:
-            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin]
+            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
         return [permission() for permission in permission_classes]
-
-    def get_serializer_class(self):
-        if self.action in ["create", "update", "partial_update"]:
-            return FeeStructureWriteSerializer
-        return super().get_serializer_class()
-
-    @extend_schema(request=FeeStructureWriteSerializer, responses={201: FeeStructureReadSerializer})
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    @extend_schema(request=FeeStructureWriteSerializer, responses={200: FeeStructureReadSerializer})
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    @extend_schema(request=FeeStructureWriteSerializer, responses={200: FeeStructureReadSerializer})
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -932,7 +915,7 @@ class BulkLeaveAssignmentView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ClassView(APIView):
-    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+    permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
 
     def get(self, request, class_id=None):
         if not request.user.school:

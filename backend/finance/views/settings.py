@@ -3,7 +3,8 @@ import logging
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
-from rest_framework import generics, status, viewsets
+from drf_rw_serializers import viewsets as rw_viewsets
+from rest_framework import generics, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
@@ -26,11 +27,11 @@ from finance.serializers.settings import (
 logger = logging.getLogger(__name__)
 
 
-class FinancialYearViewSet(viewsets.ModelViewSet):
+class FinancialYearViewSet(rw_viewsets.ModelViewSet):
     queryset = FinancialYear.objects.all()
     pagination_class = CustomLimitOffsetPagination
-    permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
-    serializer_class = FinancialYearReadSerializer
+    read_serializer_class = FinancialYearReadSerializer
+    write_serializer_class = FinancialYearWriteSerializer
     lookup_url_kwarg = "financial_year_id"
 
     def get_queryset(self):
@@ -53,18 +54,6 @@ class FinancialYearViewSet(viewsets.ModelViewSet):
         if self.action in ["create", "update", "partial_update"]:
             return FinancialYearWriteSerializer
         return super().get_serializer_class()
-
-    @extend_schema(request=FinancialYearWriteSerializer, responses={201: FinancialYearReadSerializer})
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    @extend_schema(request=FinancialYearWriteSerializer, responses={200: FinancialYearReadSerializer})
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    @extend_schema(request=FinancialYearWriteSerializer, responses={200: FinancialYearReadSerializer})
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(school=self.request.user.school)
@@ -142,11 +131,11 @@ class FinanceSettingsView(generics.RetrieveUpdateAPIView):
         return super().put(request, *args, **kwargs)
 
 
-class AccountingPeriodViewSet(viewsets.ModelViewSet):
+class AccountingPeriodViewSet(rw_viewsets.ModelViewSet):
     queryset = AccountingPeriod.objects.select_related("financial_year")
     pagination_class = CustomLimitOffsetPagination
-    permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
-    serializer_class = AccountingPeriodReadSerializer
+    read_serializer_class = AccountingPeriodReadSerializer
+    write_serializer_class = AccountingPeriodWriteSerializer
     lookup_url_kwarg = "accounting_period_id"
 
     def get_queryset(self):
@@ -164,23 +153,6 @@ class AccountingPeriodViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
         return [permission() for permission in permission_classes]
-
-    def get_serializer_class(self):
-        if self.action in ["create", "update", "partial_update"]:
-            return AccountingPeriodWriteSerializer
-        return super().get_serializer_class()
-
-    @extend_schema(request=AccountingPeriodWriteSerializer, responses={201: AccountingPeriodReadSerializer})
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    @extend_schema(request=AccountingPeriodWriteSerializer, responses={200: AccountingPeriodReadSerializer})
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    @extend_schema(request=AccountingPeriodWriteSerializer, responses={200: AccountingPeriodReadSerializer})
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -224,11 +196,11 @@ class AccountingPeriodViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class AccountViewSet(viewsets.ModelViewSet):
+class AccountViewSet(rw_viewsets.ModelViewSet):
     queryset = Account.objects.all()
     pagination_class = CustomLimitOffsetPagination
-    permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
-    serializer_class = AccountReadSerializer
+    read_serializer_class = AccountReadSerializer
+    write_serializer_class = AccountWriteSerializer
     lookup_url_kwarg = "account_id"
 
     def get_queryset(self):
@@ -246,23 +218,6 @@ class AccountViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
         return [permission() for permission in permission_classes]
-
-    def get_serializer_class(self):
-        if self.action in ["create", "update", "partial_update"]:
-            return AccountWriteSerializer
-        return super().get_serializer_class()
-
-    @extend_schema(request=AccountWriteSerializer, responses={201: AccountReadSerializer})
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    @extend_schema(request=AccountWriteSerializer, responses={200: AccountReadSerializer})
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    @extend_schema(request=AccountWriteSerializer, responses={200: AccountReadSerializer})
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         user = self.request.user

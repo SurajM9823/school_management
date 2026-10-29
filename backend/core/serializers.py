@@ -126,7 +126,8 @@ class LocaleSettingsSerializer(serializers.ModelSerializer):
         logger.debug(f"LocaleSettingsSerializer validate data: {data}")
         # Add any custom validation if needed
         return data
-    
+
+
 class AcademicSessionSerializer(serializers.ModelSerializer):
     school_id = serializers.CharField(write_only=True, required=False)  # Allow school_id input if needed
 
@@ -154,6 +155,7 @@ class AcademicSessionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("User is not associated with any school")
         validated_data['school'] = school
         return super().create(validated_data)
+
 
 class TermSerializer(serializers.ModelSerializer):
     session_id = serializers.IntegerField(write_only=True)
@@ -349,6 +351,13 @@ class FeeSettingsReadSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class ClassMinimalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Class
+        fields = ["id", "name"]
+        read_only_fields = fields
+
+
 class FeeStructureWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = FeeStructure
@@ -394,8 +403,8 @@ class FeeStructureWriteSerializer(serializers.ModelSerializer):
 
 
 class FeeStructureReadSerializer(serializers.ModelSerializer):
-    school_class = SchoolSerializer(read_only=True)
     academic_session = AcademicSessionSerializer(read_only=True)
+    school_class = ClassMinimalSerializer(read_only=True)
     fee_type = FeeTypeSerializer(read_only=True)
     status_label = serializers.CharField(source="get_status_display", read_only=True)
 
@@ -403,7 +412,7 @@ class FeeStructureReadSerializer(serializers.ModelSerializer):
         model = FeeStructure
         # fmt: off
         fields = [
-            "id", "school", "academic_session", "school_class", "fee_type", "amount",
+            "id", "academic_session", "school_class", "fee_type", "amount",
             "status", "status_label", "created_by", "updated_by", "created_at", "updated_at",
         ]
         # fmt: on
@@ -602,7 +611,8 @@ class ClassSerializer(serializers.ModelSerializer):
         class_obj = super().update(instance, validated_data)
         logger.info(f"Class '{class_obj.name}' updated by user {self.context['request'].user} for school {school}")
         return class_obj
-           
+
+
 class SectionSerializer(serializers.ModelSerializer):
     class_name = serializers.CharField(source='class_id.name', read_only=True)
 
