@@ -109,6 +109,7 @@ const Settings: React.FC = () => {
   const [error, setError] = useState("");
 
   const [financialYearGeneralErrors, setFinancialYearGeneralErrors] = useState<string[]>([]);
+  const [accountingPeriodGeneralErrors, setAccountingPeriodGeneralErrors] = useState<string[]>([]);
 
   // dummy states (should be removed)
   const [taxSettings, setTaxSettings] = useState<TaxSetting[]>([
@@ -326,7 +327,7 @@ const Settings: React.FC = () => {
       setEditingAccountingPeriodId(null);
       resetAccountingPeriod({ financial_year: undefined, name: "", start_date: "", end_date: "" });
     } catch (err: unknown) {
-      handleDrfErrors<AccountingPeriodWriteRequest>(err, setAccountingPeriodError);
+      handleDrfErrors<AccountingPeriodWriteRequest>(err, setAccountingPeriodError, setAccountingPeriodGeneralErrors);
     }
   };
 
@@ -386,6 +387,7 @@ const Settings: React.FC = () => {
   const {
     register: registerAccount,
     handleSubmit: handleAccountSubmit,
+    setError: setAccountError,
     reset: resetAccount,
     formState: { errors: accountErrors, isSubmitting: isAccountSubmitting },
   } = useForm<AccountWriteRequest>({
@@ -400,8 +402,6 @@ const Settings: React.FC = () => {
   });
 
   const onAccountSubmit: SubmitHandler<AccountWriteRequest> = async (data) => {
-    setError("");
-
     try {
       if (editingAccountId) {
         await api.put(`/accounts/${editingAccountId}/`, data);
@@ -421,8 +421,7 @@ const Settings: React.FC = () => {
         opening_balance_date: "",
       });
     } catch (err: any) {
-      setError(err);
-      toast.error("An error occurred while saving.");
+      handleDrfErrors<AccountWriteRequest>(err, setAccountError);
     }
   };
 
@@ -1091,6 +1090,13 @@ const Settings: React.FC = () => {
               className="space-y-4"
               onSubmit={handleAccountingPeriodSubmit(onAccountingPeriodSubmit)}
             >
+              {accountingPeriodGeneralErrors.length > 0 && (
+                <div role="alert" className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                  {accountingPeriodGeneralErrors.map((err, idx) => (
+                    <p key={idx}>{err}</p>
+                  ))}
+                </div>
+              )}
               <div>
                 <label htmlFor="financial_year" className="block text-sm font-medium text-gray-700">
                   Financial year

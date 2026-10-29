@@ -39,7 +39,7 @@ class FinancialYearViewSet(viewsets.ModelViewSet):
         if user.is_superuser:
             return qs
 
-        return qs.filter(school__school_id=user.school_id)
+        return qs.filter(school=user.school)
 
     def get_permissions(self):
         if self.action == "create":

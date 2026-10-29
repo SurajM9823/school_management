@@ -10,6 +10,22 @@ class FinancialYearWriteSerializer(serializers.ModelSerializer):
         model = FinancialYear
         fields = ["name", "start_date", "end_date"]
 
+    def validate(self, attrs):
+        user = self.context["request"].user
+        school = user.school
+
+        name = attrs.get("name")
+        queryset = self.Meta.model.objects.filter(school=school, name=name)
+
+        # Exclude the current instance during updates
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+
+        if queryset.exists():
+            raise serializers.ValidationError({"name": "A financial year with this name already exists."})
+
+        return attrs
+
     def create(self, validated_data):
         try:
             return super().create(validated_data)
@@ -95,6 +111,22 @@ class AccountWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Account
         fields = ["name", "account_type", "account_number", "opening_balance", "opening_balance_date"]
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        school = user.school
+
+        name = attrs.get("name")
+        queryset = self.Meta.model.objects.filter(school=school, name=name)
+
+        # Exclude the current instance during updates
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+
+        if queryset.exists():
+            raise serializers.ValidationError({"name": "A account with this name already exists."})
+
+        return attrs
 
 
 class AccountReadSerializer(serializers.ModelSerializer):
