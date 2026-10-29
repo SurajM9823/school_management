@@ -30,7 +30,7 @@ import {
 import {
   zAccountingPeriodsCreateBody,
   zAccountsCreateBody,
-  zFinanceSettingsCreateBody,
+  zFinanceSettingsUpdateBody,
   zFinancialYearsCreateBody,
 } from "@/client/zod.gen";
 import { handleDrfErrors } from "@/utils/api-error";
@@ -276,7 +276,7 @@ const Settings: React.FC = () => {
       opening_date: "",
       default_financial_year: null,
     },
-    resolver: zodResolver(zFinanceSettingsCreateBody),
+    resolver: zodResolver(zFinanceSettingsUpdateBody),
   });
 
   const onFinanceSettingSubmit: SubmitHandler<FinanceSettingsWriteRequest> = async (data) => {
@@ -286,9 +286,6 @@ const Settings: React.FC = () => {
       if (financeSetting) {
         await api.put("/finance-settings/", data);
         toast.success("Finance settings updated successfully.");
-      } else {
-        await api.post("/finance-settings/", data);
-        toast.success("Finance settings created successfully.");
       }
       await fetchFinanceSetting();
     } catch (err: any) {
@@ -452,7 +449,15 @@ const Settings: React.FC = () => {
   };
 
   useEffect(() => {
-    Promise.all([fetchFinancialYears(), fetchFinanceSetting(), fetchAccountingPeriods(), fetchAccounts()]);
+    const fetchData = async () => {
+      try {
+        await Promise.all([fetchFinancialYears(), fetchFinanceSetting(), fetchAccountingPeriods(), fetchAccounts()]);
+      } catch (error) {
+        console.error("Failed to fetch initial data:", error);
+      }
+    };
+
+    fetchData();
   }, []);
 
   return (

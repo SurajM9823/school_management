@@ -48,14 +48,6 @@ export type AccountRead = {
  */
 export type AccountTypeEnum = "cash" | "bank" | "other";
 
-export type AccountWrite = {
-  name: string;
-  account_type?: AccountTypeEnum;
-  account_number?: string;
-  opening_balance?: string;
-  opening_balance_date: string;
-};
-
 export type AccountWriteRequest = {
   name: string;
   account_type?: AccountTypeEnum;
@@ -88,13 +80,6 @@ export type AccountingPeriodRead = {
  * * `locked` - Locked
  */
 export type AccountingPeriodReadStatusEnum = "open" | "closed" | "locked";
-
-export type AccountingPeriodWrite = {
-  financial_year: number;
-  name: string;
-  start_date: string;
-  end_date: string;
-};
 
 export type AccountingPeriodWriteRequest = {
   financial_year: number;
@@ -373,6 +358,58 @@ export type ExamSubjectRequest = {
  */
 export type ExamTypeEnum = "test" | "exam";
 
+export type FeeSettingsRead = {
+  readonly id: number;
+  /**
+   * Default day of the month when school fees are due (1-31).
+   */
+  readonly due_day: number;
+  late_fee_type: LateFeeTypeEnum;
+  readonly late_fee_type_label: string;
+  readonly late_fee_amount: string;
+  /**
+   * Number of days after the fee due date before late fees are applied.
+   */
+  readonly grace_period_days: number;
+  readonly allow_partial_payment: boolean;
+  readonly reminder_days: number;
+  readonly created_at: string;
+  readonly updated_at: string;
+};
+
+export type FeeSettingsWriteRequest = {
+  /**
+   * Default day of the month when school fees are due (1-31).
+   */
+  due_day?: number;
+  late_fee_type?: LateFeeTypeEnum;
+  late_fee_amount?: string;
+  /**
+   * Number of days after the fee due date before late fees are applied.
+   */
+  grace_period_days?: number;
+  allow_partial_payment?: boolean;
+  reminder_days?: number;
+};
+
+export type FeeType = {
+  readonly id: number;
+  name: string;
+  default_amount: string;
+  frequency: FrequencyEnum;
+  readonly frequency_label: string;
+  is_mandatory?: boolean;
+  readonly created_at: string;
+  readonly updated_at: string;
+};
+
+export type FeeTypeRequest = {
+  name: string;
+  default_amount: string;
+  frequency: FrequencyEnum;
+  is_mandatory?: boolean;
+};
+
 export type FinanceSettingsRead = {
   readonly id: number;
   currency: CurrencyEnum;
@@ -383,12 +420,6 @@ export type FinanceSettingsRead = {
   readonly updated_at: string;
   readonly created_by: number | null;
   readonly updated_by: number | null;
-};
-
-export type FinanceSettingsWrite = {
-  currency?: CurrencyEnum;
-  opening_date: string;
-  default_financial_year?: number | null;
 };
 
 export type FinanceSettingsWriteRequest = {
@@ -422,15 +453,6 @@ export type FinancialYearRead = {
  */
 export type FinancialYearReadStatusEnum = "draft" | "active" | "closed";
 
-export type FinancialYearWrite = {
-  /**
-   * A descriptive name for the financial year, e.g., FY 2083/84.
-   */
-  name: string;
-  start_date: string;
-  end_date: string;
-};
-
 export type FinancialYearWriteRequest = {
   /**
    * A descriptive name for the financial year, e.g., FY 2083/84.
@@ -441,11 +463,27 @@ export type FinancialYearWriteRequest = {
 };
 
 /**
+ * * `monthly` - Monthly
+ * * `quarterly` - Quarterly
+ * * `semi_annually` - Semi-annually
+ * * `yearly` - Yearly
+ * * `one_time` - One-time
+ */
+export type FrequencyEnum = "monthly" | "quarterly" | "semi_annually" | "yearly" | "one_time";
+
+/**
  * * `male` - Male
  * * `female` - Female
  * * `other` - Other
  */
 export type GenderEnum = "male" | "female" | "other";
+
+/**
+ * * `fixed` - Fixed Amount
+ * * `daily` - Per Day
+ * * `percentage` - Percentage
+ */
+export type LateFeeTypeEnum = "fixed" | "daily" | "percentage";
 
 export type MyTokenObtainPairRequest = {
   email: string;
@@ -568,6 +606,13 @@ export type PatchedEventRequest = {
   start_date?: string;
   end_date?: string | null;
   is_open_for_applications?: boolean;
+};
+
+export type PatchedFeeTypeRequest = {
+  name?: string;
+  default_amount?: string;
+  frequency?: FrequencyEnum;
+  is_mandatory?: boolean;
 };
 
 export type PatchedFinancialYearWriteRequest = {
@@ -1188,6 +1233,13 @@ export type ExamRequestWritable = {
   subjects: Array<ExamSubjectRequest>;
 };
 
+export type FeeTypeWritable = {
+  name: string;
+  default_amount: string;
+  frequency: FrequencyEnum;
+  is_mandatory?: boolean;
+};
+
 export type NoticeWritable = {
   academic_session_id: number;
   title: string;
@@ -1636,7 +1688,7 @@ export type AccountingPeriodsCreateData = {
 };
 
 export type AccountingPeriodsCreateResponses = {
-  201: AccountingPeriodWrite;
+  201: AccountingPeriodRead;
 };
 
 export type AccountingPeriodsCreateResponse = AccountingPeriodsCreateResponses[keyof AccountingPeriodsCreateResponses];
@@ -1695,7 +1747,7 @@ export type AccountingPeriodsPartialUpdateData = {
 };
 
 export type AccountingPeriodsPartialUpdateResponses = {
-  200: AccountingPeriodWrite;
+  200: AccountingPeriodRead;
 };
 
 export type AccountingPeriodsPartialUpdateResponse =
@@ -1714,7 +1766,7 @@ export type AccountingPeriodsUpdateData = {
 };
 
 export type AccountingPeriodsUpdateResponses = {
-  200: AccountingPeriodWrite;
+  200: AccountingPeriodRead;
 };
 
 export type AccountingPeriodsUpdateResponse = AccountingPeriodsUpdateResponses[keyof AccountingPeriodsUpdateResponses];
@@ -1787,7 +1839,7 @@ export type AccountsCreateData = {
 };
 
 export type AccountsCreateResponses = {
-  201: AccountWrite;
+  201: AccountRead;
 };
 
 export type AccountsCreateResponse = AccountsCreateResponses[keyof AccountsCreateResponses];
@@ -1844,7 +1896,7 @@ export type AccountsPartialUpdateData = {
 };
 
 export type AccountsPartialUpdateResponses = {
-  200: AccountWrite;
+  200: AccountRead;
 };
 
 export type AccountsPartialUpdateResponse = AccountsPartialUpdateResponses[keyof AccountsPartialUpdateResponses];
@@ -1862,7 +1914,7 @@ export type AccountsUpdateData = {
 };
 
 export type AccountsUpdateResponses = {
-  200: AccountWrite;
+  200: AccountRead;
 };
 
 export type AccountsUpdateResponse = AccountsUpdateResponses[keyof AccountsUpdateResponses];
@@ -2785,6 +2837,133 @@ export type EventsUpdateResponses = {
 
 export type EventsUpdateResponse = EventsUpdateResponses[keyof EventsUpdateResponses];
 
+export type FeeSettingsRetrieveData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/fee-settings/";
+};
+
+export type FeeSettingsRetrieveResponses = {
+  200: FeeSettingsRead;
+};
+
+export type FeeSettingsRetrieveResponse = FeeSettingsRetrieveResponses[keyof FeeSettingsRetrieveResponses];
+
+export type FeeSettingsUpdateData = {
+  body?: FeeSettingsWriteRequest;
+  path?: never;
+  query?: never;
+  url: "/api/fee-settings/";
+};
+
+export type FeeSettingsUpdateResponses = {
+  200: FeeSettingsRead;
+};
+
+export type FeeSettingsUpdateResponse = FeeSettingsUpdateResponses[keyof FeeSettingsUpdateResponses];
+
+export type FeeTypesListData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/fee-types/";
+};
+
+export type FeeTypesListResponses = {
+  200: Array<FeeType>;
+};
+
+export type FeeTypesListResponse = FeeTypesListResponses[keyof FeeTypesListResponses];
+
+export type FeeTypesCreateData = {
+  body: FeeTypeRequest;
+  path?: never;
+  query?: never;
+  url: "/api/fee-types/";
+};
+
+export type FeeTypesCreateResponses = {
+  201: FeeType;
+};
+
+export type FeeTypesCreateResponse = FeeTypesCreateResponses[keyof FeeTypesCreateResponses];
+
+export type FeeTypesDestroyData = {
+  body?: never;
+  path: {
+    /**
+     * A unique integer value identifying this fee type.
+     */
+    fee_type_id: number;
+  };
+  query?: never;
+  url: "/api/fee-types/{fee_type_id}/";
+};
+
+export type FeeTypesDestroyResponses = {
+  /**
+   * No response body
+   */
+  204: void;
+};
+
+export type FeeTypesDestroyResponse = FeeTypesDestroyResponses[keyof FeeTypesDestroyResponses];
+
+export type FeeTypesRetrieveData = {
+  body?: never;
+  path: {
+    /**
+     * A unique integer value identifying this fee type.
+     */
+    fee_type_id: number;
+  };
+  query?: never;
+  url: "/api/fee-types/{fee_type_id}/";
+};
+
+export type FeeTypesRetrieveResponses = {
+  200: FeeType;
+};
+
+export type FeeTypesRetrieveResponse = FeeTypesRetrieveResponses[keyof FeeTypesRetrieveResponses];
+
+export type FeeTypesPartialUpdateData = {
+  body?: PatchedFeeTypeRequest;
+  path: {
+    /**
+     * A unique integer value identifying this fee type.
+     */
+    fee_type_id: number;
+  };
+  query?: never;
+  url: "/api/fee-types/{fee_type_id}/";
+};
+
+export type FeeTypesPartialUpdateResponses = {
+  200: FeeType;
+};
+
+export type FeeTypesPartialUpdateResponse = FeeTypesPartialUpdateResponses[keyof FeeTypesPartialUpdateResponses];
+
+export type FeeTypesUpdateData = {
+  body: FeeTypeRequest;
+  path: {
+    /**
+     * A unique integer value identifying this fee type.
+     */
+    fee_type_id: number;
+  };
+  query?: never;
+  url: "/api/fee-types/{fee_type_id}/";
+};
+
+export type FeeTypesUpdateResponses = {
+  200: FeeType;
+};
+
+export type FeeTypesUpdateResponse = FeeTypesUpdateResponses[keyof FeeTypesUpdateResponses];
+
 export type FinanceSettingsRetrieveData = {
   body?: never;
   path?: never;
@@ -2798,19 +2977,6 @@ export type FinanceSettingsRetrieveResponses = {
 
 export type FinanceSettingsRetrieveResponse = FinanceSettingsRetrieveResponses[keyof FinanceSettingsRetrieveResponses];
 
-export type FinanceSettingsCreateData = {
-  body: FinanceSettingsWriteRequest;
-  path?: never;
-  query?: never;
-  url: "/api/finance-settings/";
-};
-
-export type FinanceSettingsCreateResponses = {
-  200: FinanceSettingsWrite;
-};
-
-export type FinanceSettingsCreateResponse = FinanceSettingsCreateResponses[keyof FinanceSettingsCreateResponses];
-
 export type FinanceSettingsUpdateData = {
   body: FinanceSettingsWriteRequest;
   path?: never;
@@ -2819,7 +2985,7 @@ export type FinanceSettingsUpdateData = {
 };
 
 export type FinanceSettingsUpdateResponses = {
-  200: FinanceSettingsWrite;
+  200: FinanceSettingsRead;
 };
 
 export type FinanceSettingsUpdateResponse = FinanceSettingsUpdateResponses[keyof FinanceSettingsUpdateResponses];
@@ -2854,7 +3020,7 @@ export type FinancialYearsCreateData = {
 };
 
 export type FinancialYearsCreateResponses = {
-  201: FinancialYearWrite;
+  201: FinancialYearRead;
 };
 
 export type FinancialYearsCreateResponse = FinancialYearsCreateResponses[keyof FinancialYearsCreateResponses];
@@ -2911,7 +3077,7 @@ export type FinancialYearsPartialUpdateData = {
 };
 
 export type FinancialYearsPartialUpdateResponses = {
-  200: FinancialYearWrite;
+  200: FinancialYearRead;
 };
 
 export type FinancialYearsPartialUpdateResponse =
@@ -2930,7 +3096,7 @@ export type FinancialYearsUpdateData = {
 };
 
 export type FinancialYearsUpdateResponses = {
-  200: FinancialYearWrite;
+  200: FinancialYearRead;
 };
 
 export type FinancialYearsUpdateResponse = FinancialYearsUpdateResponses[keyof FinancialYearsUpdateResponses];
@@ -4678,160 +4844,6 @@ export type SchoolSettingsDepartmentsUpdate2Data = {
 };
 
 export type SchoolSettingsDepartmentsUpdate2Responses = {
-  /**
-   * No response body
-   */
-  200: unknown;
-};
-
-export type SchoolSettingsFeeSettingsRetrieveData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/api/school/settings/fee-settings/";
-};
-
-export type SchoolSettingsFeeSettingsRetrieveResponses = {
-  /**
-   * No response body
-   */
-  200: unknown;
-};
-
-export type SchoolSettingsFeeSettingsUpdateData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/api/school/settings/fee-settings/";
-};
-
-export type SchoolSettingsFeeSettingsUpdateResponses = {
-  /**
-   * No response body
-   */
-  200: unknown;
-};
-
-export type SchoolSettingsFeeTypesDestroyData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/api/school/settings/fee-types/";
-};
-
-export type SchoolSettingsFeeTypesDestroyResponses = {
-  /**
-   * No response body
-   */
-  204: void;
-};
-
-export type SchoolSettingsFeeTypesDestroyResponse =
-  SchoolSettingsFeeTypesDestroyResponses[keyof SchoolSettingsFeeTypesDestroyResponses];
-
-export type SchoolSettingsFeeTypesRetrieveData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/api/school/settings/fee-types/";
-};
-
-export type SchoolSettingsFeeTypesRetrieveResponses = {
-  /**
-   * No response body
-   */
-  200: unknown;
-};
-
-export type SchoolSettingsFeeTypesCreateData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/api/school/settings/fee-types/";
-};
-
-export type SchoolSettingsFeeTypesCreateResponses = {
-  /**
-   * No response body
-   */
-  200: unknown;
-};
-
-export type SchoolSettingsFeeTypesUpdateData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/api/school/settings/fee-types/";
-};
-
-export type SchoolSettingsFeeTypesUpdateResponses = {
-  /**
-   * No response body
-   */
-  200: unknown;
-};
-
-export type SchoolSettingsFeeTypesDestroy2Data = {
-  body?: never;
-  path: {
-    fee_type_id: number;
-  };
-  query?: never;
-  url: "/api/school/settings/fee-types/{fee_type_id}/";
-};
-
-export type SchoolSettingsFeeTypesDestroy2Responses = {
-  /**
-   * No response body
-   */
-  204: void;
-};
-
-export type SchoolSettingsFeeTypesDestroy2Response =
-  SchoolSettingsFeeTypesDestroy2Responses[keyof SchoolSettingsFeeTypesDestroy2Responses];
-
-export type SchoolSettingsFeeTypesRetrieve2Data = {
-  body?: never;
-  path: {
-    fee_type_id: number;
-  };
-  query?: never;
-  url: "/api/school/settings/fee-types/{fee_type_id}/";
-};
-
-export type SchoolSettingsFeeTypesRetrieve2Responses = {
-  /**
-   * No response body
-   */
-  200: unknown;
-};
-
-export type SchoolSettingsFeeTypesCreate2Data = {
-  body?: never;
-  path: {
-    fee_type_id: number;
-  };
-  query?: never;
-  url: "/api/school/settings/fee-types/{fee_type_id}/";
-};
-
-export type SchoolSettingsFeeTypesCreate2Responses = {
-  /**
-   * No response body
-   */
-  200: unknown;
-};
-
-export type SchoolSettingsFeeTypesUpdate2Data = {
-  body?: never;
-  path: {
-    fee_type_id: number;
-  };
-  query?: never;
-  url: "/api/school/settings/fee-types/{fee_type_id}/";
-};
-
-export type SchoolSettingsFeeTypesUpdate2Responses = {
   /**
    * No response body
    */

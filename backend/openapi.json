@@ -54,7 +54,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AccountingPeriodWrite'
+                $ref: '#/components/schemas/AccountingPeriodRead'
           description: ''
   /api/accounting-periods/{accounting_period_id}/:
     get:
@@ -107,7 +107,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AccountingPeriodWrite'
+                $ref: '#/components/schemas/AccountingPeriodRead'
           description: ''
     patch:
       operationId: accounting_periods_partial_update
@@ -138,7 +138,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AccountingPeriodWrite'
+                $ref: '#/components/schemas/AccountingPeriodRead'
           description: ''
     delete:
       operationId: accounting_periods_destroy
@@ -248,7 +248,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AccountWrite'
+                $ref: '#/components/schemas/AccountRead'
           description: ''
   /api/accounts/{account_id}/:
     get:
@@ -301,7 +301,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AccountWrite'
+                $ref: '#/components/schemas/AccountRead'
           description: ''
     patch:
       operationId: accounts_partial_update
@@ -332,7 +332,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AccountWrite'
+                $ref: '#/components/schemas/AccountRead'
           description: ''
     delete:
       operationId: accounts_destroy
@@ -1544,6 +1544,148 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/fee-types/:
+    get:
+      operationId: fee_types_list
+      tags:
+      - fee-types
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeeType'
+          description: ''
+    post:
+      operationId: fee_types_create
+      description: Create a single fee type or multiple fee types in bulk.
+      tags:
+      - fee-types
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeeTypeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FeeTypeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FeeTypeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeType'
+          description: ''
+  /api/fee-types/{fee_type_id}/:
+    get:
+      operationId: fee_types_retrieve
+      parameters:
+      - in: path
+        name: fee_type_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee type.
+        required: true
+      tags:
+      - fee-types
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeType'
+          description: ''
+    put:
+      operationId: fee_types_update
+      parameters:
+      - in: path
+        name: fee_type_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee type.
+        required: true
+      tags:
+      - fee-types
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeeTypeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FeeTypeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FeeTypeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeType'
+          description: ''
+    patch:
+      operationId: fee_types_partial_update
+      parameters:
+      - in: path
+        name: fee_type_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee type.
+        required: true
+      tags:
+      - fee-types
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFeeTypeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFeeTypeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFeeTypeRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeType'
+          description: ''
+    delete:
+      operationId: fee_types_destroy
+      parameters:
+      - in: path
+        name: fee_type_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee type.
+        required: true
+      tags:
+      - fee-types
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/finance-settings/:
     get:
       operationId: finance_settings_retrieve
@@ -1557,31 +1699,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FinanceSettingsRead'
-          description: ''
-    post:
-      operationId: finance_settings_create
-      tags:
-      - finance-settings
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/FinanceSettingsWriteRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/FinanceSettingsWriteRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/FinanceSettingsWriteRequest'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FinanceSettingsWrite'
           description: ''
     put:
       operationId: finance_settings_update
@@ -1606,7 +1723,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FinanceSettingsWrite'
+                $ref: '#/components/schemas/FinanceSettingsRead'
           description: ''
   /api/financial-years/:
     get:
@@ -1658,7 +1775,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FinancialYearWrite'
+                $ref: '#/components/schemas/FinancialYearRead'
           description: ''
   /api/financial-years/{financial_year_id}/:
     get:
@@ -1711,7 +1828,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FinancialYearWrite'
+                $ref: '#/components/schemas/FinancialYearRead'
           description: ''
     patch:
       operationId: financial_years_partial_update
@@ -1742,7 +1859,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FinancialYearWrite'
+                $ref: '#/components/schemas/FinancialYearRead'
           description: ''
     delete:
       operationId: financial_years_destroy
@@ -3443,114 +3560,35 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeSettingsRead'
+          description: ''
     put:
       operationId: school_settings_fee_settings_update
       tags:
       - school
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeeSettingsWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FeeSettingsWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FeeSettingsWriteRequest'
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
-  /api/school/settings/fee-types/:
-    get:
-      operationId: school_settings_fee_types_retrieve
-      tags:
-      - school
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          description: No response body
-    post:
-      operationId: school_settings_fee_types_create
-      tags:
-      - school
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          description: No response body
-    put:
-      operationId: school_settings_fee_types_update
-      tags:
-      - school
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          description: No response body
-    delete:
-      operationId: school_settings_fee_types_destroy
-      tags:
-      - school
-      security:
-      - jwtAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/school/settings/fee-types/{fee_type_id}/:
-    get:
-      operationId: school_settings_fee_types_retrieve_2
-      parameters:
-      - in: path
-        name: fee_type_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - school
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          description: No response body
-    post:
-      operationId: school_settings_fee_types_create_2
-      parameters:
-      - in: path
-        name: fee_type_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - school
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          description: No response body
-    put:
-      operationId: school_settings_fee_types_update_2
-      parameters:
-      - in: path
-        name: fee_type_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - school
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          description: No response body
-    delete:
-      operationId: school_settings_fee_types_destroy_2
-      parameters:
-      - in: path
-        name: fee_type_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - school
-      security:
-      - jwtAuth: []
-      responses:
-        '204':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeSettingsRead'
+          description: ''
   /api/school/settings/grading-scales/:
     get:
       operationId: school_settings_grading_scales_retrieve
@@ -6280,27 +6318,6 @@ components:
         * `cash` - Cash
         * `bank` - Bank
         * `other` - Other
-    AccountWrite:
-      type: object
-      properties:
-        name:
-          type: string
-          maxLength: 100
-        account_type:
-          $ref: '#/components/schemas/AccountTypeEnum'
-        account_number:
-          type: string
-          maxLength: 100
-        opening_balance:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
-        opening_balance_date:
-          type: string
-          format: date
-      required:
-      - name
-      - opening_balance_date
     AccountWriteRequest:
       type: object
       properties:
@@ -6411,25 +6428,6 @@ components:
         * `open` - Open
         * `closed` - Closed
         * `locked` - Locked
-    AccountingPeriodWrite:
-      type: object
-      properties:
-        financial_year:
-          type: integer
-        name:
-          type: string
-          maxLength: 50
-        start_date:
-          type: string
-          format: date
-        end_date:
-          type: string
-          format: date
-      required:
-      - end_date
-      - financial_year
-      - name
-      - start_date
     AccountingPeriodWriteRequest:
       type: object
       properties:
@@ -7192,6 +7190,136 @@ components:
       description: |-
         * `test` - Test
         * `exam` - Exam
+    FeeSettingsRead:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        due_day:
+          type: integer
+          readOnly: true
+          description: Default day of the month when school fees are due (1-31).
+        late_fee_type:
+          allOf:
+          - $ref: '#/components/schemas/LateFeeTypeEnum'
+          readOnly: true
+        late_fee_type_label:
+          type: string
+          readOnly: true
+        late_fee_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        grace_period_days:
+          type: integer
+          readOnly: true
+          description: Number of days after the fee due date before late fees are
+            applied.
+        allow_partial_payment:
+          type: boolean
+          readOnly: true
+        reminder_days:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - allow_partial_payment
+      - created_at
+      - due_day
+      - grace_period_days
+      - id
+      - late_fee_amount
+      - late_fee_type
+      - late_fee_type_label
+      - reminder_days
+      - updated_at
+    FeeSettingsWriteRequest:
+      type: object
+      properties:
+        due_day:
+          type: integer
+          maximum: 31
+          minimum: 0
+          description: Default day of the month when school fees are due (1-31).
+        late_fee_type:
+          $ref: '#/components/schemas/LateFeeTypeEnum'
+        late_fee_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        grace_period_days:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+          description: Number of days after the fee due date before late fees are
+            applied.
+        allow_partial_payment:
+          type: boolean
+        reminder_days:
+          type: integer
+          maximum: 65535
+          minimum: 0
+    FeeType:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        default_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        frequency:
+          $ref: '#/components/schemas/FrequencyEnum'
+        is_mandatory:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - default_amount
+      - frequency
+      - id
+      - name
+      - updated_at
+    FeeTypeRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        default_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        frequency:
+          $ref: '#/components/schemas/FrequencyEnum'
+        is_mandatory:
+          type: boolean
+      required:
+      - default_amount
+      - frequency
+      - name
     FinanceSettingsRead:
       type: object
       properties:
@@ -7239,19 +7367,6 @@ components:
       - opening_date
       - updated_at
       - updated_by
-    FinanceSettingsWrite:
-      type: object
-      properties:
-        currency:
-          $ref: '#/components/schemas/CurrencyEnum'
-        opening_date:
-          type: string
-          format: date
-        default_financial_year:
-          type: integer
-          nullable: true
-      required:
-      - opening_date
     FinanceSettingsWriteRequest:
       type: object
       properties:
@@ -7339,23 +7454,6 @@ components:
         * `draft` - Draft
         * `active` - Active
         * `closed` - Closed
-    FinancialYearWrite:
-      type: object
-      properties:
-        name:
-          type: string
-          description: A descriptive name for the financial year, e.g., FY 2083/84.
-          maxLength: 50
-        start_date:
-          type: string
-          format: date
-        end_date:
-          type: string
-          format: date
-      required:
-      - end_date
-      - name
-      - start_date
     FinancialYearWriteRequest:
       type: object
       properties:
@@ -7374,6 +7472,20 @@ components:
       - end_date
       - name
       - start_date
+    FrequencyEnum:
+      enum:
+      - monthly
+      - quarterly
+      - semi_annually
+      - yearly
+      - one_time
+      type: string
+      description: |-
+        * `monthly` - Monthly
+        * `quarterly` - Quarterly
+        * `semi_annually` - Semi-annually
+        * `yearly` - Yearly
+        * `one_time` - One-time
     GenderEnum:
       enum:
       - male
@@ -7384,6 +7496,16 @@ components:
         * `male` - Male
         * `female` - Female
         * `other` - Other
+    LateFeeTypeEnum:
+      enum:
+      - fixed
+      - daily
+      - percentage
+      type: string
+      description: |-
+        * `fixed` - Fixed Amount
+        * `daily` - Per Day
+        * `percentage` - Percentage
     MyTokenObtainPairRequest:
       type: object
       properties:
@@ -7717,6 +7839,21 @@ components:
           format: date
           nullable: true
         is_open_for_applications:
+          type: boolean
+    PatchedFeeTypeRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        default_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        frequency:
+          $ref: '#/components/schemas/FrequencyEnum'
+        is_mandatory:
           type: boolean
     PatchedFinancialYearWriteRequest:
       type: object

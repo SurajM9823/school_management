@@ -1,21 +1,29 @@
+import logging
 import uuid
-from django.shortcuts import get_object_or_404
-from core.domain.teacher_assignment import ClassTeacher
-from core.serial.admin.teacher_assignment_serializer import ClassTeacherSerializer
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
-from core.models import Class, FeeType, School, LocaleSettings, AcademicSession, Section, Term, Holiday, GradingSettings, AttendanceSettings, FeeSettings, Subject
-from core.serializers import ClassSerializer, FeeTypeSerializer, SchoolSerializer, LocaleSettingsSerializer, AcademicSessionSerializer, SectionSerializer, TermSerializer, HolidaySerializer, GradingSettingsSerializer, AttendanceSettingsSerializer, FeeSettingsSerializer, RoleSerializer, CampusSerializer, BuildingSerializer, RoomSerializer, ResourceSerializer
-from core.models import NotificationSettings, NotificationTemplate, StaffRole, LeaveType, Department, Subject, GradingScale, PromotionRules, ClassCapacity, Campus, Building, Room, Resource
-from core.serializers import NotificationSettingsSerializer, NotificationTemplateSerializer, StaffRoleSerializer, LeaveTypeSerializer, DepartmentSerializer, BulkLeaveAssignmentSerializer, SubjectSerializer, GradingScaleSerializer, PromotionRulesSerializer, ClassCapacitySerializer
-from django.contrib.auth.models import Group
-from smtplib import SMTP, SMTP_SSL, SMTPException
+from decimal import Decimal
 from email.mime.text import MIMEText
+from smtplib import SMTP, SMTP_SSL, SMTPException
+
+from django.contrib.auth.models import Group
+from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
+from rest_framework import generics, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from core.domain.teacher_assignment import ClassTeacher
+from core.models import Class, FeeType, School, LocaleSettings, AcademicSession, Section, Term, Holiday, GradingSettings, AttendanceSettings, FeeSettings, Subject, FeeStructure
+from core.models import NotificationSettings, NotificationTemplate, StaffRole, LeaveType, Department, Subject, GradingScale, PromotionRules, ClassCapacity, Campus, Building, Room, Resource
+from core.permissions import IsSuperUser, IsSchoolAdmin
+from core.serializers import ClassSerializer, FeeTypeSerializer, FeeSettingsReadSerializer, FeeSettingsWriteSerializer, FeeStructureReadSerializer, FeeStructureWriteSerializer, SchoolSerializer, LocaleSettingsSerializer, AcademicSessionSerializer, SectionSerializer, TermSerializer, HolidaySerializer, GradingSettingsSerializer, AttendanceSettingsSerializer, RoleSerializer, CampusSerializer, BuildingSerializer, RoomSerializer, ResourceSerializer
+from core.serializers import NotificationSettingsSerializer, NotificationTemplateSerializer, StaffRoleSerializer, LeaveTypeSerializer, DepartmentSerializer, BulkLeaveAssignmentSerializer, SubjectSerializer, GradingScaleSerializer, PromotionRulesSerializer, ClassCapacitySerializer
+from core.serial.admin.teacher_assignment_serializer import ClassTeacherSerializer
 from core.views import IsSchoolAdmin
 
-import logging
 logger = logging.getLogger(__name__)
 
 # core/views.py
@@ -457,73 +465,153 @@ class AttendanceSettingsView(APIView):
         logger.error(f"Attendance settings errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class FeeTypeView(APIView):
-    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
-    def get(self, request):
-        if not request.user.school:
-            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
-        fee_types = FeeType.objects.filter(school=request.user.school)
-        serializer = FeeTypeSerializer(fee_types, many=True)
-        return Response(serializer.data)
+class FeeTypeViewSet(viewsets.ModelViewSet):
+    queryset = FeeType.objects.all()
+    serializer_class = FeeTypeSerializer
+    permission_classes = [IsSuperUser | IsSchoolAdmin]
+    lookup_url_kwarg = "fee_type_id"
 
-    def post(self, request):
-        if not request.user.school:
-            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
-        serializer = FeeTypeSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(school=request.user.school)
-            logger.info(f"Fee type created for school {request.user.school}")
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        logger.error(f"Fee type errors: {serializer.errors}")
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get_school(self):
+        return self.request.user.school
 
-    def put(self, request, fee_type_id):
-        if not request.user.school:
-            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
-        fee_type = get_object_or_404(FeeType, id=fee_type_id, school=request.user.school)
-        serializer = FeeTypeSerializer(fee_type, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            logger.info(f"Fee type updated for school {request.user.school}")
-            return Response(serializer.data)
-        logger.error(f"Fee type errors: {serializer.errors}")
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
 
-    def delete(self, request, fee_type_id):
-        if not request.user.school:
-            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
-        fee_type = get_object_or_404(FeeType, id=fee_type_id, school=request.user.school)
-        fee_type.delete()
-        logger.info(f"Fee type deleted for school {request.user.school}")
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if user.is_superuser:
+            return qs
 
-class FeeSettingsView(APIView):
-    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+        return qs.filter(school=user.school)
 
-    def get(self, request):
-        if not request.user.school:
-            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
-        settings, created = FeeSettings.objects.get_or_create(school=request.user.school, defaults={
-            'due_date': 10,
-            'late_fee_type': 'fixed',
-            'late_fee_amount': 0.00,
-            'reminder_days': 5,
-        })
-        serializer = FeeSettingsSerializer(settings)
-        return Response(serializer.data)
+    def get_permissions(self):
+        if self.action == "create":
+            permission_classes = [IsSchoolAdmin]
+        else:
+            permission_classes = [IsSuperUser | IsSchoolAdmin]
+        return [permission() for permission in permission_classes]
 
-    def put(self, request):
-        if not request.user.school:
-            return Response({"error": "User is not associated with a school"}, status=status.HTTP_400_BAD_REQUEST)
-        settings, created = FeeSettings.objects.get_or_create(school=request.user.school)
-        serializer = FeeSettingsSerializer(settings, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            logger.info(f"Fee settings updated for school {request.user.school}")
-            return Response(serializer.data)
-        logger.error(f"Fee settings errors: {serializer.errors}")
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def create(self, request, *args, **kwargs):
+        """Create a single fee type or multiple fee types in bulk."""
+        # Check if the incoming payload is a list (bulk creation)
+        is_many = isinstance(request.data, list)
+
+        serializer = self.get_serializer(data=request.data, many=is_many)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class FeeSettingsView(generics.RetrieveUpdateAPIView):
+    serializer_class = FeeSettingsReadSerializer
+    permission_classes = [IsSuperUser | IsSchoolAdmin]
+    http_method_names = ["get", "put"]
+
+    def get_object(self):
+        school = self.request.user.school
+
+        fee_settings, created = FeeSettings.objects.get_or_create(
+            school=school,
+            defaults={
+                "due_day": 10,
+                "late_fee_type": FeeSettings.LateFeeType.FIXED,
+                "late_fee_amount": Decimal("0.00"),
+                "grace_period_days": 0,
+                "allow_partial_payment": True,
+                "reminder_days": 5,
+            },
+        )
+
+        return fee_settings
+
+    def get_serializer_class(self):
+        if self.request.method == "PUT":
+            return FeeSettingsWriteSerializer
+        return super().get_serializer_class()
+
+    @extend_schema(request=FeeSettingsWriteSerializer, responses={200: FeeSettingsReadSerializer})
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
+
+class FeeStructureViewSet(viewsets.ModelViewSet):
+    queryset = FeeStructure.objects.select_related("academic_session", "school_class", "fee_type")
+    serializer_class = FeeStructureReadSerializer
+    permission_classes = [IsSuperUser | IsSchoolAdmin]
+    lookup_url_kwarg = "fee_structure_id"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+
+        if user.is_superuser:
+            return qs
+
+        return qs.filter(school=user.school)
+
+    def get_permissions(self):
+        if self.action == "create":
+            permission_classes = [IsSchoolAdmin]
+        else:
+            permission_classes = [IsSuperUser | IsSchoolAdmin]
+        return [permission() for permission in permission_classes]
+
+    def get_serializer_class(self):
+        if self.action in ["create", "update", "partial_update"]:
+            return FeeStructureWriteSerializer
+        return super().get_serializer_class()
+
+    @extend_schema(request=FeeStructureWriteSerializer, responses={201: FeeStructureReadSerializer})
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(request=FeeStructureWriteSerializer, responses={200: FeeStructureReadSerializer})
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(request=FeeStructureWriteSerializer, responses={200: FeeStructureReadSerializer})
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        serializer.save(school=user.school, created_by=user, updated_by=user)
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user)
+
+    def perform_destroy(self, instance):
+        if instance.status != FeeStructure.Status.DRAFT:
+            raise ValidationError("Only draft fee structure can be deleted.")
+
+        instance.delete()
+
+    @action(detail=True, methods=["post"])
+    def activate(self, request: Request, fee_structure_id=None):
+        obj = self.get_object()
+
+        if obj.status != FeeStructure.Status.DRAFT:
+            raise ValidationError("Only draft fee structure can be activated.")
+
+        obj.status = FeeStructure.Status.ACTIVE
+        obj.save(update_fields=["status", "updated_at"])
+        serializer = FeeStructureReadSerializer(obj, context=self.get_serializer_context())
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"])
+    def deactivate(self, request: Request, fee_structure_id=None):
+        obj = self.get_object()
+
+        if obj.status != FeeStructure.Status.ACTIVE:
+            raise ValidationError("Only active fee structure can be deactivated.")
+
+        obj.status = FeeStructure.Status.INACTIVE
+        obj.save(update_fields=["status", "updated_at"])
+        serializer = FeeStructureReadSerializer(obj, context=self.get_serializer_context())
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class NotificationSettingsView(APIView):
     permission_classes = [IsAuthenticated, IsSchoolAdmin]

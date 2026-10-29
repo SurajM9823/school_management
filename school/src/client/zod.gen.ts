@@ -49,17 +49,6 @@ export const zAccountRead = z.object({
   updated_by: z.int().readonly().nullable(),
 });
 
-export const zAccountWrite = z.object({
-  name: z.string().max(100),
-  account_type: zAccountTypeEnum.optional(),
-  account_number: z.string().max(100).optional(),
-  opening_balance: z
-    .string()
-    .regex(/^-?\d{0,12}(?:\.\d{0,2})?$/)
-    .optional(),
-  opening_balance_date: z.iso.date(),
-});
-
 export const zAccountWriteRequest = z.object({
   name: z.string().min(1).max(100),
   account_type: zAccountTypeEnum.optional(),
@@ -77,13 +66,6 @@ export const zAccountWriteRequest = z.object({
  * * `locked` - Locked
  */
 export const zAccountingPeriodReadStatusEnum = z.enum(["open", "closed", "locked"]);
-
-export const zAccountingPeriodWrite = z.object({
-  financial_year: z.int(),
-  name: z.string().max(50),
-  start_date: z.iso.date(),
-  end_date: z.iso.date(),
-});
 
 export const zAccountingPeriodWriteRequest = z.object({
   financial_year: z.int(),
@@ -373,12 +355,6 @@ export const zFinanceSettingsRead = z.object({
   updated_by: z.int().readonly().nullable(),
 });
 
-export const zFinanceSettingsWrite = z.object({
-  currency: zCurrencyEnum.optional(),
-  opening_date: z.iso.date(),
-  default_financial_year: z.int().nullish(),
-});
-
 export const zFinanceSettingsWriteRequest = z.object({
   currency: zCurrencyEnum.optional(),
   opening_date: z.iso.date(),
@@ -425,16 +401,37 @@ export const zAccountingPeriodRead = z.object({
   updated_by: z.int().readonly().nullable(),
 });
 
-export const zFinancialYearWrite = z.object({
-  name: z.string().max(50),
-  start_date: z.iso.date(),
-  end_date: z.iso.date(),
-});
-
 export const zFinancialYearWriteRequest = z.object({
   name: z.string().min(1).max(50),
   start_date: z.iso.date(),
   end_date: z.iso.date(),
+});
+
+/**
+ * * `monthly` - Monthly
+ * * `quarterly` - Quarterly
+ * * `semi_annually` - Semi-annually
+ * * `yearly` - Yearly
+ * * `one_time` - One-time
+ */
+export const zFrequencyEnum = z.enum(["monthly", "quarterly", "semi_annually", "yearly", "one_time"]);
+
+export const zFeeType = z.object({
+  id: z.int().readonly(),
+  name: z.string().max(50),
+  default_amount: z.string().regex(/^-?\d{0,8}(?:\.\d{0,2})?$/),
+  frequency: zFrequencyEnum,
+  frequency_label: z.string().readonly(),
+  is_mandatory: z.boolean().optional(),
+  created_at: z.iso.datetime().readonly(),
+  updated_at: z.iso.datetime().readonly(),
+});
+
+export const zFeeTypeRequest = z.object({
+  name: z.string().min(1).max(50),
+  default_amount: z.string().regex(/^-?\d{0,8}(?:\.\d{0,2})?$/),
+  frequency: zFrequencyEnum,
+  is_mandatory: z.boolean().optional(),
 });
 
 /**
@@ -443,6 +440,41 @@ export const zFinancialYearWriteRequest = z.object({
  * * `other` - Other
  */
 export const zGenderEnum = z.enum(["male", "female", "other"]);
+
+/**
+ * * `fixed` - Fixed Amount
+ * * `daily` - Per Day
+ * * `percentage` - Percentage
+ */
+export const zLateFeeTypeEnum = z.enum(["fixed", "daily", "percentage"]);
+
+export const zFeeSettingsRead = z.object({
+  id: z.int().readonly(),
+  due_day: z.int().readonly(),
+  late_fee_type: zLateFeeTypeEnum,
+  late_fee_type_label: z.string().readonly(),
+  late_fee_amount: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .readonly(),
+  grace_period_days: z.int().readonly(),
+  allow_partial_payment: z.boolean().readonly(),
+  reminder_days: z.int().readonly(),
+  created_at: z.iso.datetime().readonly(),
+  updated_at: z.iso.datetime().readonly(),
+});
+
+export const zFeeSettingsWriteRequest = z.object({
+  due_day: z.int().gte(0).lte(31).optional(),
+  late_fee_type: zLateFeeTypeEnum.optional(),
+  late_fee_amount: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .optional(),
+  grace_period_days: z.int().gte(0).lte(65535).optional(),
+  allow_partial_payment: z.boolean().optional(),
+  reminder_days: z.int().gte(0).lte(65535).optional(),
+});
 
 export const zMyTokenObtainPairRequest = z.object({
   email: z.string().min(1),
@@ -574,6 +606,16 @@ export const zPatchedEventRequest = z.object({
   start_date: z.iso.date().optional(),
   end_date: z.iso.date().nullish(),
   is_open_for_applications: z.boolean().optional(),
+});
+
+export const zPatchedFeeTypeRequest = z.object({
+  name: z.string().min(1).max(50).optional(),
+  default_amount: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .optional(),
+  frequency: zFrequencyEnum.optional(),
+  is_mandatory: z.boolean().optional(),
 });
 
 export const zPatchedFinancialYearWriteRequest = z.object({
@@ -1262,6 +1304,13 @@ export const zExamRequestWritable = z.object({
   subjects: z.array(zExamSubjectRequest),
 });
 
+export const zFeeTypeWritable = z.object({
+  name: z.string().max(50),
+  default_amount: z.string().regex(/^-?\d{0,8}(?:\.\d{0,2})?$/),
+  frequency: zFrequencyEnum,
+  is_mandatory: z.boolean().optional(),
+});
+
 export const zNoticeWritable = z.object({
   academic_session_id: z.int(),
   title: z.string().max(255),
@@ -1743,7 +1792,7 @@ export const zAccountingPeriodsListResponse = zPaginatedAccountingPeriodReadList
 
 export const zAccountingPeriodsCreateBody = zAccountingPeriodWriteRequest;
 
-export const zAccountingPeriodsCreateResponse = zAccountingPeriodWrite;
+export const zAccountingPeriodsCreateResponse = zAccountingPeriodRead;
 
 export const zAccountingPeriodsDestroyPath = z.object({
   accounting_period_id: z.int(),
@@ -1766,7 +1815,7 @@ export const zAccountingPeriodsPartialUpdatePath = z.object({
   accounting_period_id: z.int(),
 });
 
-export const zAccountingPeriodsPartialUpdateResponse = zAccountingPeriodWrite;
+export const zAccountingPeriodsPartialUpdateResponse = zAccountingPeriodRead;
 
 export const zAccountingPeriodsUpdateBody = zAccountingPeriodWriteRequest;
 
@@ -1774,7 +1823,7 @@ export const zAccountingPeriodsUpdatePath = z.object({
   accounting_period_id: z.int(),
 });
 
-export const zAccountingPeriodsUpdateResponse = zAccountingPeriodWrite;
+export const zAccountingPeriodsUpdateResponse = zAccountingPeriodRead;
 
 export const zAccountingPeriodsCloseCreatePath = z.object({
   accounting_period_id: z.int(),
@@ -1797,7 +1846,7 @@ export const zAccountsListResponse = zPaginatedAccountReadList;
 
 export const zAccountsCreateBody = zAccountWriteRequest;
 
-export const zAccountsCreateResponse = zAccountWrite;
+export const zAccountsCreateResponse = zAccountRead;
 
 export const zAccountsDestroyPath = z.object({
   account_id: z.int(),
@@ -1820,7 +1869,7 @@ export const zAccountsPartialUpdatePath = z.object({
   account_id: z.int(),
 });
 
-export const zAccountsPartialUpdateResponse = zAccountWrite;
+export const zAccountsPartialUpdateResponse = zAccountRead;
 
 export const zAccountsUpdateBody = zAccountWriteRequest;
 
@@ -1828,7 +1877,7 @@ export const zAccountsUpdatePath = z.object({
   account_id: z.int(),
 });
 
-export const zAccountsUpdateResponse = zAccountWrite;
+export const zAccountsUpdateResponse = zAccountRead;
 
 /**
  * No response body
@@ -2126,15 +2175,54 @@ export const zEventsUpdatePath = z.object({
 
 export const zEventsUpdateResponse = zEvent;
 
+export const zFeeSettingsRetrieveResponse = zFeeSettingsRead;
+
+export const zFeeSettingsUpdateBody = zFeeSettingsWriteRequest;
+
+export const zFeeSettingsUpdateResponse = zFeeSettingsRead;
+
+export const zFeeTypesListResponse = z.array(zFeeType);
+
+export const zFeeTypesCreateBody = zFeeTypeRequest;
+
+export const zFeeTypesCreateResponse = zFeeType;
+
+export const zFeeTypesDestroyPath = z.object({
+  fee_type_id: z.int(),
+});
+
+/**
+ * No response body
+ */
+export const zFeeTypesDestroyResponse = z.void();
+
+export const zFeeTypesRetrievePath = z.object({
+  fee_type_id: z.int(),
+});
+
+export const zFeeTypesRetrieveResponse = zFeeType;
+
+export const zFeeTypesPartialUpdateBody = zPatchedFeeTypeRequest;
+
+export const zFeeTypesPartialUpdatePath = z.object({
+  fee_type_id: z.int(),
+});
+
+export const zFeeTypesPartialUpdateResponse = zFeeType;
+
+export const zFeeTypesUpdateBody = zFeeTypeRequest;
+
+export const zFeeTypesUpdatePath = z.object({
+  fee_type_id: z.int(),
+});
+
+export const zFeeTypesUpdateResponse = zFeeType;
+
 export const zFinanceSettingsRetrieveResponse = zFinanceSettingsRead;
-
-export const zFinanceSettingsCreateBody = zFinanceSettingsWriteRequest;
-
-export const zFinanceSettingsCreateResponse = zFinanceSettingsWrite;
 
 export const zFinanceSettingsUpdateBody = zFinanceSettingsWriteRequest;
 
-export const zFinanceSettingsUpdateResponse = zFinanceSettingsWrite;
+export const zFinanceSettingsUpdateResponse = zFinanceSettingsRead;
 
 export const zFinancialYearsListQuery = z.object({
   limit: z.int().optional(),
@@ -2145,7 +2233,7 @@ export const zFinancialYearsListResponse = zPaginatedFinancialYearReadList;
 
 export const zFinancialYearsCreateBody = zFinancialYearWriteRequest;
 
-export const zFinancialYearsCreateResponse = zFinancialYearWrite;
+export const zFinancialYearsCreateResponse = zFinancialYearRead;
 
 export const zFinancialYearsDestroyPath = z.object({
   financial_year_id: z.int(),
@@ -2168,7 +2256,7 @@ export const zFinancialYearsPartialUpdatePath = z.object({
   financial_year_id: z.int(),
 });
 
-export const zFinancialYearsPartialUpdateResponse = zFinancialYearWrite;
+export const zFinancialYearsPartialUpdateResponse = zFinancialYearRead;
 
 export const zFinancialYearsUpdateBody = zFinancialYearWriteRequest;
 
@@ -2176,7 +2264,7 @@ export const zFinancialYearsUpdatePath = z.object({
   financial_year_id: z.int(),
 });
 
-export const zFinancialYearsUpdateResponse = zFinancialYearWrite;
+export const zFinancialYearsUpdateResponse = zFinancialYearRead;
 
 export const zFinancialYearsActivateCreatePath = z.object({
   financial_year_id: z.int(),
@@ -2622,32 +2710,6 @@ export const zSchoolSettingsDepartmentsCreate2Path = z.object({
 
 export const zSchoolSettingsDepartmentsUpdate2Path = z.object({
   dept_id: z.int(),
-});
-
-/**
- * No response body
- */
-export const zSchoolSettingsFeeTypesDestroyResponse = z.void();
-
-export const zSchoolSettingsFeeTypesDestroy2Path = z.object({
-  fee_type_id: z.int(),
-});
-
-/**
- * No response body
- */
-export const zSchoolSettingsFeeTypesDestroy2Response = z.void();
-
-export const zSchoolSettingsFeeTypesRetrieve2Path = z.object({
-  fee_type_id: z.int(),
-});
-
-export const zSchoolSettingsFeeTypesCreate2Path = z.object({
-  fee_type_id: z.int(),
-});
-
-export const zSchoolSettingsFeeTypesUpdate2Path = z.object({
-  fee_type_id: z.int(),
 });
 
 /**

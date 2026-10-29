@@ -1,7 +1,7 @@
-from django.urls import include, path
+from django.urls import path
 from rest_framework.routers import SimpleRouter
 
-from finance.views.settings import AccountViewSet, AccountingPeriodViewSet, FinanceSettingsView, FinancialYearViewSet
+from finance.views.settings import AccountingPeriodViewSet, AccountViewSet, FinanceSettingsView, FinancialYearViewSet
 
 router = SimpleRouter()
 router.register("accounts", AccountViewSet)

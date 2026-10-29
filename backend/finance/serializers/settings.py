@@ -14,8 +14,8 @@ class FinancialYearWriteSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         school = user.school
 
-        name = attrs.get("name")
-        queryset = self.Meta.model.objects.filter(school=school, name=name)
+        name = attrs.get("name", self.instance.name if self.instance else None)
+        queryset = self.Meta.model.objects.filter(school=school, name__iexact=name)
 
         # Exclude the current instance during updates
         if self.instance:
@@ -116,8 +116,8 @@ class AccountWriteSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         school = user.school
 
-        name = attrs.get("name")
-        queryset = self.Meta.model.objects.filter(school=school, name=name)
+        name = attrs.get("name", self.instance.name if self.instance else None)
+        queryset = self.Meta.model.objects.filter(school=school, nam__iexact=name)
 
         # Exclude the current instance during updates
         if self.instance:

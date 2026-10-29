@@ -15,7 +15,8 @@ from core.view.admin.school_setting import (
     NotificationTemplateDetailView, NotificationTemplateListView, NotificationSettingsView,
     RolePermissionsView, StaffRoleView, LeaveTypeView, DepartmentView, BulkLeaveAssignmentView,
     SubjectView, GradingScaleView, PromotionRulesView, ClassCapacityView, CampusView,
-    BuildingView, RoomView, ResourceView, TestSMTPView, FeeTypeView, ClassSubjectsView
+    BuildingView, RoomView, ResourceView, TestSMTPView, ClassSubjectsView,
+    FeeTypeViewSet,
 )
 from core.view.admin.admissions import (
     ParentView, StudentView, StudentParentView, AdmissionFeeView, StudentFeeView, AdmissionView
@@ -55,6 +56,7 @@ router.register(r'events', EventViewSet)
 router.register(r'event-assignments', EventAssignmentViewSet)
 router.register(r'notices', NoticeViewSet, basename='notice')
 router.register(r'teacher-assignments', TeacherAssignmentViewSet, basename='teacher-assignment')
+router.register(r'fee-types', FeeTypeViewSet)
 
 urlpatterns = [
     # Authentication URLs
@@ -82,9 +84,7 @@ urlpatterns = [
     path('school/settings/sessions/<int:session_id>/holidays/<int:holiday_id>/', HolidayView.as_view(), name='holiday-detail'),
     path('school/settings/grading-settings/', GradingSettingsView.as_view(), name='grading-settings'),
     path('school/settings/attendance-settings/', AttendanceSettingsView.as_view(), name='attendance-settings'),
-    path('school/settings/fee-settings/', FeeSettingsView.as_view(), name='fee-settings'),
-    path('school/settings/fee-types/', FeeTypeView.as_view(), name='fee-types'),
-    path('school/settings/fee-types/<int:fee_type_id>/', FeeTypeView.as_view(), name='fee-type-detail'),
+    path('fee-settings/', FeeSettingsView.as_view(), name='fee-settings'),
     path('school/settings/notification-settings/', NotificationSettingsView.as_view(), name='notification-settings'),
     path('school/settings/notifications/templates/', NotificationTemplateListView.as_view(), name='notification-template-list'),
     path('school/settings/notifications/templates/<str:template_id>/', NotificationTemplateDetailView.as_view(), name='notification-template-detail'),

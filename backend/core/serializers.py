@@ -1,8 +1,40 @@
-from core.serial.admin.teacher_assignment_serializer import ClassTeacherSerializer
-from rest_framework import serializers
-from .models import User, School, LocaleSettings, AcademicSession, Term, Holiday, GradingSettings, AttendanceSettings, FeeSettings, NotificationSettings, NotificationTemplate, StaffRole, LeaveType, Department, BulkLeaveAssignment, Subject, GradingScale, PromotionRules, ClassCapacity, Campus, Building, Room, Resource, FeeType, Section, Class
-from django.contrib.auth.models import Group, Permission
 import logging
+
+from django.contrib.auth.models import Group, Permission
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework import serializers
+
+from core.serial.admin.teacher_assignment_serializer import ClassTeacherSerializer
+from core.validation import handle_django_validation_error
+from .models import (
+    User,
+    School,
+    LocaleSettings,
+    AcademicSession,
+    Term,
+    Holiday,
+    GradingSettings,
+    AttendanceSettings,
+    NotificationSettings,
+    NotificationTemplate,
+    StaffRole,
+    LeaveType,
+    Department,
+    BulkLeaveAssignment,
+    Subject,
+    GradingScale,
+    PromotionRules,
+    ClassCapacity,
+    Campus,
+    Building,
+    Room,
+    Resource,
+    FeeType,
+    FeeSettings,
+    FeeStructure,
+    Section,
+    Class,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -224,16 +256,158 @@ class AttendanceSettingsSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Custom statuses are required for custom marking scheme")
         return data
 
+
+class FeeTypeListSerializer(serializers.ListSerializer):
+    def validate(self, attrs):
+        user = self.context["request"].user
+        school = user.school
+
+        names = [item["name"] for item in attrs]
+        seen = set()
+        duplicates = set()
+
+        for name in names:
+            if name in seen:
+                duplicates.add(name)
+            seen.add(name)
+
+        if duplicates:
+            raise serializers.ValidationError(
+                {"name": [f"Duplicate fee name in request: {name}" for name in sorted(duplicates)]}
+            )
+
+        # Check names that already exist for this school.
+        existing_names = set(FeeType.objects.filter(school=school, name__in=names).values_list("name", flat=True))
+
+        if existing_names:
+            raise serializers.ValidationError(
+                {"name": [f"Fee type '{name}' already exists for this school." for name in sorted(existing_names)]}
+            )
+
+        return attrs
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        fee_types = [FeeType(school=user.school, **item) for item in validated_data]
+        return FeeType.objects.bulk_create(fee_types)
+
+
 class FeeTypeSerializer(serializers.ModelSerializer):
+    frequency_label = serializers.CharField(source="get_frequency_display", read_only=True)
+
     class Meta:
         model = FeeType
-        fields = ['id', 'name', 'default_amount', 'is_mandatory']
+        fields = ["id", "name", "default_amount", "frequency", "frequency_label", "is_mandatory", "created_at", "updated_at"]
+        list_serializer_class = FeeTypeListSerializer
 
-class FeeSettingsSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        user = self.context["request"].user
+        school = user.school
+
+        name = attrs.get("name", self.instance.name if self.instance else None)
+
+        queryset = self.Meta.model.objects.filter(school=school, name__iexact=name)
+
+        # Exclude the current instance during updates
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+
+        if queryset.exists():
+            raise serializers.ValidationError({"name": "A fee type with this name already exists for this school."})
+
+        return attrs
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        return FeeType.objects.create(school=user.school, **validated_data)
+
+
+class FeeSettingsWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = FeeSettings
-        fields = ['due_date', 'late_fee_type', 'late_fee_amount', 'reminder_days']
+        fields = [
+            "due_day",
+            "late_fee_type",
+            "late_fee_amount",
+            "grace_period_days",
+            "allow_partial_payment",
+            "reminder_days",
+        ]
 
+
+class FeeSettingsReadSerializer(serializers.ModelSerializer):
+    late_fee_type_label = serializers.CharField(source="get_late_fee_type_display", read_only=True)
+
+    class Meta:
+        model = FeeSettings
+        # fmt: off
+        fields = [
+            "id", "due_day", "late_fee_type", "late_fee_type_label", "late_fee_amount",
+            "grace_period_days", "allow_partial_payment", "reminder_days", "created_at", "updated_at",
+        ]
+        # fmt: on
+        read_only_fields = fields
+
+
+class FeeStructureWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeeStructure
+        fields = ["academic_session", "school_class", "fee_type", "amount"]
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        school = user.school
+
+        academic_session = attrs.get("academic_session", getattr(self.instance, "academic_session", None))
+        school_class = attrs.get("school_class", getattr(self.instance, "school_class", None))
+        fee_type = attrs.get("fee_type", getattr(self.instance, "fee_type", None))
+
+        queryset = self.Meta.model.objects.filter(
+            school=school,
+            academic_session=academic_session,
+            school_class=school_class,
+            fee_type=fee_type,
+        )
+
+        # Exclude the current instance during updates
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+
+        if queryset.exists():
+            raise serializers.ValidationError(
+                "A fee structure for this fee type, class, and academic session already exists for this school."
+            )
+
+        return attrs
+    
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except DjangoValidationError as exc:
+            handle_django_validation_error(exc)
+
+    def update(self, instance, validated_data):
+        try:
+            return super().update(instance, validated_data)
+        except DjangoValidationError as exc:
+            handle_django_validation_error(exc)
+
+
+class FeeStructureReadSerializer(serializers.ModelSerializer):
+    school_class = SchoolSerializer(read_only=True)
+    academic_session = AcademicSessionSerializer(read_only=True)
+    fee_type = FeeTypeSerializer(read_only=True)
+    status_label = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = FeeStructure
+        # fmt: off
+        fields = [
+            "id", "school", "academic_session", "school_class", "fee_type", "amount",
+            "status", "status_label", "created_by", "updated_by", "created_at", "updated_at",
+        ]
+        # fmt: on
+        read_only_fields = fields
 
 
 class NotificationSettingsSerializer(serializers.ModelSerializer):

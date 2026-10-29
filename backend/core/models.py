@@ -1,18 +1,23 @@
-from datetime import date
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-from django.db import models
-import uuid
+import logging
 import pytz
-from django.core.validators import MinValueValidator, MaxValueValidator
 import random
 import string
-from django.utils import timezone
-from django.db import models
 import uuid
+from datetime import date
+from decimal import Decimal
+
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.core.exceptions import ValidationError
-import logging
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
+from django.db.models import Q
+from django.utils import timezone
 
 from core.domain.teacher import Teacher
+from .mixins import TimeStampedMixin, UserAuditMixin
+
+logger = logging.getLogger(__name__)
+
 
 class UserManager(BaseUserManager):
     def create_user(self, email, name, role, school=None, password=None):
@@ -273,39 +278,131 @@ class AttendanceSettings(models.Model):
     def __str__(self):
         return f"Attendance Settings for {self.school}"
     
-class FeeType(models.Model):
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='fee_types',null=True)
-    name = models.CharField(max_length=50)  # e.g., "Tuition", "Library"
-    default_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+class FeeType(TimeStampedMixin):
+    """
+    Represents a category of fee charged by a school, such as tuition, admission, examination, or transportation fees.
+    """
+
+    class FeeFrequency(models.TextChoices):
+        MONTHLY = "monthly", "Monthly"
+        QUARTERLY = "quarterly", "Quarterly"
+        SEMI_ANNUALLY = "semi_annually", "Semi-annually"
+        YEARLY = "yearly", "Yearly"
+        ONE_TIME = "one_time", "One-time"
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="fee_types")
+    name = models.CharField(max_length=50)
+    default_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    frequency = models.CharField(max_length=20, choices=FeeFrequency.choices)
     is_mandatory = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Fee Type"
-        verbose_name_plural = "Fee Types"
+        constraints = [
+            models.UniqueConstraint(fields=["school", "name"], name="unique_fee_type_name_per_school"),
+        ]
 
     def __str__(self):
         return f"{self.name} ({self.school})"
 
-class FeeSettings(models.Model):
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='fee_settings', null=True)
-    due_date = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(31)], default=10)
-    late_fee_type = models.CharField(
-        max_length=20,
-        choices=[('fixed', 'Fixed Amount'), ('percentage', 'Percentage'), ('daily', 'Daily Fine')],
-        default='fixed'
-    )
-    late_fee_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    reminder_days = models.IntegerField(validators=[MinValueValidator(0)], default=5)
-    updated_at = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        verbose_name = "Fee Settings"
-        verbose_name_plural = "Fee Settings"
+class FeeSettings(TimeStampedMixin):
+    """
+    Represents school-wide settings and policies for fee management, billing, and collection.
+    """
+
+    class LateFeeType(models.TextChoices):
+        FIXED = "fixed", "Fixed Amount"
+        DAILY = "daily", "Per Day"
+        PERCENTAGE = "percentage", "Percentage"
+
+    school = models.OneToOneField(School, on_delete=models.CASCADE, related_name="fee_settings")
+    due_day = models.PositiveSmallIntegerField(
+        default=10,
+        validators=[MaxValueValidator(31)],
+        help_text="Default day of the month when school fees are due (1-31).",
+    )
+    late_fee_type = models.CharField(max_length=20, choices=LateFeeType.choices, default=LateFeeType.FIXED)
+    late_fee_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+        default=Decimal("0.00"),
+    )
+    grace_period_days = models.PositiveSmallIntegerField(
+        default=0,
+        help_text="Number of days after the fee due date before late fees are applied.",
+    )
+    allow_partial_payment = models.BooleanField(default=True)
+    reminder_days = models.PositiveSmallIntegerField(default=5)
 
     def __str__(self):
         return f"Fee Settings for {self.school}"
+
+
+class FeeStructure(TimeStampedMixin, UserAuditMixin):
+    """
+    Represents the fee amount applicable to a specific fee type, class, and academic year within a school.
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        ACTIVE = "active", "Active"
+        INACTIVE = "inactive", "Inactive"
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="fee_structures")
+    academic_session = models.ForeignKey(AcademicSession, on_delete=models.PROTECT, related_name="fee_structures")
+    school_class = models.ForeignKey("Class", on_delete=models.PROTECT, related_name="fee_structures")
+    fee_type = models.ForeignKey(FeeType, on_delete=models.PROTECT, related_name="fee_structures")
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=Status.choices,
+        default=Status.DRAFT,
+        db_index=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["school", "academic_session", "school_class", "fee_type"],
+                name="unique_fee_structure_per_school_year_class_type",
+                violation_error_message=(
+                    "A fee structure for this fee type, class, and academic session "
+                    "already exists for this school."
+                ),
+            ),
+        ]
+        ordering = ["academic_session", "school_class", "fee_type"]
+
+    def __str__(self):
+        return f"{self.fee_type.name} - {self.school_class} - {self.academic_session}"
+
+    def clean(self):
+        super().clean()
+
+        related_objects = {
+            "academic_year": self.academic_year,
+            "school_class": self.school_class,
+            "fee_type": self.fee_type,
+        }
+
+        for field, obj in related_objects.items():
+            if obj and self.school_id and obj.school_id != self.school_id:
+                raise ValidationError({field: "This object must belong to the same school."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
 
 class NotificationSettings(models.Model):
     school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='notificationsettingss', to_field='school_id', null=True)
