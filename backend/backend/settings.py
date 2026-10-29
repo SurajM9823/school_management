@@ -115,7 +115,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_SCHEMA_CLASS': 'core.schema.CustomAutoSchema',
     # Keep global pagination disabled because multiple existing frontend endpoints
     # expect unpaginated responses. Apply pagination only to selected views.
     # 'DEFAULT_PAGINATION_CLASS': 'core.pagination.CustomLimitOffsetPagination',
