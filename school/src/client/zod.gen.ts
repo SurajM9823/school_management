@@ -1902,8 +1902,12 @@ export const zTermRequestWritable = z.object({
 });
 
 export const zAccountingPeriodsListQuery = z.object({
+  financial_year: z.int().optional(),
   limit: z.int().optional(),
   offset: z.int().optional(),
+  search: z.string().optional(),
+  sort: z.string().optional(),
+  status: z.enum(["closed", "locked", "open"]).optional(),
 });
 
 export const zAccountingPeriodsListResponse = zPaginatedAccountingPeriodReadList;
@@ -1960,8 +1964,11 @@ export const zAccountingPeriodsLockCreatePath = z.object({
 export const zAccountingPeriodsLockCreateResponse = zAccountingPeriodRead;
 
 export const zAccountsListQuery = z.object({
+  account_type: z.enum(["bank", "cash", "other"]).optional(),
   limit: z.int().optional(),
   offset: z.int().optional(),
+  search: z.string().optional(),
+  sort: z.string().optional(),
 });
 
 export const zAccountsListResponse = zPaginatedAccountReadList;
@@ -2298,8 +2305,13 @@ export const zEventsUpdatePath = z.object({
 export const zEventsUpdateResponse = zEvent;
 
 export const zFeePackagesListQuery = z.object({
+  academic_session: z.int().optional(),
   limit: z.int().optional(),
   offset: z.int().optional(),
+  school_class: z.int().optional(),
+  search: z.string().optional(),
+  sort: z.string().optional(),
+  status: z.enum(["active", "draft", "inactive"]).optional(),
 });
 
 export const zFeePackagesListResponse = zPaginatedFeePackageReadList;
@@ -2362,8 +2374,14 @@ export const zFeeSettingsUpdateBody = zFeeSettingsWriteRequest;
 export const zFeeSettingsUpdateResponse = zFeeSettingsRead;
 
 export const zFeeStructuresListQuery = z.object({
+  academic_session: z.int().optional(),
+  fee_type: z.int().optional(),
   limit: z.int().optional(),
   offset: z.int().optional(),
+  school_class: z.int().optional(),
+  search: z.string().optional(),
+  sort: z.string().optional(),
+  status: z.enum(["active", "draft", "inactive"]).optional(),
 });
 
 export const zFeeStructuresListResponse = zPaginatedFeeStructureReadList;
@@ -2419,6 +2437,12 @@ export const zFeeStructuresDeactivateCreatePath = z.object({
 
 export const zFeeStructuresDeactivateCreateResponse = zFeeStructureRead;
 
+export const zFeeTypesListQuery = z.object({
+  frequency: z.enum(["monthly", "one_time", "quarterly", "semi_annually", "yearly"]).optional(),
+  search: z.string().optional(),
+  sort: z.string().optional(),
+});
+
 export const zFeeTypesListResponse = z.array(zFeeType);
 
 export const zFeeTypesCreateBody = zFeeTypeRequest;
@@ -2465,6 +2489,9 @@ export const zFinanceSettingsUpdateResponse = zFinanceSettingsRead;
 export const zFinancialYearsListQuery = z.object({
   limit: z.int().optional(),
   offset: z.int().optional(),
+  search: z.string().optional(),
+  sort: z.string().optional(),
+  status: z.enum(["active", "closed", "draft"]).optional(),
 });
 
 export const zFinancialYearsListResponse = zPaginatedFinancialYearReadList;

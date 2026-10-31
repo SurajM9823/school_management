@@ -2,9 +2,10 @@ import logging
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_rw_serializers import viewsets as rw_viewsets
 from drf_spectacular.utils import extend_schema
-from rest_framework import generics, status
+from rest_framework import filters, generics, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
@@ -32,6 +33,10 @@ class FinancialYearViewSet(rw_viewsets.ModelViewSet):
     pagination_class = CustomLimitOffsetPagination
     read_serializer_class = FinancialYearReadSerializer
     write_serializer_class = FinancialYearWriteSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["status"]
+    search_fields = ["name"]
+    ordering_fields = ["name", "start_date", "end_date"]
     lookup_url_kwarg = "financial_year_id"
 
     def get_queryset(self):
@@ -136,6 +141,10 @@ class AccountingPeriodViewSet(rw_viewsets.ModelViewSet):
     pagination_class = CustomLimitOffsetPagination
     read_serializer_class = AccountingPeriodReadSerializer
     write_serializer_class = AccountingPeriodWriteSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["financial_year", "status"]
+    search_fields = ["name"]
+    ordering_fields = ["name", "start_date", "end_date"]
     lookup_url_kwarg = "accounting_period_id"
 
     def get_queryset(self):
@@ -145,7 +154,7 @@ class AccountingPeriodViewSet(rw_viewsets.ModelViewSet):
         if user.is_superuser:
             return qs
 
-        return qs.filter(school__school_id=user.school_id)
+        return qs.filter(school=user.school)
 
     def get_permissions(self):
         if self.action == "create":
@@ -201,6 +210,10 @@ class AccountViewSet(rw_viewsets.ModelViewSet):
     pagination_class = CustomLimitOffsetPagination
     read_serializer_class = AccountReadSerializer
     write_serializer_class = AccountWriteSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["account_type"]
+    search_fields = ["name"]
+    ordering_fields = ["name"]
     lookup_url_kwarg = "account_id"
 
     def get_queryset(self):
@@ -210,7 +223,7 @@ class AccountViewSet(rw_viewsets.ModelViewSet):
         if user.is_superuser:
             return qs
 
-        return qs.filter(school__school_id=user.school_id)
+        return qs.filter(school=user.school)
 
     def get_permissions(self):
         if self.action == "create":

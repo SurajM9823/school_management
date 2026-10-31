@@ -8,6 +8,10 @@ paths:
     get:
       operationId: accounting_periods_list
       parameters:
+      - in: query
+        name: financial_year
+        schema:
+          type: integer
       - name: limit
         required: false
         in: query
@@ -20,6 +24,30 @@ paths:
         description: The initial index from which to return the results.
         schema:
           type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - name: sort
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - closed
+          - locked
+          - open
+        description: |-
+          * `open` - Open
+          * `closed` - Closed
+          * `locked` - Locked
       tags:
       - accounting-periods
       security:
@@ -226,6 +254,18 @@ paths:
     get:
       operationId: accounts_list
       parameters:
+      - in: query
+        name: account_type
+        schema:
+          type: string
+          enum:
+          - bank
+          - cash
+          - other
+        description: |-
+          * `cash` - Cash
+          * `bank` - Bank
+          * `other` - Other
       - name: limit
         required: false
         in: query
@@ -238,6 +278,18 @@ paths:
         description: The initial index from which to return the results.
         schema:
           type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - name: sort
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
       tags:
       - accounts
       security:
@@ -1572,6 +1624,10 @@ paths:
     get:
       operationId: fee_packages_list
       parameters:
+      - in: query
+        name: academic_session
+        schema:
+          type: integer
       - name: limit
         required: false
         in: query
@@ -1584,6 +1640,34 @@ paths:
         description: The initial index from which to return the results.
         schema:
           type: integer
+      - in: query
+        name: school_class
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - name: sort
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - active
+          - draft
+          - inactive
+        description: |-
+          * `draft` - Draft
+          * `active` - Active
+          * `inactive` - Inactive
       tags:
       - fee-packages
       security:
@@ -1828,6 +1912,14 @@ paths:
     get:
       operationId: fee_structures_list
       parameters:
+      - in: query
+        name: academic_session
+        schema:
+          type: integer
+      - in: query
+        name: fee_type
+        schema:
+          type: integer
       - name: limit
         required: false
         in: query
@@ -1840,6 +1932,34 @@ paths:
         description: The initial index from which to return the results.
         schema:
           type: integer
+      - in: query
+        name: school_class
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - name: sort
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - active
+          - draft
+          - inactive
+        description: |-
+          * `draft` - Draft
+          * `active` - Active
+          * `inactive` - Inactive
       tags:
       - fee-structures
       security:
@@ -2045,6 +2165,35 @@ paths:
   /api/fee-types/:
     get:
       operationId: fee_types_list
+      parameters:
+      - in: query
+        name: frequency
+        schema:
+          type: string
+          enum:
+          - monthly
+          - one_time
+          - quarterly
+          - semi_annually
+          - yearly
+        description: |-
+          * `monthly` - Monthly
+          * `quarterly` - Quarterly
+          * `semi_annually` - Semi-annually
+          * `yearly` - Yearly
+          * `one_time` - One-time
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - name: sort
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
       tags:
       - fee-types
       security:
@@ -2239,6 +2388,30 @@ paths:
         description: The initial index from which to return the results.
         schema:
           type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - name: sort
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - active
+          - closed
+          - draft
+        description: |-
+          * `draft` - Draft
+          * `active` - Active
+          * `closed` - Closed
       tags:
       - financial-years
       security:

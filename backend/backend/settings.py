@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'rest_framework_simplejwt',
     'corsheaders',
+    'django_filters',
     'core',
     'finance',
 ]
@@ -120,6 +121,8 @@ REST_FRAMEWORK = {
     # expect unpaginated responses. Apply pagination only to selected views.
     # 'DEFAULT_PAGINATION_CLASS': 'core.pagination.CustomLimitOffsetPagination',
     'PAGE_SIZE': 10,
+    'SEARCH_PARAM': 'search',
+    'ORDERING_PARAM': 'sort',
 }
 
 SIMPLE_JWT = {

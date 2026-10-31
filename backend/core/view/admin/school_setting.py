@@ -7,8 +7,9 @@ from smtplib import SMTP, SMTP_SSL, SMTPException
 from django.contrib.auth.models import Group
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_rw_serializers import viewsets as rw_viewsets
-from rest_framework import generics, status, viewsets
+from rest_framework import filters, generics, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -480,6 +481,10 @@ class AttendanceSettingsView(APIView):
 class FeeTypeViewSet(viewsets.ModelViewSet):
     queryset = FeeType.objects.all()
     serializer_class = FeeTypeSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["frequency"]
+    search_fields = ["name"]
+    ordering_fields = ["name", "is_mandatory"]
     lookup_url_kwarg = "fee_type_id"
 
     def get_school(self):
@@ -551,6 +556,10 @@ class FeeStructureViewSet(rw_viewsets.ModelViewSet):
     pagination_class = CustomLimitOffsetPagination
     read_serializer_class = FeeStructureReadSerializer
     write_serializer_class = FeeStructureWriteSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["academic_session", "school_class", "fee_type", "status"]
+    search_fields = ["name"]
+    ordering_fields = ["name", "amount"]
     lookup_url_kwarg = "fee_structure_id"
 
     def get_queryset(self):
@@ -612,6 +621,10 @@ class FeePackageViewSet(rw_viewsets.ModelViewSet):
     pagination_class = CustomLimitOffsetPagination
     read_serializer_class = FeePackageReadSerializer
     write_serializer_class = FeePackageWriteSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["academic_session", "school_class", "status"]
+    search_fields = ["name"]
+    ordering_fields = ["name"]
     lookup_url_kwarg = "fee_package_id"
 
     def get_queryset(self):

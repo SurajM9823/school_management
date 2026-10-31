@@ -1769,6 +1769,7 @@ export type AccountingPeriodsListData = {
   body?: never;
   path?: never;
   query?: {
+    financial_year?: number;
     /**
      * Number of results to return per page.
      */
@@ -1777,6 +1778,20 @@ export type AccountingPeriodsListData = {
      * The initial index from which to return the results.
      */
     offset?: number;
+    /**
+     * A search term.
+     */
+    search?: string;
+    /**
+     * Which field to use when ordering the results.
+     */
+    sort?: string;
+    /**
+     * * `open` - Open
+     * * `closed` - Closed
+     * * `locked` - Locked
+     */
+    status?: "closed" | "locked" | "open";
   };
   url: "/api/accounting-periods/";
 };
@@ -1921,6 +1936,12 @@ export type AccountsListData = {
   path?: never;
   query?: {
     /**
+     * * `cash` - Cash
+     * * `bank` - Bank
+     * * `other` - Other
+     */
+    account_type?: "bank" | "cash" | "other";
+    /**
      * Number of results to return per page.
      */
     limit?: number;
@@ -1928,6 +1949,14 @@ export type AccountsListData = {
      * The initial index from which to return the results.
      */
     offset?: number;
+    /**
+     * A search term.
+     */
+    search?: string;
+    /**
+     * Which field to use when ordering the results.
+     */
+    sort?: string;
   };
   url: "/api/accounts/";
 };
@@ -2948,6 +2977,7 @@ export type FeePackagesListData = {
   body?: never;
   path?: never;
   query?: {
+    academic_session?: number;
     /**
      * Number of results to return per page.
      */
@@ -2956,6 +2986,21 @@ export type FeePackagesListData = {
      * The initial index from which to return the results.
      */
     offset?: number;
+    school_class?: number;
+    /**
+     * A search term.
+     */
+    search?: string;
+    /**
+     * Which field to use when ordering the results.
+     */
+    sort?: string;
+    /**
+     * * `draft` - Draft
+     * * `active` - Active
+     * * `inactive` - Inactive
+     */
+    status?: "active" | "draft" | "inactive";
   };
   url: "/api/fee-packages/";
 };
@@ -3123,6 +3168,8 @@ export type FeeStructuresListData = {
   body?: never;
   path?: never;
   query?: {
+    academic_session?: number;
+    fee_type?: number;
     /**
      * Number of results to return per page.
      */
@@ -3131,6 +3178,21 @@ export type FeeStructuresListData = {
      * The initial index from which to return the results.
      */
     offset?: number;
+    school_class?: number;
+    /**
+     * A search term.
+     */
+    search?: string;
+    /**
+     * Which field to use when ordering the results.
+     */
+    sort?: string;
+    /**
+     * * `draft` - Draft
+     * * `active` - Active
+     * * `inactive` - Inactive
+     */
+    status?: "active" | "draft" | "inactive";
   };
   url: "/api/fee-structures/";
 };
@@ -3271,7 +3333,24 @@ export type FeeStructuresDeactivateCreateResponse =
 export type FeeTypesListData = {
   body?: never;
   path?: never;
-  query?: never;
+  query?: {
+    /**
+     * * `monthly` - Monthly
+     * * `quarterly` - Quarterly
+     * * `semi_annually` - Semi-annually
+     * * `yearly` - Yearly
+     * * `one_time` - One-time
+     */
+    frequency?: "monthly" | "one_time" | "quarterly" | "semi_annually" | "yearly";
+    /**
+     * A search term.
+     */
+    search?: string;
+    /**
+     * Which field to use when ordering the results.
+     */
+    sort?: string;
+  };
   url: "/api/fee-types/";
 };
 
@@ -3407,6 +3486,20 @@ export type FinancialYearsListData = {
      * The initial index from which to return the results.
      */
     offset?: number;
+    /**
+     * A search term.
+     */
+    search?: string;
+    /**
+     * Which field to use when ordering the results.
+     */
+    sort?: string;
+    /**
+     * * `draft` - Draft
+     * * `active` - Active
+     * * `closed` - Closed
+     */
+    status?: "active" | "closed" | "draft";
   };
   url: "/api/financial-years/";
 };
