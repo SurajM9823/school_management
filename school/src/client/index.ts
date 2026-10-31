@@ -33,6 +33,7 @@ export type {
   AccountingPeriodsUpdateResponse,
   AccountingPeriodsUpdateResponses,
   AccountingPeriodWriteRequest,
+  AccountParentRead,
   AccountRead,
   AccountsCreateData,
   AccountsCreateResponse,

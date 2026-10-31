@@ -26,34 +26,47 @@ export type AcademicSessionRequest = {
  */
 export type AcademicSessionStatusEnum = "active" | "upcoming" | "completed";
 
+/**
+ * Serializer for the parent field of an Account.
+ */
+export type AccountParentRead = {
+  readonly id: number;
+  readonly name: string;
+};
+
 export type AccountRead = {
   readonly id: number;
+  readonly account_code: string;
   readonly name: string;
   account_type: AccountTypeEnum;
   readonly account_type_label: string;
-  readonly account_number: string;
-  readonly opening_balance: string;
-  readonly opening_balance_date: string;
+  parent: AccountParentRead;
+  readonly description: string;
   readonly is_active: boolean;
-  readonly created_at: string;
-  readonly updated_at: string;
+  readonly is_root: string;
+  readonly has_children: boolean;
+  readonly is_leaf: string;
   readonly created_by: number | null;
   readonly updated_by: number | null;
+  readonly created_at: string;
+  readonly updated_at: string;
 };
 
 /**
- * * `cash` - Cash
- * * `bank` - Bank
- * * `other` - Other
+ * * `asset` - Asset
+ * * `liability` - Liability
+ * * `equity` - Equity
+ * * `revenue` - Revenue
+ * * `expense` - Expense
  */
-export type AccountTypeEnum = "cash" | "bank" | "other";
+export type AccountTypeEnum = "asset" | "liability" | "equity" | "revenue" | "expense";
 
 export type AccountWriteRequest = {
+  account_code: string;
   name: string;
-  account_type?: AccountTypeEnum;
-  account_number?: string;
-  opening_balance?: string;
-  opening_balance_date: string;
+  account_type: AccountTypeEnum;
+  parent?: number | null;
+  description?: string;
 };
 
 export type AccountingPeriodRead = {
@@ -611,11 +624,11 @@ export type PaginatedFinancialYearReadList = {
 };
 
 export type PatchedAccountWriteRequest = {
+  account_code?: string;
   name?: string;
   account_type?: AccountTypeEnum;
-  account_number?: string;
-  opening_balance?: string;
-  opening_balance_date?: string;
+  parent?: number | null;
+  description?: string;
 };
 
 export type PatchedAccountingPeriodWriteRequest = {
@@ -1936,11 +1949,15 @@ export type AccountsListData = {
   path?: never;
   query?: {
     /**
-     * * `cash` - Cash
-     * * `bank` - Bank
-     * * `other` - Other
+     * * `asset` - Asset
+     * * `liability` - Liability
+     * * `equity` - Equity
+     * * `revenue` - Revenue
+     * * `expense` - Expense
      */
-    account_type?: "bank" | "cash" | "other";
+    account_type?: "asset" | "equity" | "expense" | "liability" | "revenue";
+    is_active?: boolean;
+    is_root?: boolean;
     /**
      * Number of results to return per page.
      */
@@ -1949,6 +1966,7 @@ export type AccountsListData = {
      * The initial index from which to return the results.
      */
     offset?: number;
+    parent?: number;
     /**
      * A search term.
      */

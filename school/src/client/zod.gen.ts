@@ -25,39 +25,46 @@ export const zAcademicSessionRequest = z.object({
 });
 
 /**
- * * `cash` - Cash
- * * `bank` - Bank
- * * `other` - Other
+ * Serializer for the parent field of an Account.
  */
-export const zAccountTypeEnum = z.enum(["cash", "bank", "other"]);
+export const zAccountParentRead = z.object({
+  id: z.int().readonly(),
+  name: z.string().readonly(),
+});
+
+/**
+ * * `asset` - Asset
+ * * `liability` - Liability
+ * * `equity` - Equity
+ * * `revenue` - Revenue
+ * * `expense` - Expense
+ */
+export const zAccountTypeEnum = z.enum(["asset", "liability", "equity", "revenue", "expense"]);
 
 export const zAccountRead = z.object({
   id: z.int().readonly(),
+  account_code: z.string().readonly(),
   name: z.string().readonly(),
   account_type: zAccountTypeEnum,
   account_type_label: z.string().readonly(),
-  account_number: z.string().readonly(),
-  opening_balance: z
-    .string()
-    .regex(/^-?\d{0,12}(?:\.\d{0,2})?$/)
-    .readonly(),
-  opening_balance_date: z.iso.date().readonly(),
+  parent: zAccountParentRead,
+  description: z.string().readonly(),
   is_active: z.boolean().readonly(),
-  created_at: z.iso.datetime().readonly(),
-  updated_at: z.iso.datetime().readonly(),
+  is_root: z.string().readonly(),
+  has_children: z.boolean().readonly(),
+  is_leaf: z.string().readonly(),
   created_by: z.int().readonly().nullable(),
   updated_by: z.int().readonly().nullable(),
+  created_at: z.iso.datetime().readonly(),
+  updated_at: z.iso.datetime().readonly(),
 });
 
 export const zAccountWriteRequest = z.object({
+  account_code: z.string().min(1).max(20),
   name: z.string().min(1).max(100),
-  account_type: zAccountTypeEnum.optional(),
-  account_number: z.string().max(100).optional(),
-  opening_balance: z
-    .string()
-    .regex(/^-?\d{0,12}(?:\.\d{0,2})?$/)
-    .optional(),
-  opening_balance_date: z.iso.date(),
+  account_type: zAccountTypeEnum,
+  parent: z.int().nullish(),
+  description: z.string().optional(),
 });
 
 /**
@@ -562,14 +569,11 @@ export const zPaginatedFinancialYearReadList = z.object({
 });
 
 export const zPatchedAccountWriteRequest = z.object({
+  account_code: z.string().min(1).max(20).optional(),
   name: z.string().min(1).max(100).optional(),
   account_type: zAccountTypeEnum.optional(),
-  account_number: z.string().max(100).optional(),
-  opening_balance: z
-    .string()
-    .regex(/^-?\d{0,12}(?:\.\d{0,2})?$/)
-    .optional(),
-  opening_balance_date: z.iso.date().optional(),
+  parent: z.int().nullish(),
+  description: z.string().optional(),
 });
 
 export const zPatchedAccountingPeriodWriteRequest = z.object({
@@ -1964,9 +1968,12 @@ export const zAccountingPeriodsLockCreatePath = z.object({
 export const zAccountingPeriodsLockCreateResponse = zAccountingPeriodRead;
 
 export const zAccountsListQuery = z.object({
-  account_type: z.enum(["bank", "cash", "other"]).optional(),
+  account_type: z.enum(["asset", "equity", "expense", "liability", "revenue"]).optional(),
+  is_active: z.boolean().optional(),
+  is_root: z.boolean().optional(),
   limit: z.int().optional(),
   offset: z.int().optional(),
+  parent: z.int().optional(),
   search: z.string().optional(),
   sort: z.string().optional(),
 });

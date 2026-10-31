@@ -110,34 +110,69 @@ class AccountingPeriodReadSerializer(serializers.ModelSerializer):
 class AccountWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Account
-        fields = ["name", "account_type", "account_number", "opening_balance", "opening_balance_date"]
+        fields = ["account_code", "name", "account_type", "parent", "description"]
 
     def validate(self, attrs):
         user = self.context["request"].user
         school = user.school
 
+        account_code = attrs.get("account_code", self.instance.account_code if self.instance else None)
         name = attrs.get("name", self.instance.name if self.instance else None)
-        queryset = self.Meta.model.objects.filter(school=school, nam__iexact=name)
+        queryset = self.Meta.model.objects.filter(school=school)
 
         # Exclude the current instance during updates
         if self.instance:
             queryset = queryset.exclude(pk=self.instance.pk)
 
-        if queryset.exists():
-            raise serializers.ValidationError({"name": "A account with this name already exists."})
+        errors = {}
+
+        if queryset.filter(account_code=account_code).exists():
+            errors["account_code"] = "A account with this code already exists."
+
+        if queryset.filter(name=name).exists():
+            errors["name"] = "A account with this name already exists."
+
+        if errors:
+            raise serializers.ValidationError(errors)
 
         return attrs
 
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except DjangoValidationError as exc:
+            handle_django_validation_error(exc)
+
+    def update(self, instance, validated_data):
+        try:
+            return super().update(instance, validated_data)
+        except DjangoValidationError as exc:
+            handle_django_validation_error(exc)
+
+
+class AccountParentReadSerializer(serializers.ModelSerializer):
+    """Serializer for the parent field of an Account."""
+
+    class Meta:
+        model = Account
+        fields = ["id", "name"]
+        read_only_fields = fields
+
 
 class AccountReadSerializer(serializers.ModelSerializer):
+    parent = AccountParentReadSerializer(read_only=True)
+    is_root = serializers.ReadOnlyField()
+    has_children = serializers.BooleanField(source="_has_children", read_only=True)
+    is_leaf = serializers.ReadOnlyField()
     account_type_label = serializers.CharField(source="get_account_type_display", read_only=True)
 
     class Meta:
         model = Account
         # fmt: off
         fields = [
-            "id", "name", "account_type", "account_type_label", "account_number", "opening_balance",
-            "opening_balance_date", "is_active", "created_at", "updated_at", "created_by", "updated_by",
+            "id", "account_code", "name", "account_type", "account_type_label", "parent",
+            "description", "is_active", "is_root", "has_children", "is_leaf",
+            "created_by", "updated_by", "created_at", "updated_at",
         ]
         # fmt: on
         read_only_fields = fields

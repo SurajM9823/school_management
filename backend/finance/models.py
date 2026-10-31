@@ -182,29 +182,72 @@ class AccountingPeriod(TimeStampedMixin, UserAuditMixin):
 
 
 class Account(TimeStampedMixin, UserAuditMixin):
+    """Represents an account in a school's Chart of Accounts."""
+
     class AccountType(models.TextChoices):
-        CASH = "cash", "Cash"
-        BANK = "bank", "Bank"
-        OTHER = "other", "Other"
+        ASSET = "asset", "Asset"
+        LIABILITY = "liability", "Liability"
+        EQUITY = "equity", "Equity"
+        REVENUE = "revenue", "Revenue"
+        EXPENSE = "expense", "Expense"
 
     school = models.ForeignKey("core.School", on_delete=models.CASCADE, related_name="money_accounts")
+    account_code = models.CharField(max_length=20)
     name = models.CharField(max_length=100)
-    account_type = models.CharField(max_length=10, choices=AccountType.choices, default=AccountType.CASH)
-    account_number = models.CharField(max_length=100, blank=True)
-    opening_balance = models.DecimalField(
-        max_digits=14,
-        decimal_places=2,
-        default=Decimal("0.00"),
-        validators=[MinValueValidator(Decimal("0.00"))],
-    )
-    opening_balance_date = models.DateField()
+    account_type = models.CharField(max_length=10, choices=AccountType.choices)
+    parent = models.ForeignKey("self", on_delete=models.PROTECT, null=True, blank=True, related_name="children")
+    description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ["name"]
         constraints = [
+            models.UniqueConstraint(fields=["school", "account_code"], name="unique_account_code_per_school"),
             models.UniqueConstraint(fields=["school", "name"], name="unique_money_account_name_per_school"),
         ]
 
     def __str__(self):
         return f"{self.name} - {self.school}"
+
+    def clean(self):
+        super().clean()
+
+        if not self.parent_id:
+            return
+
+        if self.parent_id == self.pk:
+            raise ValidationError({"parent": "An account cannot be its own parent."})
+
+        if self.parent.school_id != self.school_id:
+            raise ValidationError({"parent": "Parent account must belong to the same school."})
+
+        if self.parent.account_type != self.account_type:
+            raise ValidationError({"parent": "Parent and child accounts must have the same account type."})
+
+        # Prevent circular parent-child relationships.
+        ancestor = self.parent
+
+        while ancestor is not None:
+            if ancestor.pk == self.pk:
+                raise ValidationError({"parent": "Circular account hierarchy is not allowed."})
+
+            ancestor = ancestor.parent
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @property
+    def is_root(self):
+        """Returns True if this account has no parent."""
+        return self.parent_id is None
+
+    @property
+    def has_children(self):
+        """Returns True if this account has child accounts."""
+        return self.children.exists()
+
+    @property
+    def is_leaf(self):
+        """Returns True if this account has no child accounts."""
+        return not self.children.exists()

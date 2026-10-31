@@ -79,12 +79,6 @@ const accountingPeriodsCreateSchema = zAccountingPeriodsCreateBody
 
 const accountCreateSchema = zAccountsCreateBody.safeExtend({
   name: z.string().trim().min(1, { error: "Name is required." }).max(100),
-  opening_balance_date: z.iso.date({
-    error: (issue) =>
-      issue.input === undefined || issue.input === ""
-        ? "This field is required."
-        : "Enter a valid opening balance date (YYYY-MM-DD).",
-  }),
 });
 
 // dummy types (should be removed)
@@ -110,6 +104,8 @@ const Settings: React.FC = () => {
 
   const [financialYearGeneralErrors, setFinancialYearGeneralErrors] = useState<string[]>([]);
   const [accountingPeriodGeneralErrors, setAccountingPeriodGeneralErrors] = useState<string[]>([]);
+
+  const rootAccounts = accounts.filter((account) => account.is_root);
 
   // dummy states (should be removed)
   const [taxSettings, setTaxSettings] = useState<TaxSetting[]>([
@@ -389,11 +385,11 @@ const Settings: React.FC = () => {
     formState: { errors: accountErrors, isSubmitting: isAccountSubmitting },
   } = useForm<AccountWriteRequest>({
     defaultValues: {
+      account_code: "",
       name: "",
-      account_type: "cash",
-      account_number: "",
-      opening_balance: "",
-      opening_balance_date: "",
+      account_type: undefined,
+      parent: null,
+      description: "",
     },
     resolver: zodResolver(accountCreateSchema),
   });
@@ -421,10 +417,10 @@ const Settings: React.FC = () => {
 
     resetAccount({
       name: account.name,
+      account_code: account.account_code,
       account_type: account.account_type,
-      account_number: account.account_number,
-      opening_balance: account.opening_balance,
-      opening_balance_date: account.opening_balance_date,
+      parent: account.parent.id,
+      description: account.description,
     });
 
     setShowAccountModal(true);
@@ -761,17 +757,15 @@ const Settings: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Account type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Account number
+                  Parent
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Opening balance
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Opening date
+                  Description
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -792,12 +786,12 @@ const Settings: React.FC = () => {
               {accounts.map((account) => (
                 <tr key={account.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{account.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{account.account_type}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{account.account_code}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{account.account_type_label}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {account.account_number || "N/A"}
+                    {account.parent ? account.parent.name : "None"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{account.opening_balance}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{account.opening_balance_date}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{account.description || "N/A"}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {account.is_active ? "Active" : "Inactive"}
                   </td>
@@ -1096,9 +1090,7 @@ const Settings: React.FC = () => {
                 </label>
                 <select
                   id="financial_year"
-                  {...registerAccountingPeriod("financial_year", {
-                    valueAsNumber: true,
-                  })}
+                  {...registerAccountingPeriod("financial_year", { valueAsNumber: true })}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   aria-invalid={accountingPeriodErrors.financial_year ? "true" : "false"}
                 >
@@ -1204,6 +1196,22 @@ const Settings: React.FC = () => {
                 {accountErrors.name && <p className="mt-1 text-sm text-red-600">{accountErrors.name.message}</p>}
               </div>
               <div>
+                <label htmlFor="account_code" className="block text-sm font-medium text-gray-700">
+                  Code
+                </label>
+                <input
+                  {...registerAccount("account_code")}
+                  type="text"
+                  id="account_code"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                  aria-invalid={accountErrors.account_code ? "true" : "false"}
+                  autoComplete="off"
+                />
+                {accountErrors.account_code && (
+                  <p className="mt-1 text-sm text-red-600">{accountErrors.account_code.message}</p>
+                )}
+              </div>
+              <div>
                 <label htmlFor="account_type" className="block text-sm font-medium text-gray-700">
                   Account type
                 </label>
@@ -1213,7 +1221,7 @@ const Settings: React.FC = () => {
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   aria-invalid={accountErrors.account_type ? "true" : "false"}
                 >
-                  <option value="">Select currency</option>
+                  <option value="">Select type</option>
                   {accountTypes.map((type) => (
                     <option key={type.value} value={type.value}>
                       {type.label}
@@ -1225,52 +1233,38 @@ const Settings: React.FC = () => {
                 )}
               </div>
               <div>
-                <label htmlFor="account_number" className="block text-sm font-medium text-gray-700">
-                  Account number
+                <label htmlFor="parent" className="block text-sm font-medium text-gray-700">
+                  Parent
                 </label>
-                <input
-                  {...registerAccount("account_number")}
-                  type="text"
-                  id="account_number"
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                  aria-invalid={accountErrors.account_number ? "true" : "false"}
-                  autoComplete="off"
-                />
-                {accountErrors.account_number && (
-                  <p className="mt-1 text-sm text-red-600">{accountErrors.account_number.message}</p>
-                )}
+                <select
+                  {...registerAccount("parent", { setValueAs: (value) => (value === "" ? null : Number(value)) })}
+                  id="parent"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  aria-invalid={accountErrors.parent ? "true" : "false"}
+                >
+                  <option value="">Select parent account</option>
+                  {/* TODO: only patient account with no parent */}
+                  {rootAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+                {accountErrors.parent && <p className="mt-1 text-sm text-red-600">{accountErrors.parent.message}</p>}
               </div>
-              <div>
-                <label htmlFor="opening_balance" className="block text-sm font-medium text-gray-700">
-                  Opening balance
+              <div className="sm:col-span-2">
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                  Description
                 </label>
-                <input
-                  {...registerAccount("opening_balance")}
-                  type="number"
-                  id="opening_balance"
-                  step="0.01"
-                  min="0"
+                <textarea
+                  {...registerAccount("description")}
+                  name="description"
+                  id="description"
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                  aria-invalid={accountErrors.opening_balance ? "true" : "false"}
-                  autoComplete="off"
-                />
-                {accountErrors.opening_balance && (
-                  <p className="mt-1 text-sm text-red-600">{accountErrors.opening_balance.message}</p>
-                )}
-              </div>
-              <div>
-                <label htmlFor="opening_balance_date" className="block text-sm font-medium text-gray-700">
-                  opening balance date
-                </label>
-                <input
-                  {...registerAccount("opening_balance_date")}
-                  type="date"
-                  id="opening_balance_date"
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                  aria-invalid={accountErrors.opening_balance_date ? "true" : "false"}
-                />
-                {accountErrors.opening_balance_date && (
-                  <p className="mt-1 text-sm text-red-600">{accountErrors.opening_balance_date.message}</p>
+                  aria-invalid={accountErrors.description ? "true" : "false"}
+                ></textarea>
+                {accountErrors.description && (
+                  <p className="mt-1 text-sm text-red-600">{accountErrors.description.message}</p>
                 )}
               </div>
               <div className="flex justify-end space-x-3">

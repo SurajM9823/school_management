@@ -1,6 +1,7 @@
 import logging
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Exists, OuterRef
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_rw_serializers import viewsets as rw_viewsets
@@ -13,6 +14,7 @@ from rest_framework.response import Response
 
 from core.pagination import CustomLimitOffsetPagination
 from core.permissions import IsSchoolAccountant, IsSchoolAssignedAdmin, IsSuperUser
+from finance.filters import AccountFilter
 from finance.models import Account, AccountingPeriod, FinanceSettings, FinancialYear
 from finance.serializers.settings import (
     AccountingPeriodReadSerializer,
@@ -206,19 +208,20 @@ class AccountingPeriodViewSet(rw_viewsets.ModelViewSet):
 
 
 class AccountViewSet(rw_viewsets.ModelViewSet):
-    queryset = Account.objects.all()
+    queryset = Account.objects.select_related("parent")
     pagination_class = CustomLimitOffsetPagination
     read_serializer_class = AccountReadSerializer
     write_serializer_class = AccountWriteSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["account_type"]
+    filterset_class = AccountFilter
     search_fields = ["name"]
     ordering_fields = ["name"]
     lookup_url_kwarg = "account_id"
 
     def get_queryset(self):
-        qs = super().get_queryset()
         user = self.request.user
+        children = Account.objects.filter(parent_id=OuterRef("pk"))
+        qs = super().get_queryset().annotate(_has_children=Exists(children))
 
         if user.is_superuser:
             return qs

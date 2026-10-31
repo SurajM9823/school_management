@@ -259,13 +259,25 @@ paths:
         schema:
           type: string
           enum:
-          - bank
-          - cash
-          - other
+          - asset
+          - equity
+          - expense
+          - liability
+          - revenue
         description: |-
-          * `cash` - Cash
-          * `bank` - Bank
-          * `other` - Other
+          * `asset` - Asset
+          * `liability` - Liability
+          * `equity` - Equity
+          * `revenue` - Revenue
+          * `expense` - Expense
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - in: query
+        name: is_root
+        schema:
+          type: boolean
       - name: limit
         required: false
         in: query
@@ -276,6 +288,10 @@ paths:
         required: false
         in: query
         description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - in: query
+        name: parent
         schema:
           type: integer
       - name: search
@@ -6905,11 +6921,27 @@ components:
         * `active` - Active
         * `upcoming` - Upcoming
         * `completed` - Completed
+    AccountParentRead:
+      type: object
+      description: Serializer for the parent field of an Account.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - name
     AccountRead:
       type: object
       properties:
         id:
           type: integer
+          readOnly: true
+        account_code:
+          type: string
           readOnly: true
         name:
           type: string
@@ -6921,28 +6953,24 @@ components:
         account_type_label:
           type: string
           readOnly: true
-        account_number:
-          type: string
+        parent:
+          allOf:
+          - $ref: '#/components/schemas/AccountParentRead'
           readOnly: true
-        opening_balance:
+        description:
           type: string
-          format: decimal
-          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
-          readOnly: true
-        opening_balance_date:
-          type: string
-          format: date
           readOnly: true
         is_active:
           type: boolean
           readOnly: true
-        created_at:
+        is_root:
           type: string
-          format: date-time
           readOnly: true
-        updated_at:
+        has_children:
+          type: boolean
+          readOnly: true
+        is_leaf:
           type: string
-          format: date-time
           readOnly: true
         created_by:
           type: integer
@@ -6952,51 +6980,66 @@ components:
           type: integer
           readOnly: true
           nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
       required:
-      - account_number
+      - account_code
       - account_type
       - account_type_label
       - created_at
       - created_by
+      - description
+      - has_children
       - id
       - is_active
+      - is_leaf
+      - is_root
       - name
-      - opening_balance
-      - opening_balance_date
+      - parent
       - updated_at
       - updated_by
     AccountTypeEnum:
       enum:
-      - cash
-      - bank
-      - other
+      - asset
+      - liability
+      - equity
+      - revenue
+      - expense
       type: string
       description: |-
-        * `cash` - Cash
-        * `bank` - Bank
-        * `other` - Other
+        * `asset` - Asset
+        * `liability` - Liability
+        * `equity` - Equity
+        * `revenue` - Revenue
+        * `expense` - Expense
     AccountWriteRequest:
       type: object
       properties:
+        account_code:
+          type: string
+          minLength: 1
+          maxLength: 20
         name:
           type: string
           minLength: 1
           maxLength: 100
         account_type:
           $ref: '#/components/schemas/AccountTypeEnum'
-        account_number:
+        parent:
+          type: integer
+          nullable: true
+        description:
           type: string
-          maxLength: 100
-        opening_balance:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
-        opening_balance_date:
-          type: string
-          format: date
       required:
+      - account_code
+      - account_type
       - name
-      - opening_balance_date
     AccountingPeriodRead:
       type: object
       properties:
@@ -8568,22 +8611,21 @@ components:
     PatchedAccountWriteRequest:
       type: object
       properties:
+        account_code:
+          type: string
+          minLength: 1
+          maxLength: 20
         name:
           type: string
           minLength: 1
           maxLength: 100
         account_type:
           $ref: '#/components/schemas/AccountTypeEnum'
-        account_number:
+        parent:
+          type: integer
+          nullable: true
+        description:
           type: string
-          maxLength: 100
-        opening_balance:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
-        opening_balance_date:
-          type: string
-          format: date
     PatchedAccountingPeriodWriteRequest:
       type: object
       properties:
