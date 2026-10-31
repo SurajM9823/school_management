@@ -17,12 +17,21 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.domain.teacher_assignment import ClassTeacher
-from core.models import Class, FeeType, School, LocaleSettings, AcademicSession, Section, Term, Holiday, GradingSettings, AttendanceSettings, FeeSettings, Subject, FeeStructure
-from core.models import NotificationSettings, NotificationTemplate, StaffRole, LeaveType, Department, Subject, GradingScale, PromotionRules, ClassCapacity, Campus, Building, Room, Resource
+from core.models import (
+    AcademicSession, AttendanceSettings, Building, Campus, Class, ClassCapacity, Department, FeePackage, FeePackageItem, FeeSettings, FeeStructure, FeeType,
+    GradingScale, GradingSettings, Holiday, LeaveType, LocaleSettings, NotificationSettings, NotificationTemplate, PromotionRules, Resource, Room,
+    School, Section, StaffRole, Subject, Term,
+)
 from core.pagination import CustomLimitOffsetPagination
 from core.permissions import IsSuperUser, IsSchoolAssignedAdmin, IsSchoolAccountant
-from core.serializers import ClassSerializer, FeeTypeSerializer, FeeSettingsReadSerializer, FeeSettingsWriteSerializer, FeeStructureReadSerializer, FeeStructureWriteSerializer, SchoolSerializer, LocaleSettingsSerializer, AcademicSessionSerializer, SectionSerializer, TermSerializer, HolidaySerializer, GradingSettingsSerializer, AttendanceSettingsSerializer, RoleSerializer, CampusSerializer, BuildingSerializer, RoomSerializer, ResourceSerializer
-from core.serializers import NotificationSettingsSerializer, NotificationTemplateSerializer, StaffRoleSerializer, LeaveTypeSerializer, DepartmentSerializer, BulkLeaveAssignmentSerializer, SubjectSerializer, GradingScaleSerializer, PromotionRulesSerializer, ClassCapacitySerializer
+from core.serializers import (
+    AcademicSessionSerializer, AttendanceSettingsSerializer, BuildingSerializer, BulkLeaveAssignmentSerializer, CampusSerializer, ClassCapacitySerializer,
+    ClassSerializer, DepartmentSerializer, FeePackageReadSerializer, FeePackageWriteSerializer, FeePackageItemReadSerializer, FeePackageItemWriteSerializer,
+    FeeSettingsReadSerializer, FeeSettingsWriteSerializer, FeeStructureReadSerializer, FeeStructureWriteSerializer, FeeTypeSerializer,
+    GradingScaleSerializer, GradingSettingsSerializer, HolidaySerializer, LeaveTypeSerializer, LocaleSettingsSerializer, NotificationSettingsSerializer, NotificationTemplateSerializer,
+    PromotionRulesSerializer, ResourceSerializer, RoleSerializer, RoomSerializer, SchoolSerializer, SectionSerializer, StaffRoleSerializer, SubjectSerializer,
+    TermSerializer,
+)
 from core.serial.admin.teacher_assignment_serializer import ClassTeacherSerializer
 from core.views import IsSchoolAdmin
 
@@ -595,6 +604,67 @@ class FeeStructureViewSet(rw_viewsets.ModelViewSet):
         obj.status = FeeStructure.Status.INACTIVE
         obj.save(update_fields=["status", "updated_at"])
         serializer = FeeStructureReadSerializer(obj, context=self.get_serializer_context())
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class FeePackageViewSet(rw_viewsets.ModelViewSet):
+    queryset = FeePackage.objects.select_related("academic_session", "school_class")
+    pagination_class = CustomLimitOffsetPagination
+    read_serializer_class = FeePackageReadSerializer
+    write_serializer_class = FeePackageWriteSerializer
+    lookup_url_kwarg = "fee_package_id"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+
+        if user.is_superuser:
+            return qs
+
+        return qs.filter(school=user.school)
+
+    def get_permissions(self):
+        if self.action == "create":
+            permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
+        else:
+            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
+        return [permission() for permission in permission_classes]
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        serializer.save(school=user.school, created_by=user, updated_by=user)
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user)
+
+    def perform_destroy(self, instance):
+        if instance.status != FeeStructure.Status.DRAFT:
+            raise ValidationError("Only draft fee package can be deleted.")
+
+        instance.delete()
+
+    @action(detail=True, methods=["post"])
+    def activate(self, request: Request, fee_package_id=None):
+        obj = self.get_object()
+
+        if obj.status != FeePackage.Status.DRAFT:
+            raise ValidationError("Only draft fee package can be activated.")
+
+        obj.status = FeePackage.Status.ACTIVE
+        obj.save(update_fields=["status", "updated_at"])
+        serializer = FeePackageReadSerializer(obj, context=self.get_serializer_context())
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"])
+    def deactivate(self, request: Request, fee_package_id=None):
+        obj = self.get_object()
+
+        if obj.status != FeePackage.Status.ACTIVE:
+            raise ValidationError("Only active fee package can be deactivated.")
+
+        obj.status = FeePackage.Status.INACTIVE
+        obj.save(update_fields=["status", "updated_at"])
+        serializer = FeePackageReadSerializer(obj, context=self.get_serializer_context())
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

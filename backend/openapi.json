@@ -1568,6 +1568,224 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/fee-packages/:
+    get:
+      operationId: fee_packages_list
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - fee-packages
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFeePackageReadList'
+          description: ''
+    post:
+      operationId: fee_packages_create
+      tags:
+      - fee-packages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeePackageWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FeePackageWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FeePackageWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeePackageRead'
+          description: ''
+  /api/fee-packages/{fee_package_id}/:
+    get:
+      operationId: fee_packages_retrieve
+      parameters:
+      - in: path
+        name: fee_package_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee package.
+        required: true
+      tags:
+      - fee-packages
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeePackageRead'
+          description: ''
+    put:
+      operationId: fee_packages_update
+      parameters:
+      - in: path
+        name: fee_package_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee package.
+        required: true
+      tags:
+      - fee-packages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeePackageWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FeePackageWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FeePackageWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeePackageRead'
+          description: ''
+    patch:
+      operationId: fee_packages_partial_update
+      parameters:
+      - in: path
+        name: fee_package_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee package.
+        required: true
+      tags:
+      - fee-packages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFeePackageWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFeePackageWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFeePackageWriteRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeePackageRead'
+          description: ''
+    delete:
+      operationId: fee_packages_destroy
+      parameters:
+      - in: path
+        name: fee_package_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee package.
+        required: true
+      tags:
+      - fee-packages
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/fee-packages/{fee_package_id}/activate/:
+    post:
+      operationId: fee_packages_activate_create
+      parameters:
+      - in: path
+        name: fee_package_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee package.
+        required: true
+      tags:
+      - fee-packages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeePackageWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FeePackageWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FeePackageWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeePackageRead'
+          description: ''
+  /api/fee-packages/{fee_package_id}/deactivate/:
+    post:
+      operationId: fee_packages_deactivate_create
+      parameters:
+      - in: path
+        name: fee_package_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fee package.
+        required: true
+      tags:
+      - fee-packages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeePackageWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FeePackageWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FeePackageWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeePackageRead'
+          description: ''
   /api/fee-settings/:
     get:
       operationId: fee_settings_retrieve
@@ -7060,8 +7278,8 @@ components:
           maxLength: 100
         max_capacity:
           type: integer
-          maximum: 500
-          minimum: 0
+          maximum: 2147483647
+          minimum: -2147483648
           nullable: true
         current_capacity:
           type: string
@@ -7069,6 +7287,7 @@ components:
         is_active:
           type: boolean
           readOnly: true
+          nullable: true
         teachers:
           type: string
           readOnly: true
@@ -7103,8 +7322,8 @@ components:
           maxLength: 100
         max_capacity:
           type: integer
-          maximum: 500
-          minimum: 0
+          maximum: 2147483647
+          minimum: -2147483648
           nullable: true
       required:
       - name
@@ -7467,6 +7686,88 @@ components:
       description: |-
         * `test` - Test
         * `exam` - Exam
+    FeePackageRead:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        academic_session:
+          allOf:
+          - $ref: '#/components/schemas/AcademicSession'
+          readOnly: true
+        school_class:
+          allOf:
+          - $ref: '#/components/schemas/ClassMinimal'
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        discount_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusC7dEnum'
+          readOnly: true
+        status_label:
+          type: string
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        updated_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - academic_session
+      - created_at
+      - created_by
+      - description
+      - discount_amount
+      - id
+      - name
+      - school_class
+      - status
+      - status_label
+      - updated_at
+      - updated_by
+    FeePackageWriteRequest:
+      type: object
+      properties:
+        academic_session:
+          type: integer
+        school_class:
+          type: integer
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+        discount_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+      required:
+      - academic_session
+      - name
+      - school_class
     FeeSettingsRead:
       type: object
       properties:
@@ -7570,7 +7871,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/FeeStructureReadStatusEnum'
+          - $ref: '#/components/schemas/StatusC7dEnum'
           readOnly: true
         status_label:
           type: string
@@ -7603,16 +7904,6 @@ components:
       - status_label
       - updated_at
       - updated_by
-    FeeStructureReadStatusEnum:
-      enum:
-      - draft
-      - active
-      - inactive
-      type: string
-      description: |-
-        * `draft` - Draft
-        * `active` - Active
-        * `inactive` - Inactive
     FeeStructureWriteRequest:
       type: object
       properties:
@@ -8032,6 +8323,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AccountingPeriodRead'
+    PaginatedFeePackageReadList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeePackageRead'
     PaginatedFeeStructureReadList:
       type: object
       required:
@@ -8229,6 +8543,23 @@ components:
           nullable: true
         is_open_for_applications:
           type: boolean
+    PatchedFeePackageWriteRequest:
+      type: object
+      properties:
+        academic_session:
+          type: integer
+        school_class:
+          type: integer
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+        discount_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
     PatchedFeeStructureWriteRequest:
       type: object
       properties:
@@ -9375,6 +9706,16 @@ components:
         * `active` - Active
         * `on_leave` - On Leave
         * `terminated` - Terminated
+    StatusC7dEnum:
+      enum:
+      - draft
+      - active
+      - inactive
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `active` - Active
+        * `inactive` - Inactive
     Student:
       type: object
       properties:

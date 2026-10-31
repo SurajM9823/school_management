@@ -215,7 +215,7 @@ export type Class = {
   name: string;
   max_capacity?: number | null;
   readonly current_capacity: string;
-  readonly is_active: boolean;
+  readonly is_active: boolean | null;
   readonly teachers: string;
   readonly subjects: string;
 };
@@ -363,6 +363,29 @@ export type ExamSubjectRequest = {
  */
 export type ExamTypeEnum = "test" | "exam";
 
+export type FeePackageRead = {
+  readonly id: number;
+  academic_session: AcademicSession;
+  school_class: ClassMinimal;
+  readonly name: string;
+  readonly description: string;
+  readonly discount_amount: string;
+  status: StatusC7dEnum;
+  readonly status_label: string;
+  readonly created_by: number | null;
+  readonly updated_by: number | null;
+  readonly created_at: string;
+  readonly updated_at: string;
+};
+
+export type FeePackageWriteRequest = {
+  academic_session: number;
+  school_class: number;
+  name: string;
+  description?: string;
+  discount_amount?: string;
+};
+
 export type FeeSettingsRead = {
   readonly id: number;
   /**
@@ -403,20 +426,13 @@ export type FeeStructureRead = {
   school_class: ClassMinimal;
   fee_type: FeeType;
   readonly amount: string;
-  status: FeeStructureReadStatusEnum;
+  status: StatusC7dEnum;
   readonly status_label: string;
   readonly created_by: number | null;
   readonly updated_by: number | null;
   readonly created_at: string;
   readonly updated_at: string;
 };
-
-/**
- * * `draft` - Draft
- * * `active` - Active
- * * `inactive` - Inactive
- */
-export type FeeStructureReadStatusEnum = "draft" | "active" | "inactive";
 
 export type FeeStructureWriteRequest = {
   academic_session: number;
@@ -573,6 +589,13 @@ export type PaginatedAccountingPeriodReadList = {
   results: Array<AccountingPeriodRead>;
 };
 
+export type PaginatedFeePackageReadList = {
+  count: number;
+  next?: string | null;
+  previous?: string | null;
+  results: Array<FeePackageRead>;
+};
+
 export type PaginatedFeeStructureReadList = {
   count: number;
   next?: string | null;
@@ -646,6 +669,14 @@ export type PatchedEventRequest = {
   start_date?: string;
   end_date?: string | null;
   is_open_for_applications?: boolean;
+};
+
+export type PatchedFeePackageWriteRequest = {
+  academic_session?: number;
+  school_class?: number;
+  name?: string;
+  description?: string;
+  discount_amount?: string;
 };
 
 export type PatchedFeeStructureWriteRequest = {
@@ -980,6 +1011,13 @@ export type StaffRoleRequest = {
  */
 export type StaffStatusEnum = "active" | "on_leave" | "terminated";
 
+/**
+ * * `draft` - Draft
+ * * `active` - Active
+ * * `inactive` - Inactive
+ */
+export type StatusC7dEnum = "draft" | "active" | "inactive";
+
 export type Student = {
   readonly id: number;
   readonly user_email: string;
@@ -1280,6 +1318,10 @@ export type ExamRequestWritable = {
   subjects: Array<ExamSubjectRequest>;
 };
 
+export type FeePackageReadWritable = {
+  [key: string]: unknown;
+};
+
 export type FeeStructureReadWritable = {
   [key: string]: unknown;
 };
@@ -1324,6 +1366,13 @@ export type PaginatedAccountingPeriodReadListWritable = {
   next?: string | null;
   previous?: string | null;
   results: Array<unknown>;
+};
+
+export type PaginatedFeePackageReadListWritable = {
+  count: number;
+  next?: string | null;
+  previous?: string | null;
+  results: Array<FeePackageReadWritable>;
 };
 
 export type PaginatedFeeStructureReadListWritable = {
@@ -2894,6 +2943,155 @@ export type EventsUpdateResponses = {
 };
 
 export type EventsUpdateResponse = EventsUpdateResponses[keyof EventsUpdateResponses];
+
+export type FeePackagesListData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Number of results to return per page.
+     */
+    limit?: number;
+    /**
+     * The initial index from which to return the results.
+     */
+    offset?: number;
+  };
+  url: "/api/fee-packages/";
+};
+
+export type FeePackagesListResponses = {
+  200: PaginatedFeePackageReadList;
+};
+
+export type FeePackagesListResponse = FeePackagesListResponses[keyof FeePackagesListResponses];
+
+export type FeePackagesCreateData = {
+  body: FeePackageWriteRequest;
+  path?: never;
+  query?: never;
+  url: "/api/fee-packages/";
+};
+
+export type FeePackagesCreateResponses = {
+  201: FeePackageRead;
+};
+
+export type FeePackagesCreateResponse = FeePackagesCreateResponses[keyof FeePackagesCreateResponses];
+
+export type FeePackagesDestroyData = {
+  body?: never;
+  path: {
+    /**
+     * A unique integer value identifying this fee package.
+     */
+    fee_package_id: number;
+  };
+  query?: never;
+  url: "/api/fee-packages/{fee_package_id}/";
+};
+
+export type FeePackagesDestroyResponses = {
+  /**
+   * No response body
+   */
+  204: void;
+};
+
+export type FeePackagesDestroyResponse = FeePackagesDestroyResponses[keyof FeePackagesDestroyResponses];
+
+export type FeePackagesRetrieveData = {
+  body?: never;
+  path: {
+    /**
+     * A unique integer value identifying this fee package.
+     */
+    fee_package_id: number;
+  };
+  query?: never;
+  url: "/api/fee-packages/{fee_package_id}/";
+};
+
+export type FeePackagesRetrieveResponses = {
+  200: FeePackageRead;
+};
+
+export type FeePackagesRetrieveResponse = FeePackagesRetrieveResponses[keyof FeePackagesRetrieveResponses];
+
+export type FeePackagesPartialUpdateData = {
+  body?: PatchedFeePackageWriteRequest;
+  path: {
+    /**
+     * A unique integer value identifying this fee package.
+     */
+    fee_package_id: number;
+  };
+  query?: never;
+  url: "/api/fee-packages/{fee_package_id}/";
+};
+
+export type FeePackagesPartialUpdateResponses = {
+  200: FeePackageRead;
+};
+
+export type FeePackagesPartialUpdateResponse =
+  FeePackagesPartialUpdateResponses[keyof FeePackagesPartialUpdateResponses];
+
+export type FeePackagesUpdateData = {
+  body: FeePackageWriteRequest;
+  path: {
+    /**
+     * A unique integer value identifying this fee package.
+     */
+    fee_package_id: number;
+  };
+  query?: never;
+  url: "/api/fee-packages/{fee_package_id}/";
+};
+
+export type FeePackagesUpdateResponses = {
+  200: FeePackageRead;
+};
+
+export type FeePackagesUpdateResponse = FeePackagesUpdateResponses[keyof FeePackagesUpdateResponses];
+
+export type FeePackagesActivateCreateData = {
+  body: FeePackageWriteRequest;
+  path: {
+    /**
+     * A unique integer value identifying this fee package.
+     */
+    fee_package_id: number;
+  };
+  query?: never;
+  url: "/api/fee-packages/{fee_package_id}/activate/";
+};
+
+export type FeePackagesActivateCreateResponses = {
+  200: FeePackageRead;
+};
+
+export type FeePackagesActivateCreateResponse =
+  FeePackagesActivateCreateResponses[keyof FeePackagesActivateCreateResponses];
+
+export type FeePackagesDeactivateCreateData = {
+  body: FeePackageWriteRequest;
+  path: {
+    /**
+     * A unique integer value identifying this fee package.
+     */
+    fee_package_id: number;
+  };
+  query?: never;
+  url: "/api/fee-packages/{fee_package_id}/deactivate/";
+};
+
+export type FeePackagesDeactivateCreateResponses = {
+  200: FeePackageRead;
+};
+
+export type FeePackagesDeactivateCreateResponse =
+  FeePackagesDeactivateCreateResponses[keyof FeePackagesDeactivateCreateResponses];
 
 export type FeeSettingsRetrieveData = {
   body?: never;

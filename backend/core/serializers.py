@@ -29,6 +29,8 @@ from .models import (
     Building,
     Room,
     Resource,
+    FeePackage,
+    FeePackageItem,
     FeeType,
     FeeSettings,
     FeeStructure,
@@ -417,6 +419,91 @@ class FeeStructureReadSerializer(serializers.ModelSerializer):
         ]
         # fmt: on
         read_only_fields = fields
+
+
+class FeePackageReadSerializer(serializers.ModelSerializer):
+    academic_session = AcademicSessionSerializer(read_only=True)
+    school_class = ClassMinimalSerializer(read_only=True)
+    status_label = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = FeePackage
+        # fmt: off
+        fields = [
+            "id", "academic_session", "school_class", "name", "description", "discount_amount",
+            "status", "status_label", "created_by", "updated_by", "created_at", "updated_at",
+        ]
+        # fmt: on
+        read_only_fields = fields
+
+
+class FeePackageWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeePackage
+        fields = ["academic_session", "school_class", "name", "description", "discount_amount"]
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        school = user.school
+
+        academic_session = attrs.get("academic_session", getattr(self.instance, "academic_session", None))
+        school_class = attrs.get("school_class", getattr(self.instance, "school_class", None))
+        name = attrs.get("name", self.instance.name if self.instance else None)
+
+        queryset = self.Meta.model.objects.filter(
+            school=school,
+            academic_session=academic_session,
+            school_class=school_class,
+            name__iexact=name,
+        )
+
+        # Exclude the current instance during updates
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+
+        if queryset.exists():
+            raise serializers.ValidationError(
+                {"name": "A fee package with this name already exists for the selected class and academic session."}
+            )
+
+        return attrs
+
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except DjangoValidationError as exc:
+            handle_django_validation_error(exc)
+
+    def update(self, instance, validated_data):
+        try:
+            return super().update(instance, validated_data)
+        except DjangoValidationError as exc:
+            handle_django_validation_error(exc)
+
+
+class FeePackageItemReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeePackageItem
+        fields = ["id", "package", "fee_structure", "created_at", "updated_at"]
+        read_only_fields = fields
+
+
+class FeePackageItemWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeePackageItem
+        fields = ["package", "fee_structure"]
+
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except DjangoValidationError as exc:
+            handle_django_validation_error(exc)
+
+    def update(self, instance, validated_data):
+        try:
+            return super().update(instance, validated_data)
+        except DjangoValidationError as exc:
+            handle_django_validation_error(exc)
 
 
 class NotificationSettingsSerializer(serializers.ModelSerializer):

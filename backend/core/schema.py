@@ -1,5 +1,4 @@
 from drf_rw_serializers.generics import GenericAPIView as RWGenericAPIView
-
 from drf_spectacular.openapi import AutoSchema
 
 

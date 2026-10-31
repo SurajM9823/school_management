@@ -9,25 +9,32 @@ import api from "@/api";
 import {
   AcademicSession,
   Class,
+  FeePackageRead,
+  FeePackageWriteRequest,
   FeeStructureRead,
   FeeStructureWriteRequest,
   FeeType,
+  PaginatedFeePackageReadList,
   PaginatedFeeStructureReadList,
 } from "@/client";
-import { zFeeStructuresCreateBody } from "@/client/zod.gen";
+import { zFeePackagesCreateBody, zFeeStructuresCreateBody } from "@/client/zod.gen";
 import Button from "@/components/common/Button";
 import Card from "@/components/common/Card";
 import { handleDrfErrors } from "@/utils/api-error";
 
 export default function FeeStructures() {
   const [structures, setStructures] = useState<PaginatedFeeStructureReadList | null>(null);
+  const [feePackages, setFeePackages] = useState<PaginatedFeePackageReadList | null>(null);
   const [editingStructureId, setEditingStructureId] = useState<number | null>(null);
+  const [editingFeePackageId, setEditingFeePackageId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [showFeePackageModal, setShowFeePackageModal] = useState(false);
   const [academicSessions, setAcademicSessions] = useState<AcademicSession[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [generalErrors, setGeneralErrors] = useState<string[]>([]);
+  const [feePackageGeneralErrors, setFeePackageGeneralErrors] = useState<string[]>([]);
   const [error, setError] = useState("");
 
   const fetchFeeStructures = async () => {
@@ -37,6 +44,18 @@ export default function FeeStructures() {
       setStructures(data);
     } catch (err) {
       console.error("Error fetching fee structures:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchFeePackages = async () => {
+    setIsLoading(true);
+    try {
+      const { data } = await api.get("/fee-packages/");
+      setFeePackages(data);
+    } catch (err) {
+      console.error("Error fetching fee packages:", err);
     } finally {
       setIsLoading(false);
     }
@@ -77,11 +96,107 @@ export default function FeeStructures() {
     reset({
       academic_session: structure.academic_session.id,
       school_class: structure.school_class.id,
-      fee_type: structure.fee_type.id,
       amount: structure.amount,
     });
 
     setShowForm(true);
+  };
+
+  const {
+    register: registerFeePackage,
+    handleSubmit: handleFeePackageSubmit,
+    setError: setFeePackageError,
+    reset: resetFeePackage,
+    formState: { errors: feePackageErrors, isSubmitting: isFeePackageSubmitting },
+  } = useForm<FeePackageWriteRequest>({
+    defaultValues: {},
+    resolver: zodResolver(zFeePackagesCreateBody),
+  });
+
+  const onFeePackageSubmit: SubmitHandler<FeePackageWriteRequest> = async (data) => {
+    try {
+      if (editingFeePackageId) {
+        await api.put(`/fee-packages/${editingFeePackageId}/`, data);
+        toast.success("Fee package updated successfully.");
+      } else {
+        await api.post("/fee-packages/", data);
+        toast.success("Fee package created successfully.");
+      }
+      await fetchFeePackages();
+      setShowFeePackageModal(false);
+      setEditingFeePackageId(null);
+      resetFeePackage({});
+    } catch (err: unknown) {
+      handleDrfErrors<FeePackageWriteRequest>(err, setFeePackageError, setFeePackageGeneralErrors);
+    }
+  };
+
+  const handleEditFeePackage = (feepackage: FeePackageRead) => {
+    setEditingFeePackageId(feepackage.id);
+
+    resetFeePackage({
+      academic_session: feepackage.academic_session.id,
+      school_class: feepackage.school_class.id,
+      name: feepackage.name,
+      description: feepackage.description,
+      discount_amount: feepackage.discount_amount,
+    });
+
+    setShowFeePackageModal(true);
+  };
+
+  const handleDeleteFeePackage = async (fee_package_id: number) => {
+    if (!window.confirm("Are you sure you want to delete this fee packkage?")) return;
+    try {
+      await api.delete(`/fee-packages/${fee_package_id}/`);
+      await fetchFeePackages();
+      toast.success("Fee package deleted successfully.");
+    } catch (err) {
+      console.error("Error deleting fee package:", err);
+      toast.error("Failed to delete fee package.");
+    }
+  };
+
+  const handleActivateFeePackage = async (id: number) => {
+    try {
+      setIsLoading(true);
+      const { data } = await api.post(`/fee-packages/${id}/activate/`);
+      setFeePackages((prev) =>
+        prev
+          ? {
+              ...prev,
+              results: prev.results.map((feePackage) => (feePackage.id === id ? data : feePackage)),
+            }
+          : null,
+      );
+      toast.success("Fee package activated successfully.");
+    } catch (err) {
+      toast.error("Failed to activate fee package.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCloseFeePackage = async (id: number) => {
+    if (!window.confirm("Are you sure you want to close this fee package?")) return;
+
+    try {
+      setIsLoading(true);
+      const { data } = await api.post(`/fee-packages/${id}/close/`);
+      setFeePackages((prev) =>
+        prev
+          ? {
+              ...prev,
+              results: prev.results.map((feePackage) => (feePackage.id === id ? data : feePackage)),
+            }
+          : null,
+      );
+      toast.success("Fee package closed successfully.");
+    } catch (err) {
+      toast.error("Failed to close fee package.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -102,7 +217,13 @@ export default function FeeStructures() {
 
     const fetchData = async () => {
       try {
-        await Promise.all([fetchFeeStructures(), fetchAcademicSessions(), fetchSchoolClasses(), fetchFeeTypes()]);
+        await Promise.all([
+          fetchFeeStructures(),
+          fetchAcademicSessions(),
+          fetchSchoolClasses(),
+          fetchFeeTypes(),
+          fetchFeePackages(),
+        ]);
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
       }
@@ -311,6 +432,251 @@ export default function FeeStructures() {
           <p className="text-center py-4 text-gray-500">No fee structures defined yet.</p>
         )}
       </Card>
+
+      <Card title="Fee packages">
+        <div className="flex justify-end mb-4">
+          <Button
+            variant="primary"
+            onClick={() => {
+              setEditingFeePackageId(null);
+              resetFeePackage({});
+              setShowFeePackageModal(true);
+            }}
+            disabled={isLoading}
+          >
+            Add package
+          </Button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Academic session
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Class
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Description
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  discount amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {feePackages?.results.map((feepackage) => (
+                <tr key={feepackage.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {feepackage.academic_session.name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{feepackage.school_class.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{feepackage.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {feepackage.description || "N/A"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{feepackage.discount_amount}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
+                      {feepackage.status_label}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <Button
+                      variant="icon"
+                      size="sm"
+                      // onClick={() => alert(`Viewing ${package.name}`)}
+                      title="View Details"
+                    >
+                      <Eye size={16} className="text-blue-600" />
+                    </Button>
+                    {feepackage.status === "draft" && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="mr-2"
+                        onClick={() => handleActivateFeePackage(feepackage.id)}
+                      >
+                        Activate
+                      </Button>
+                    )}
+
+                    {feepackage.status === "active" && (
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        className="mr-2"
+                        onClick={() => handleCloseFeePackage(feepackage.id)}
+                      >
+                        Close
+                      </Button>
+                    )}
+                    <Button variant="icon" size="sm" title="Edit" onClick={() => handleEditFeePackage(feepackage)}>
+                      <Edit size={16} className="text-yellow-600" />
+                    </Button>
+                    {feepackage.status === "draft" && (
+                      <Button
+                        variant="icon"
+                        size="sm"
+                        title="Delete"
+                        onClick={() => handleDeleteFeePackage(feepackage.id)}
+                      >
+                        <Trash2 size={16} className="text-red-600" />
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {feePackages?.results.length === 0 && (
+          <p className="text-center py-4 text-gray-500">No fee packages available.</p>
+        )}
+      </Card>
+
+      {/* Fee package Modal */}
+      {showFeePackageModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              {editingFeePackageId ? "Edit package" : "Add new package"}
+            </h3>
+            <form id="fee-package-form" onSubmit={handleFeePackageSubmit(onFeePackageSubmit)}>
+              {feePackageGeneralErrors.length > 0 && (
+                <div role="alert" className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                  {feePackageGeneralErrors.map((err, idx) => (
+                    <p key={idx}>{err}</p>
+                  ))}
+                </div>
+              )}
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="academic_session" className="block text-sm font-medium text-gray-700">
+                    Academic session
+                  </label>
+                  <select
+                    id="academic_session"
+                    {...registerFeePackage("academic_session", {
+                      valueAsNumber: true,
+                    })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    aria-invalid={feePackageErrors.academic_session ? "true" : "false"}
+                  >
+                    <option value="">Select academic session</option>
+                    {academicSessions.map((session) => (
+                      <option key={session.id} value={session.id}>
+                        {session.name}
+                      </option>
+                    ))}
+                  </select>
+                  {feePackageErrors.academic_session && (
+                    <p className="mt-1 text-sm text-red-600">{feePackageErrors.academic_session.message}</p>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="school_class" className="block text-sm font-medium text-gray-700">
+                    Class
+                  </label>
+                  <select
+                    id="school_class"
+                    {...registerFeePackage("school_class", {
+                      valueAsNumber: true,
+                    })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    aria-invalid={feePackageErrors.school_class ? "true" : "false"}
+                  >
+                    <option value="">Select class</option>
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  {feePackageErrors.school_class && (
+                    <p className="mt-1 text-sm text-red-600">{feePackageErrors.school_class.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                    Name
+                  </label>
+                  <input
+                    {...registerFeePackage("name")}
+                    type="text"
+                    id="name"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                    aria-invalid={feePackageErrors.name ? "true" : "false"}
+                    autoComplete="off"
+                  />
+                  {feePackageErrors.name && (
+                    <p className="mt-1 text-sm text-red-600">{feePackageErrors.name.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="discount_amount" className="block text-sm font-medium text-gray-700">
+                    Discount amount
+                  </label>
+                  <input
+                    {...registerFeePackage("discount_amount")}
+                    type="number"
+                    id="discount_amount"
+                    step="0.01"
+                    min="0.00"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                    aria-invalid={feePackageErrors.discount_amount ? "true" : "false"}
+                  />
+                  {feePackageErrors.discount_amount && (
+                    <p className="mt-1 text-sm text-red-600">{feePackageErrors.discount_amount.message}</p>
+                  )}
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                    Description
+                  </label>
+                  <textarea
+                    {...registerFeePackage("description")}
+                    name="description"
+                    id="description"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                    aria-invalid={feePackageErrors.description ? "true" : "false"}
+                  ></textarea>
+                  {feePackageErrors.description && (
+                    <p className="mt-1 text-sm text-red-600">{feePackageErrors.description.message}</p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditingFeePackageId(null);
+                    setShowFeePackageModal(false);
+                    resetFeePackage({});
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" variant="primary" disabled={isFeePackageSubmitting}>
+                  {isFeePackageSubmitting ? "Saving..." : editingFeePackageId ? "Update package" : "Add package"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

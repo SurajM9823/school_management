@@ -395,13 +395,132 @@ class FeeStructure(TimeStampedMixin, UserAuditMixin):
             "fee_type": self.fee_type,
         }
 
+        errors = {}
+
         for field, obj in related_objects.items():
-            if obj and self.school and obj.school.school_id != self.school.school_id:
-                raise ValidationError({field: "This object must belong to the same school."})
+            if obj and self.school and obj.school != self.school:
+                errors[field] = "This object must belong to the same school."
+
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class FeePackage(TimeStampedMixin, UserAuditMixin):
+    """
+    Represents a predefined collection of fees applicable to a specific class and academic session.
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        ACTIVE = "active", "Active"
+        INACTIVE = "inactive", "Inactive"
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="fee_packages")
+    academic_session = models.ForeignKey(AcademicSession, on_delete=models.PROTECT, related_name="fee_packages")
+    school_class = models.ForeignKey("Class", on_delete=models.PROTECT, related_name="fee_packages")
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    discount_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=Status.choices,
+        default=Status.DRAFT,
+        db_index=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["school", "academic_session", "school_class", "name"],
+                name="unique_fee_package_per_class_session",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.name} - {self.school_class} - {self.academic_session}"
+
+    def clean(self):
+        super().clean()
+
+        related_objects = {
+            "academic_session": self.academic_session,
+            "school_class": self.school_class,
+        }
+
+        errors = {}
+
+        for field, obj in related_objects.items():
+            if obj and self.school and obj.school != self.school:
+                errors[field] = "This object must belong to the same school."
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @property
+    def subtotal(self):
+        return sum((item.amount for item in self.items.all()), Decimal("0.00"))
+
+    @property
+    def total_amount(self):
+        return self.subtotal - self.discount_amount
+
+
+class FeePackageItem(TimeStampedMixin):
+    """
+    Represents an individual fee included in a fee package.
+    """
+
+    package = models.ForeignKey(FeePackage, on_delete=models.CASCADE, related_name="items")
+    fee_structure = models.ForeignKey(FeeStructure, on_delete=models.PROTECT, related_name="package_items")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["package", "fee_structure"], name="unique_fee_structure_per_package"),
+        ]
+
+    def __str__(self):
+        return f"{self.package.name} - {self.fee_structure.fee_type.name}"
+
+    def clean(self):
+        super().clean()
+
+        package = self.package
+        fee_structure = self.fee_structure
+
+        errors = []
+
+        if fee_structure.school != package.school:
+            errors.append("Fee structure must belong to the same school as the package.")
+
+        if fee_structure.academic_session_id != package.academic_session_id:
+            errors.append("Fee structure must belong to the same academic session as the package.")
+
+        if fee_structure.school_class_id != package.school_class_id:
+            errors.append("Fee structure must belong to the same class as the package.")
+
+        if errors:
+            raise ValidationError({"fee_structure": errors})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @property
+    def amount(self):
+        return self.fee_structure.amount
 
 
 class NotificationSettings(models.Model):

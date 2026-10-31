@@ -198,9 +198,9 @@ export const zCertificateRequest = z.object({
 export const zClass = z.object({
   id: z.int().readonly(),
   name: z.string().max(100),
-  max_capacity: z.int().gte(0).lte(500).nullish(),
+  max_capacity: z.int().gte(-2147483648).lte(2147483647).nullish(),
   current_capacity: z.string().readonly(),
-  is_active: z.boolean().readonly(),
+  is_active: z.boolean().readonly().nullable(),
   teachers: z.string().readonly(),
   subjects: z.string().readonly(),
 });
@@ -212,7 +212,7 @@ export const zClassMinimal = z.object({
 
 export const zClassRequest = z.object({
   name: z.string().min(1).max(100),
-  max_capacity: z.int().gte(0).lte(500).nullish(),
+  max_capacity: z.int().gte(-2147483648).lte(2147483647).nullish(),
 });
 
 /**
@@ -348,12 +348,16 @@ export const zExamRequest = z.object({
   subjects: z.array(zExamSubjectRequest),
 });
 
-/**
- * * `draft` - Draft
- * * `active` - Active
- * * `inactive` - Inactive
- */
-export const zFeeStructureReadStatusEnum = z.enum(["draft", "active", "inactive"]);
+export const zFeePackageWriteRequest = z.object({
+  academic_session: z.int(),
+  school_class: z.int(),
+  name: z.string().min(1).max(100),
+  description: z.string().optional(),
+  discount_amount: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .optional(),
+});
 
 export const zFeeStructureWriteRequest = z.object({
   academic_session: z.int(),
@@ -442,23 +446,6 @@ export const zFeeType = z.object({
   frequency: zFrequencyEnum,
   frequency_label: z.string().readonly(),
   is_mandatory: z.boolean().optional(),
-  created_at: z.iso.datetime().readonly(),
-  updated_at: z.iso.datetime().readonly(),
-});
-
-export const zFeeStructureRead = z.object({
-  id: z.int().readonly(),
-  academic_session: zAcademicSession,
-  school_class: zClassMinimal,
-  fee_type: zFeeType,
-  amount: z
-    .string()
-    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
-    .readonly(),
-  status: zFeeStructureReadStatusEnum,
-  status_label: z.string().readonly(),
-  created_by: z.int().readonly().nullable(),
-  updated_by: z.int().readonly().nullable(),
   created_at: z.iso.datetime().readonly(),
   updated_at: z.iso.datetime().readonly(),
 });
@@ -567,13 +554,6 @@ export const zPaginatedAccountingPeriodReadList = z.object({
   results: z.array(zAccountingPeriodRead),
 });
 
-export const zPaginatedFeeStructureReadList = z.object({
-  count: z.int(),
-  next: z.url().nullish(),
-  previous: z.url().nullish(),
-  results: z.array(zFeeStructureRead),
-});
-
 export const zPaginatedFinancialYearReadList = z.object({
   count: z.int(),
   next: z.url().nullish(),
@@ -649,6 +629,17 @@ export const zPatchedEventRequest = z.object({
   start_date: z.iso.date().optional(),
   end_date: z.iso.date().nullish(),
   is_open_for_applications: z.boolean().optional(),
+});
+
+export const zPatchedFeePackageWriteRequest = z.object({
+  academic_session: z.int().optional(),
+  school_class: z.int().optional(),
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().optional(),
+  discount_amount: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .optional(),
 });
 
 export const zPatchedFeeStructureWriteRequest = z.object({
@@ -879,6 +870,62 @@ export const zStaffRoleRequest = z.object({
  * * `terminated` - Terminated
  */
 export const zStaffStatusEnum = z.enum(["active", "on_leave", "terminated"]);
+
+/**
+ * * `draft` - Draft
+ * * `active` - Active
+ * * `inactive` - Inactive
+ */
+export const zStatusC7dEnum = z.enum(["draft", "active", "inactive"]);
+
+export const zFeePackageRead = z.object({
+  id: z.int().readonly(),
+  academic_session: zAcademicSession,
+  school_class: zClassMinimal,
+  name: z.string().readonly(),
+  description: z.string().readonly(),
+  discount_amount: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .readonly(),
+  status: zStatusC7dEnum,
+  status_label: z.string().readonly(),
+  created_by: z.int().readonly().nullable(),
+  updated_by: z.int().readonly().nullable(),
+  created_at: z.iso.datetime().readonly(),
+  updated_at: z.iso.datetime().readonly(),
+});
+
+export const zFeeStructureRead = z.object({
+  id: z.int().readonly(),
+  academic_session: zAcademicSession,
+  school_class: zClassMinimal,
+  fee_type: zFeeType,
+  amount: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .readonly(),
+  status: zStatusC7dEnum,
+  status_label: z.string().readonly(),
+  created_by: z.int().readonly().nullable(),
+  updated_by: z.int().readonly().nullable(),
+  created_at: z.iso.datetime().readonly(),
+  updated_at: z.iso.datetime().readonly(),
+});
+
+export const zPaginatedFeePackageReadList = z.object({
+  count: z.int(),
+  next: z.url().nullish(),
+  previous: z.url().nullish(),
+  results: z.array(zFeePackageRead),
+});
+
+export const zPaginatedFeeStructureReadList = z.object({
+  count: z.int(),
+  next: z.url().nullish(),
+  previous: z.url().nullish(),
+  results: z.array(zFeeStructureRead),
+});
 
 /**
  * * `active` - Active
@@ -1299,7 +1346,7 @@ export const zCertificateWritable = z.object({
 
 export const zClassWritable = z.object({
   name: z.string().max(100),
-  max_capacity: z.int().gte(0).lte(500).nullish(),
+  max_capacity: z.int().gte(-2147483648).lte(2147483647).nullish(),
 });
 
 export const zDepartmentWritable = z.object({
@@ -1357,6 +1404,8 @@ export const zExamRequestWritable = z.object({
   subjects: z.array(zExamSubjectRequest),
 });
 
+export const zFeePackageReadWritable = z.record(z.string(), z.unknown());
+
 export const zFeeStructureReadWritable = z.record(z.string(), z.unknown());
 
 export const zFeeTypeWritable = z.object({
@@ -1399,6 +1448,13 @@ export const zPaginatedAccountingPeriodReadListWritable = z.object({
   next: z.url().nullish(),
   previous: z.url().nullish(),
   results: z.array(z.unknown()),
+});
+
+export const zPaginatedFeePackageReadListWritable = z.object({
+  count: z.int(),
+  next: z.url().nullish(),
+  previous: z.url().nullish(),
+  results: z.array(zFeePackageReadWritable),
 });
 
 export const zPaginatedFeeStructureReadListWritable = z.object({
@@ -2240,6 +2296,64 @@ export const zEventsUpdatePath = z.object({
 });
 
 export const zEventsUpdateResponse = zEvent;
+
+export const zFeePackagesListQuery = z.object({
+  limit: z.int().optional(),
+  offset: z.int().optional(),
+});
+
+export const zFeePackagesListResponse = zPaginatedFeePackageReadList;
+
+export const zFeePackagesCreateBody = zFeePackageWriteRequest;
+
+export const zFeePackagesCreateResponse = zFeePackageRead;
+
+export const zFeePackagesDestroyPath = z.object({
+  fee_package_id: z.int(),
+});
+
+/**
+ * No response body
+ */
+export const zFeePackagesDestroyResponse = z.void();
+
+export const zFeePackagesRetrievePath = z.object({
+  fee_package_id: z.int(),
+});
+
+export const zFeePackagesRetrieveResponse = zFeePackageRead;
+
+export const zFeePackagesPartialUpdateBody = zPatchedFeePackageWriteRequest;
+
+export const zFeePackagesPartialUpdatePath = z.object({
+  fee_package_id: z.int(),
+});
+
+export const zFeePackagesPartialUpdateResponse = zFeePackageRead;
+
+export const zFeePackagesUpdateBody = zFeePackageWriteRequest;
+
+export const zFeePackagesUpdatePath = z.object({
+  fee_package_id: z.int(),
+});
+
+export const zFeePackagesUpdateResponse = zFeePackageRead;
+
+export const zFeePackagesActivateCreateBody = zFeePackageWriteRequest;
+
+export const zFeePackagesActivateCreatePath = z.object({
+  fee_package_id: z.int(),
+});
+
+export const zFeePackagesActivateCreateResponse = zFeePackageRead;
+
+export const zFeePackagesDeactivateCreateBody = zFeePackageWriteRequest;
+
+export const zFeePackagesDeactivateCreatePath = z.object({
+  fee_package_id: z.int(),
+});
+
+export const zFeePackagesDeactivateCreateResponse = zFeePackageRead;
 
 export const zFeeSettingsRetrieveResponse = zFeeSettingsRead;
 
