@@ -112,7 +112,7 @@ class SuperuserSchoolCreateView(APIView):
         logger.info(f"Subscription created for school {school.name}")
 
         # Create admin
-        admin_data['school'] = school
+        admin_data['school'] = str(school.id)
         admin_data['password'] = admin_data.get('password', get_random_string(12))
         admin_serializer = SuperuserSerializer(data=admin_data, context={'request': request})
         if not admin_serializer.is_valid():

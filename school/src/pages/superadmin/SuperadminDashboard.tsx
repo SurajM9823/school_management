@@ -7,7 +7,7 @@ import Button from '../../components/common/Button';
 import api from '../../api';
 
 interface School {
-  school_id: string;
+  id: string;
   name: string;
   is_active: boolean;
   subscription_status: string;
@@ -127,7 +127,7 @@ const SuperadminDashboard: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {schools.map((school) => (
-                <tr key={school.school_id}>
+                <tr key={school.id}>
                   <td className="px-6 py-4 whitespace-nowrap">{school.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={school.is_active ? 'text/green-600' : 'text-red-600'}>
@@ -136,7 +136,7 @@ const SuperadminDashboard: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">{school.subscription_status}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <Link to={`/superadmin/subscriptions/${school.school_id}`}>
+                    <Link to={`/superadmin/subscriptions/${school.id}`}>
                       <Button variant="outline" size="sm">Manage</Button>
                     </Link>
                   </td>

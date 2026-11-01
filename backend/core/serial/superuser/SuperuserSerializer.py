@@ -21,7 +21,6 @@ class SuperuserSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
-        logger.debug(f"SuperuserSerializer validate data: {data}")
         if data.get('role') != 'admin':
             raise serializers.ValidationError("Superuser can only create users with role 'admin'.")
         if not data.get('email') or not data.get('name') or not data.get('school'):
@@ -50,7 +49,6 @@ class SuperuserSerializer(serializers.ModelSerializer):
             logger.info(f"Admin user {email} created for school {school.name} by superuser {self.context['request'].user.email}")
             return user
         except Exception as e:
-            logger.error(f"Admin creation error: {str(e)}")
             raise serializers.ValidationError(f"Failed to create admin: {str(e)}")
 
     def to_representation(self, instance):

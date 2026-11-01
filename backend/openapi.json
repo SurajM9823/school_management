@@ -7,6 +7,7 @@ paths:
   /api/accounting-periods/:
     get:
       operationId: accounting_periods_list
+      description: List all accounting periods for the school.
       parameters:
       - in: query
         name: financial_year
@@ -61,6 +62,7 @@ paths:
           description: ''
     post:
       operationId: accounting_periods_create
+      description: Create a new accounting period for the school.
       tags:
       - accounting-periods
       requestBody:
@@ -87,6 +89,7 @@ paths:
   /api/accounting-periods/{accounting_period_id}/:
     get:
       operationId: accounting_periods_retrieve
+      description: Retrieve a accounting period.
       parameters:
       - in: path
         name: accounting_period_id
@@ -107,6 +110,7 @@ paths:
           description: ''
     put:
       operationId: accounting_periods_update
+      description: Update a accounting period.
       parameters:
       - in: path
         name: accounting_period_id
@@ -139,6 +143,7 @@ paths:
           description: ''
     patch:
       operationId: accounting_periods_partial_update
+      description: Partially update a accounting period.
       parameters:
       - in: path
         name: accounting_period_id
@@ -170,6 +175,7 @@ paths:
           description: ''
     delete:
       operationId: accounting_periods_destroy
+      description: Delete a accounting period.
       parameters:
       - in: path
         name: accounting_period_id
@@ -187,6 +193,8 @@ paths:
   /api/accounting-periods/{accounting_period_id}/close/:
     post:
       operationId: accounting_periods_close_create
+      description: Close an open accounting period. Only accounting periods with OPEN
+        status can be closed.
       parameters:
       - in: path
         name: accounting_period_id
@@ -220,6 +228,8 @@ paths:
   /api/accounting-periods/{accounting_period_id}/lock/:
     post:
       operationId: accounting_periods_lock_create
+      description: Lock an closed accounting period. Only accounting periods with
+        CLOSED status can be locked.
       parameters:
       - in: path
         name: accounting_period_id
@@ -253,6 +263,7 @@ paths:
   /api/accounts/:
     get:
       operationId: accounts_list
+      description: List all accounts for the school.
       parameters:
       - in: query
         name: account_type
@@ -319,6 +330,7 @@ paths:
           description: ''
     post:
       operationId: accounts_create
+      description: Create a new account for the school.
       tags:
       - accounts
       requestBody:
@@ -345,6 +357,7 @@ paths:
   /api/accounts/{account_id}/:
     get:
       operationId: accounts_retrieve
+      description: Retrieve a account.
       parameters:
       - in: path
         name: account_id
@@ -365,6 +378,7 @@ paths:
           description: ''
     put:
       operationId: accounts_update
+      description: Update a account.
       parameters:
       - in: path
         name: account_id
@@ -397,6 +411,7 @@ paths:
           description: ''
     patch:
       operationId: accounts_partial_update
+      description: Partially update a account.
       parameters:
       - in: path
         name: account_id
@@ -428,6 +443,7 @@ paths:
           description: ''
     delete:
       operationId: accounts_destroy
+      description: Delete a account.
       parameters:
       - in: path
         name: account_id
@@ -1639,6 +1655,7 @@ paths:
   /api/fee-packages/:
     get:
       operationId: fee_packages_list
+      description: List all fee packages for the school.
       parameters:
       - in: query
         name: academic_session
@@ -1697,6 +1714,7 @@ paths:
           description: ''
     post:
       operationId: fee_packages_create
+      description: Create a new fee package for the school.
       tags:
       - fee-packages
       requestBody:
@@ -1723,6 +1741,7 @@ paths:
   /api/fee-packages/{fee_package_id}/:
     get:
       operationId: fee_packages_retrieve
+      description: Retrieve a fee package.
       parameters:
       - in: path
         name: fee_package_id
@@ -1743,6 +1762,7 @@ paths:
           description: ''
     put:
       operationId: fee_packages_update
+      description: Update a fee package.
       parameters:
       - in: path
         name: fee_package_id
@@ -1775,6 +1795,7 @@ paths:
           description: ''
     patch:
       operationId: fee_packages_partial_update
+      description: Partially update a fee package.
       parameters:
       - in: path
         name: fee_package_id
@@ -1806,6 +1827,7 @@ paths:
           description: ''
     delete:
       operationId: fee_packages_destroy
+      description: Delete a fee package.
       parameters:
       - in: path
         name: fee_package_id
@@ -1823,6 +1845,8 @@ paths:
   /api/fee-packages/{fee_package_id}/activate/:
     post:
       operationId: fee_packages_activate_create
+      description: Activate an draft fee package. Only fee packages with DRAFT status
+        can be activated.
       parameters:
       - in: path
         name: fee_package_id
@@ -1856,6 +1880,8 @@ paths:
   /api/fee-packages/{fee_package_id}/deactivate/:
     post:
       operationId: fee_packages_deactivate_create
+      description: Close an active fee package. Only fee packages with ACTIVE status
+        can be deactivated.
       parameters:
       - in: path
         name: fee_package_id
@@ -1927,6 +1953,7 @@ paths:
   /api/fee-structures/:
     get:
       operationId: fee_structures_list
+      description: List all fee structures for the school.
       parameters:
       - in: query
         name: academic_session
@@ -1989,6 +2016,7 @@ paths:
           description: ''
     post:
       operationId: fee_structures_create
+      description: Create a new fee structure for the school.
       tags:
       - fee-structures
       requestBody:
@@ -2015,6 +2043,7 @@ paths:
   /api/fee-structures/{fee_structure_id}/:
     get:
       operationId: fee_structures_retrieve
+      description: Retrieve a fee structure.
       parameters:
       - in: path
         name: fee_structure_id
@@ -2035,6 +2064,7 @@ paths:
           description: ''
     put:
       operationId: fee_structures_update
+      description: Update a fee structure.
       parameters:
       - in: path
         name: fee_structure_id
@@ -2067,6 +2097,7 @@ paths:
           description: ''
     patch:
       operationId: fee_structures_partial_update
+      description: Partially update a fee structure.
       parameters:
       - in: path
         name: fee_structure_id
@@ -2098,6 +2129,7 @@ paths:
           description: ''
     delete:
       operationId: fee_structures_destroy
+      description: Delete a fee structure.
       parameters:
       - in: path
         name: fee_structure_id
@@ -2115,6 +2147,8 @@ paths:
   /api/fee-structures/{fee_structure_id}/activate/:
     post:
       operationId: fee_structures_activate_create
+      description: Activate an draft fee structure. Only fee structures with DRAFT
+        status can be activated.
       parameters:
       - in: path
         name: fee_structure_id
@@ -2148,6 +2182,8 @@ paths:
   /api/fee-structures/{fee_structure_id}/deactivate/:
     post:
       operationId: fee_structures_deactivate_create
+      description: Close an active fee structure. Only fee structures with ACTIVE
+        status can be deactivated.
       parameters:
       - in: path
         name: fee_structure_id
@@ -2181,6 +2217,7 @@ paths:
   /api/fee-types/:
     get:
       operationId: fee_types_list
+      description: List all fee types for the school.
       parameters:
       - in: query
         name: frequency
@@ -2225,7 +2262,7 @@ paths:
           description: ''
     post:
       operationId: fee_types_create
-      description: Create a single fee type or multiple fee types in bulk.
+      description: Create a new fee type for the school.
       tags:
       - fee-types
       requestBody:
@@ -2252,6 +2289,7 @@ paths:
   /api/fee-types/{fee_type_id}/:
     get:
       operationId: fee_types_retrieve
+      description: Retrieve a fee type.
       parameters:
       - in: path
         name: fee_type_id
@@ -2272,6 +2310,7 @@ paths:
           description: ''
     put:
       operationId: fee_types_update
+      description: Update a fee type.
       parameters:
       - in: path
         name: fee_type_id
@@ -2304,6 +2343,7 @@ paths:
           description: ''
     patch:
       operationId: fee_types_partial_update
+      description: Partially update a fee type.
       parameters:
       - in: path
         name: fee_type_id
@@ -2335,6 +2375,7 @@ paths:
           description: ''
     delete:
       operationId: fee_types_destroy
+      description: Delete a fee type.
       parameters:
       - in: path
         name: fee_type_id
@@ -2391,6 +2432,7 @@ paths:
   /api/financial-years/:
     get:
       operationId: financial_years_list
+      description: List all financial years for the school.
       parameters:
       - name: limit
         required: false
@@ -2441,6 +2483,7 @@ paths:
           description: ''
     post:
       operationId: financial_years_create
+      description: Create a new financial year for the school.
       tags:
       - financial-years
       requestBody:
@@ -2467,6 +2510,7 @@ paths:
   /api/financial-years/{financial_year_id}/:
     get:
       operationId: financial_years_retrieve
+      description: Retrieve a financial year.
       parameters:
       - in: path
         name: financial_year_id
@@ -2487,6 +2531,7 @@ paths:
           description: ''
     put:
       operationId: financial_years_update
+      description: Update a financial year.
       parameters:
       - in: path
         name: financial_year_id
@@ -2519,6 +2564,7 @@ paths:
           description: ''
     patch:
       operationId: financial_years_partial_update
+      description: Partially update a financial year.
       parameters:
       - in: path
         name: financial_year_id
@@ -2550,6 +2596,7 @@ paths:
           description: ''
     delete:
       operationId: financial_years_destroy
+      description: Delete a financial year.
       parameters:
       - in: path
         name: financial_year_id
@@ -2567,6 +2614,8 @@ paths:
   /api/financial-years/{financial_year_id}/activate/:
     post:
       operationId: financial_years_activate_create
+      description: Activate a draft financial year. Only financial years with DRAFT
+        status can be activated.
       parameters:
       - in: path
         name: financial_year_id
@@ -2600,6 +2649,8 @@ paths:
   /api/financial-years/{financial_year_id}/close/:
     post:
       operationId: financial_years_close_create
+      description: Close an active financial year. Only financial years with ACTIVE
+        status can be closed.
       parameters:
       - in: path
         name: financial_year_id

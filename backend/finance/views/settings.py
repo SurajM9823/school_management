@@ -5,15 +5,16 @@ from django.db.models import Exists, OuterRef
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_rw_serializers import viewsets as rw_viewsets
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, generics, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from core.mixins.tenant import SchoolAuditFieldsMixin, SchoolTenantMixin
 from core.pagination import CustomLimitOffsetPagination
-from core.permissions import IsSchoolAccountant, IsSchoolAssignedAdmin, IsSuperUser
+from core.permissions import IsSchoolAccountant, IsSchoolAssignedAdmin
 from finance.filters import AccountFilter
 from finance.models import Account, AccountingPeriod, FinanceSettings, FinancialYear
 from finance.serializers.settings import (
@@ -30,9 +31,18 @@ from finance.serializers.settings import (
 logger = logging.getLogger(__name__)
 
 
-class FinancialYearViewSet(rw_viewsets.ModelViewSet):
+@extend_schema_view(
+    list=extend_schema(description="List all financial years for the school."),
+    retrieve=extend_schema(description="Retrieve a financial year."),
+    create=extend_schema(description="Create a new financial year for the school."),
+    update=extend_schema(description="Update a financial year."),
+    partial_update=extend_schema(description="Partially update a financial year."),
+    destroy=extend_schema(description="Delete a financial year."),
+)
+class FinancialYearViewSet(SchoolTenantMixin, rw_viewsets.ModelViewSet):
     queryset = FinancialYear.objects.all()
     pagination_class = CustomLimitOffsetPagination
+    permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
     read_serializer_class = FinancialYearReadSerializer
     write_serializer_class = FinancialYearWriteSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -41,29 +51,10 @@ class FinancialYearViewSet(rw_viewsets.ModelViewSet):
     ordering_fields = ["name", "start_date", "end_date"]
     lookup_url_kwarg = "financial_year_id"
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        user = self.request.user
-
-        if user.is_superuser:
-            return qs
-
-        return qs.filter(school=user.school)
-
-    def get_permissions(self):
-        if self.action == "create":
-            permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
-        else:
-            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
-        return [permission() for permission in permission_classes]
-
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
             return FinancialYearWriteSerializer
         return super().get_serializer_class()
-
-    def perform_create(self, serializer):
-        serializer.save(school=self.request.user.school)
 
     def perform_destroy(self, instance):
         if instance.status != FinancialYear.Status.DRAFT:
@@ -71,6 +62,10 @@ class FinancialYearViewSet(rw_viewsets.ModelViewSet):
 
         instance.delete()
 
+    @extend_schema(
+        description="Activate a draft financial year. Only financial years with DRAFT status can be activated.",
+        responses=FinancialYearReadSerializer,
+    )
     @action(detail=True, methods=["post"])
     def activate(self, request: Request, financial_year_id=None):
         obj = self.get_object()
@@ -88,6 +83,10 @@ class FinancialYearViewSet(rw_viewsets.ModelViewSet):
         serializer = FinancialYearReadSerializer(obj, context=self.get_serializer_context())
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        description="Close an active financial year. Only financial years with ACTIVE status can be closed.",
+        responses=FinancialYearReadSerializer,
+    )
     @action(detail=True, methods=["post"])
     def close(self, request: Request, financial_year_id=None):
         obj = self.get_object()
@@ -138,9 +137,18 @@ class FinanceSettingsView(generics.RetrieveUpdateAPIView):
         return super().put(request, *args, **kwargs)
 
 
-class AccountingPeriodViewSet(rw_viewsets.ModelViewSet):
+@extend_schema_view(
+    list=extend_schema(description="List all accounting periods for the school."),
+    retrieve=extend_schema(description="Retrieve a accounting period."),
+    create=extend_schema(description="Create a new accounting period for the school."),
+    update=extend_schema(description="Update a accounting period."),
+    partial_update=extend_schema(description="Partially update a accounting period."),
+    destroy=extend_schema(description="Delete a accounting period."),
+)
+class AccountingPeriodViewSet(SchoolTenantMixin, SchoolAuditFieldsMixin, rw_viewsets.ModelViewSet):
     queryset = AccountingPeriod.objects.select_related("financial_year")
     pagination_class = CustomLimitOffsetPagination
+    permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
     read_serializer_class = AccountingPeriodReadSerializer
     write_serializer_class = AccountingPeriodWriteSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -149,28 +157,11 @@ class AccountingPeriodViewSet(rw_viewsets.ModelViewSet):
     ordering_fields = ["name", "start_date", "end_date"]
     lookup_url_kwarg = "accounting_period_id"
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        user = self.request.user
-
-        if user.is_superuser:
-            return qs
-
-        return qs.filter(school=user.school)
-
-    def get_permissions(self):
-        if self.action == "create":
-            permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
-        else:
-            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
-        return [permission() for permission in permission_classes]
-
     def perform_create(self, serializer):
-        user = self.request.user
-        serializer.save(school=user.school, created_by=user, updated_by=user)
+        self.perform_tenant_create(serializer, **self.get_create_audit_kwargs())
 
     def perform_update(self, serializer):
-        serializer.save(updated_by=self.request.user)
+        serializer.save(**self.get_update_audit_kwargs())
 
     def perform_destroy(self, instance):
         if instance.status != AccountingPeriod.Status.OPEN:
@@ -178,6 +169,10 @@ class AccountingPeriodViewSet(rw_viewsets.ModelViewSet):
 
         instance.delete()
 
+    @extend_schema(
+        description="Close an open accounting period. Only accounting periods with OPEN status can be closed.",
+        responses=AccountingPeriodReadSerializer,
+    )
     @action(detail=True, methods=["post"])
     def close(self, request: Request, accounting_period_id=None):
         obj = self.get_object()
@@ -192,6 +187,10 @@ class AccountingPeriodViewSet(rw_viewsets.ModelViewSet):
         serializer = AccountingPeriodReadSerializer(obj, context=self.get_serializer_context())
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        description="Lock an closed accounting period. Only accounting periods with CLOSED status can be locked.",
+        responses=AccountingPeriodReadSerializer,
+    )
     @action(detail=True, methods=["post"])
     def lock(self, request: Request, accounting_period_id=None):
         obj = self.get_object()
@@ -207,9 +206,18 @@ class AccountingPeriodViewSet(rw_viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class AccountViewSet(rw_viewsets.ModelViewSet):
+@extend_schema_view(
+    list=extend_schema(description="List all accounts for the school."),
+    retrieve=extend_schema(description="Retrieve a account."),
+    create=extend_schema(description="Create a new account for the school."),
+    update=extend_schema(description="Update a account."),
+    partial_update=extend_schema(description="Partially update a account."),
+    destroy=extend_schema(description="Delete a account."),
+)
+class AccountViewSet(SchoolTenantMixin, SchoolAuditFieldsMixin, rw_viewsets.ModelViewSet):
     queryset = Account.objects.select_related("parent")
     pagination_class = CustomLimitOffsetPagination
+    permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
     read_serializer_class = AccountReadSerializer
     write_serializer_class = AccountWriteSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -219,25 +227,12 @@ class AccountViewSet(rw_viewsets.ModelViewSet):
     lookup_url_kwarg = "account_id"
 
     def get_queryset(self):
-        user = self.request.user
+        qs = super().get_queryset()
         children = Account.objects.filter(parent_id=OuterRef("pk"))
-        qs = super().get_queryset().annotate(_has_children=Exists(children))
-
-        if user.is_superuser:
-            return qs
-
-        return qs.filter(school=user.school)
-
-    def get_permissions(self):
-        if self.action == "create":
-            permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
-        else:
-            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
-        return [permission() for permission in permission_classes]
+        return qs.annotate(_has_children=Exists(children))
 
     def perform_create(self, serializer):
-        user = self.request.user
-        serializer.save(school=user.school, created_by=user, updated_by=user)
+        self.perform_tenant_create(serializer, **self.get_create_audit_kwargs())
 
     def perform_update(self, serializer):
-        serializer.save(updated_by=self.request.user)
+        serializer.save(**self.get_update_audit_kwargs())

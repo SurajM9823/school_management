@@ -6,7 +6,7 @@ from smtplib import SMTP, SMTP_SSL, SMTPException
 
 from django.contrib.auth.models import Group
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_rw_serializers import viewsets as rw_viewsets
 from rest_framework import filters, generics, status, viewsets
@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.domain.teacher_assignment import ClassTeacher
+from core.mixins.tenant import SchoolAuditFieldsMixin, SchoolTenantMixin
 from core.models import (
     AcademicSession, AttendanceSettings, Building, Campus, Class, ClassCapacity, Department, FeePackage, FeePackageItem, FeeSettings, FeeStructure, FeeType,
     GradingScale, GradingSettings, Holiday, LeaveType, LocaleSettings, NotificationSettings, NotificationTemplate, PromotionRules, Resource, Room,
@@ -476,33 +477,23 @@ class AttendanceSettingsView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class FeeTypeViewSet(viewsets.ModelViewSet):
+@extend_schema_view(
+    list=extend_schema(description="List all fee types for the school."),
+    retrieve=extend_schema(description="Retrieve a fee type."),
+    create=extend_schema(description="Create a new fee type for the school."),
+    update=extend_schema(description="Update a fee type."),
+    partial_update=extend_schema(description="Partially update a fee type."),
+    destroy=extend_schema(description="Delete a fee type."),
+)
+class FeeTypeViewSet(SchoolTenantMixin, viewsets.ModelViewSet):
     queryset = FeeType.objects.all()
     serializer_class = FeeTypeSerializer
+    permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["frequency"]
     search_fields = ["name"]
     ordering_fields = ["name", "is_mandatory"]
     lookup_url_kwarg = "fee_type_id"
-
-    def get_school(self):
-        return self.request.user.school
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        user = self.request.user
-
-        if user.is_superuser:
-            return qs
-
-        return qs.filter(school=user.school)
-
-    def get_permissions(self):
-        if self.action == "create":
-            permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
-        else:
-            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
-        return [permission() for permission in permission_classes]
 
     def create(self, request, *args, **kwargs):
         """Create a single fee type or multiple fee types in bulk."""
@@ -549,9 +540,18 @@ class FeeSettingsView(generics.RetrieveUpdateAPIView):
         return super().put(request, *args, **kwargs)
 
 
-class FeeStructureViewSet(rw_viewsets.ModelViewSet):
+@extend_schema_view(
+    list=extend_schema(description="List all fee structures for the school."),
+    retrieve=extend_schema(description="Retrieve a fee structure."),
+    create=extend_schema(description="Create a new fee structure for the school."),
+    update=extend_schema(description="Update a fee structure."),
+    partial_update=extend_schema(description="Partially update a fee structure."),
+    destroy=extend_schema(description="Delete a fee structure."),
+)
+class FeeStructureViewSet(SchoolTenantMixin, SchoolAuditFieldsMixin, rw_viewsets.ModelViewSet):
     queryset = FeeStructure.objects.select_related("academic_session", "school_class", "fee_type")
     pagination_class = CustomLimitOffsetPagination
+    permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
     read_serializer_class = FeeStructureReadSerializer
     write_serializer_class = FeeStructureWriteSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -560,28 +560,11 @@ class FeeStructureViewSet(rw_viewsets.ModelViewSet):
     ordering_fields = ["name", "amount"]
     lookup_url_kwarg = "fee_structure_id"
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        user = self.request.user
-
-        if user.is_superuser:
-            return qs
-
-        return qs.filter(school=user.school)
-
-    def get_permissions(self):
-        if self.action == "create":
-            permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
-        else:
-            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
-        return [permission() for permission in permission_classes]
-
     def perform_create(self, serializer):
-        user = self.request.user
-        serializer.save(school=user.school, created_by=user, updated_by=user)
+        self.perform_tenant_create(serializer, **self.get_create_audit_kwargs())
 
     def perform_update(self, serializer):
-        serializer.save(updated_by=self.request.user)
+        serializer.save(**self.get_update_audit_kwargs())
 
     def perform_destroy(self, instance):
         if instance.status != FeeStructure.Status.DRAFT:
@@ -589,6 +572,10 @@ class FeeStructureViewSet(rw_viewsets.ModelViewSet):
 
         instance.delete()
 
+    @extend_schema(
+        description="Activate an draft fee structure. Only fee structures with DRAFT status can be activated.",
+        responses=FeeStructureReadSerializer,
+    )
     @action(detail=True, methods=["post"])
     def activate(self, request: Request, fee_structure_id=None):
         obj = self.get_object()
@@ -601,6 +588,10 @@ class FeeStructureViewSet(rw_viewsets.ModelViewSet):
         serializer = FeeStructureReadSerializer(obj, context=self.get_serializer_context())
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        description="Close an active fee structure. Only fee structures with ACTIVE status can be deactivated.",
+        responses=FeeStructureReadSerializer,
+    )
     @action(detail=True, methods=["post"])
     def deactivate(self, request: Request, fee_structure_id=None):
         obj = self.get_object()
@@ -614,9 +605,18 @@ class FeeStructureViewSet(rw_viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class FeePackageViewSet(rw_viewsets.ModelViewSet):
+@extend_schema_view(
+    list=extend_schema(description="List all fee packages for the school."),
+    retrieve=extend_schema(description="Retrieve a fee package."),
+    create=extend_schema(description="Create a new fee package for the school."),
+    update=extend_schema(description="Update a fee package."),
+    partial_update=extend_schema(description="Partially update a fee package."),
+    destroy=extend_schema(description="Delete a fee package."),
+)
+class FeePackageViewSet(SchoolTenantMixin, SchoolAuditFieldsMixin, rw_viewsets.ModelViewSet):
     queryset = FeePackage.objects.select_related("academic_session", "school_class")
     pagination_class = CustomLimitOffsetPagination
+    permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
     read_serializer_class = FeePackageReadSerializer
     write_serializer_class = FeePackageWriteSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -625,28 +625,11 @@ class FeePackageViewSet(rw_viewsets.ModelViewSet):
     ordering_fields = ["name"]
     lookup_url_kwarg = "fee_package_id"
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        user = self.request.user
-
-        if user.is_superuser:
-            return qs
-
-        return qs.filter(school=user.school)
-
-    def get_permissions(self):
-        if self.action == "create":
-            permission_classes = [IsSchoolAssignedAdmin | IsSchoolAccountant]
-        else:
-            permission_classes = [IsSuperUser | IsSchoolAssignedAdmin | IsSchoolAccountant]
-        return [permission() for permission in permission_classes]
-
     def perform_create(self, serializer):
-        user = self.request.user
-        serializer.save(school=user.school, created_by=user, updated_by=user)
+        self.perform_tenant_create(serializer, **self.get_create_audit_kwargs())
 
     def perform_update(self, serializer):
-        serializer.save(updated_by=self.request.user)
+        serializer.save(**self.get_update_audit_kwargs())
 
     def perform_destroy(self, instance):
         if instance.status != FeeStructure.Status.DRAFT:
@@ -654,6 +637,10 @@ class FeePackageViewSet(rw_viewsets.ModelViewSet):
 
         instance.delete()
 
+    @extend_schema(
+        description="Activate an draft fee package. Only fee packages with DRAFT status can be activated.",
+        responses=FeePackageReadSerializer,
+    )
     @action(detail=True, methods=["post"])
     def activate(self, request: Request, fee_package_id=None):
         obj = self.get_object()
@@ -666,6 +653,10 @@ class FeePackageViewSet(rw_viewsets.ModelViewSet):
         serializer = FeePackageReadSerializer(obj, context=self.get_serializer_context())
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        description="Close an active fee package. Only fee packages with ACTIVE status can be deactivated.",
+        responses=FeePackageReadSerializer,
+    )
     @action(detail=True, methods=["post"])
     def deactivate(self, request: Request, fee_package_id=None):
         obj = self.get_object()

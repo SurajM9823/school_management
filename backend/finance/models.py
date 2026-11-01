@@ -191,7 +191,7 @@ class Account(TimeStampedMixin, UserAuditMixin):
         REVENUE = "revenue", "Revenue"
         EXPENSE = "expense", "Expense"
 
-    school = models.ForeignKey("core.School", on_delete=models.CASCADE, related_name="money_accounts")
+    school = models.ForeignKey("core.School", on_delete=models.CASCADE, related_name="accounts")
     account_code = models.CharField(max_length=20)
     name = models.CharField(max_length=100)
     account_type = models.CharField(max_length=10, choices=AccountType.choices)
@@ -203,7 +203,7 @@ class Account(TimeStampedMixin, UserAuditMixin):
         ordering = ["name"]
         constraints = [
             models.UniqueConstraint(fields=["school", "account_code"], name="unique_account_code_per_school"),
-            models.UniqueConstraint(fields=["school", "name"], name="unique_money_account_name_per_school"),
+            models.UniqueConstraint(fields=["school", "name"], name="unique_account_name_per_school"),
         ]
 
     def __str__(self):
