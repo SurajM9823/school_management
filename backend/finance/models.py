@@ -6,7 +6,7 @@ from django.core.validators import MinValueValidator
 from django.db import models, transaction
 from django.db.models import Q
 
-from core.mixins import TimeStampedMixin, UserAuditMixin
+from core.mixins.models import TimeStampedMixin, UserAuditMixin
 
 
 class FinancialYear(TimeStampedMixin):
