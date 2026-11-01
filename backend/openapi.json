@@ -9431,7 +9431,7 @@ components:
     School:
       type: object
       properties:
-        school_id:
+        id:
           type: string
           format: uuid
           readOnly: true
@@ -9478,9 +9478,9 @@ components:
       - academic_year
       - address
       - email
+      - id
       - name
       - phone
-      - school_id
     SchoolRequest:
       type: object
       properties:
@@ -9706,7 +9706,6 @@ components:
         school:
           type: string
           format: uuid
-          nullable: true
         start_date:
           type: string
           format: date
@@ -9727,6 +9726,7 @@ components:
       - id
       - leave_type
       - leave_type_name
+      - school
       - staff
     StaffLeaveRequest:
       type: object
@@ -9740,7 +9740,6 @@ components:
         school:
           type: string
           format: uuid
-          nullable: true
         start_date:
           type: string
           format: date
@@ -9758,6 +9757,7 @@ components:
       - academic_session
       - days
       - leave_type
+      - school
       - staff
     StaffRequest:
       type: object

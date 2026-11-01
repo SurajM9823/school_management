@@ -42,7 +42,7 @@ class ParentSerializer(serializers.ModelSerializer):
         if not school_id_uuid:
             raise serializers.ValidationError("No school_id provided.")
         try:
-            school = School.objects.get(school_id=school_id_uuid)
+            school = School.objects.get(id=school_id_uuid)
         except School.DoesNotExist:
             raise serializers.ValidationError(f"School with school_id {school_id_uuid} does not exist")
 
@@ -72,7 +72,7 @@ class ParentSerializer(serializers.ModelSerializer):
             logger.debug(f"Creating parent with email: {email}, name: {name}")
 
             with transaction.atomic():
-                school = School.objects.get(school_id=school_id_uuid)
+                school = School.objects.get(id=school_id_uuid)
                 school_id = school.id
                 logger.debug(f"Mapping school_id {school_id_uuid} to School.id {school_id}")
                 password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
@@ -121,7 +121,7 @@ class ParentSerializer(serializers.ModelSerializer):
                     if name and name != user.name:
                         user.name = name
                     if school_id_uuid:
-                        school = School.objects.get(school_id=school_id_uuid)
+                        school = School.objects.get(id=school_id_uuid)
                         user.school_id = school.id
                     user.save()
                 instance.phone = phone
@@ -151,7 +151,7 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
         school_id = self.context.get('school_id') or (self.context.get('request') and self.context.get('request').user.school_id)
         if school_id:
-            self.fields['document_type_id'].queryset = StudentDocumentType.objects.filter(school__school_id=school_id)
+            self.fields['document_type_id'].queryset = StudentDocumentType.objects.filter(school_id=school_id)
 
     def validate(self, data):
         logger.debug(f"StudentDocumentSerializer validate data: {data}")
@@ -161,9 +161,9 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
         if not self.instance and not data.get('file'):
             raise serializers.ValidationError("File is required.")
         if 'document_type_id' in data and data['document_type_id']:
-            if not StudentDocumentType.objects.filter(id=data['document_type_id'].id, school__school_id=school_id).exists():
+            if not StudentDocumentType.objects.filter(id=data['document_type_id'].id, school_id=school_id).exists():
                 raise serializers.ValidationError("Invalid document type for this school.")
-        if 'student' in data and not Student.objects.filter(id=data['student'].id, school__school_id=school_id).exists():
+        if 'student' in data and not Student.objects.filter(id=data['student'].id, school_id=school_id).exists():
             raise serializers.ValidationError("Invalid student for this school.")
         return data
 
@@ -227,11 +227,11 @@ class StudentSerializer(serializers.ModelSerializer):
         logger.debug(f"StudentSerializer init - school_id: {school_id}")
         if school_id:
             try:
-                school = School.objects.get(school_id=school_id)
-                logger.debug(f"School found: id={school.id}, school_id={school.school_id}")
-                self.fields['class_id'].queryset = Class.objects.filter(school_id=school.school_id, is_active=True)
-                self.fields['section_id'].queryset = Section.objects.filter(school_id=school.school_id, is_active=True)
-                self.fields['academic_session_id'].queryset = AcademicSession.objects.filter(school_id=school.school_id)
+                school = School.objects.get(id=school_id)
+                logger.debug(f"School found: id={school.id}, school_id={school.id}")
+                self.fields['class_id'].queryset = Class.objects.filter(school_id=school.id, is_active=True)
+                self.fields['section_id'].queryset = Section.objects.filter(school_id=school.id, is_active=True)
+                self.fields['academic_session_id'].queryset = AcademicSession.objects.filter(school_id=school.id)
                 logger.debug(f"Class queryset: {list(self.fields['class_id'].queryset.values('id', 'school_id'))}")
                 logger.debug(f"Section queryset: {list(self.fields['section_id'].queryset.values('id', 'school_id'))}")
                 logger.debug(f"AcademicSession queryset: {list(self.fields['academic_session_id'].queryset.values('id', 'school_id'))}")
@@ -255,9 +255,9 @@ class StudentSerializer(serializers.ModelSerializer):
         if not school_id:
             raise serializers.ValidationError("No school_id provided.")
         try:
-            school = School.objects.get(school_id=school_id)
+            school = School.objects.get(id=school_id)
             logger.debug(f"School found in")
-            logger.debug(f"School found in validate: id={school.id}, school_id={school.school_id}")
+            logger.debug(f"School found in validate: id={school.id}, school_id={school.id}")
         except School.DoesNotExist:
             raise serializers.ValidationError(f"School with school_id {school_id} does not exist")
 
@@ -286,8 +286,8 @@ class StudentSerializer(serializers.ModelSerializer):
 
         try:
             with transaction.atomic():
-                school = School.objects.get(school_id=school_id_uuid)
-                logger.debug(f"Using school instance with school_id: {school.school_id}")
+                school = School.objects.get(id=school_id_uuid)
+                logger.debug(f"Using school instance with school_id: {school.id}")
                 password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
                 user = User.objects.create_user(
                     email=email,
@@ -330,7 +330,7 @@ class StudentSerializer(serializers.ModelSerializer):
 
         try:
             with transaction.atomic():
-                school = School.objects.get(school_id=school_id_uuid)
+                school = School.objects.get(id=school_id_uuid)
                 if email or name:
                     user = instance.user
                     if email and email != user.email:   
@@ -371,16 +371,16 @@ class StudentParentSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
         school_id = self.context.get('school_id') or (self.context.get('request') and self.context.get('request').user.school_id)
         if school_id:
-            self.fields['parent'].queryset = Parent.objects.filter(school__school_id=school_id)
+            self.fields['parent'].queryset = Parent.objects.filter(school_id=school_id)
 
     def validate(self, data):
         logger.debug(f"StudentParentSerializer validate data: {data}")
         school_id = self.context.get('school_id') or (self.context.get('request').user.school_id if self.context.get('request') else None)
         if not school_id:
             raise serializers.ValidationError("No school_id provided.")
-        if 'parent' in data and not Parent.objects.filter(id=data['parent'].id, school__school_id=school_id).exists():
+        if 'parent' in data and not Parent.objects.filter(id=data['parent'].id, school_id=school_id).exists():
             raise serializers.ValidationError("Invalid parent ID for this school.")
-        if 'student' in data and not Student.objects.filter(id=data['student'].id, school__school_id=school_id).exists():
+        if 'student' in data and not Student.objects.filter(id=data['student'].id, school_id=school_id).exists():
             raise serializers.ValidationError("Invalid student ID for this school.")
         return data
 
@@ -416,11 +416,11 @@ class AdmissionFeeSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
         school_id = self.context.get('school_id') or (self.context.get('request') and self.context.get('request').user.school_id)
         if school_id:
-            self.fields['class_id_id'].queryset = Class.objects.filter(school__school_id=school_id, is_active=True)
-            self.fields['section'].queryset = Section.objects.filter(school__school_id=school_id, is_active=True)
+            self.fields['class_id_id'].queryset = Class.objects.filter(school_id=school_id, is_active=True)
+            self.fields['section'].queryset = Section.objects.filter(school_id=school_id, is_active=True)
 
     def validate(self, data):
-        school_id = self.context.get('school_id') or (self.context.get('request').user.school.school_id if self.context.get('request') else None)
+        school_id = self.context.get('school_id') or (self.context.get('request').user.school.id if self.context.get('request') else None)
         if not school_id:
             raise serializers.ValidationError({"error": "No school_id provided."})
         
@@ -428,11 +428,11 @@ class AdmissionFeeSerializer(serializers.ModelSerializer):
         section = data.get('section')
         amount = data.get('amount')
 
-        if class_id and not Class.objects.filter(id=class_id.id, school__school_id=school_id, is_active=True).exists():
+        if class_id and not Class.objects.filter(id=class_id.id, school_id=school_id, is_active=True).exists():
             logger.error(f"Invalid class_id {class_id.id} for school_id: {school_id}")
             raise serializers.ValidationError({'class_id': 'Invalid class for this school.'})
 
-        if section and not Section.objects.filter(id=section.id, class_id=class_id, school__school_id=school_id, is_active=True).exists():
+        if section and not Section.objects.filter(id=section.id, class_id=class_id, school_id=school_id, is_active=True).exists():
             logger.error(f"Invalid section_id {section.id} for class_id {class_id.id} and school_id: {school_id}")
             raise serializers.ValidationError({'section': 'Invalid section for this class and school.'})
 
@@ -445,7 +445,7 @@ class AdmissionFeeSerializer(serializers.ModelSerializer):
         instance_id = getattr(self.instance, 'id', None)
         section_value = section if section else None
         if AdmissionFee.objects.filter(
-            school__school_id=school_id,
+            school_id=school_id,
             class_id=class_id,
             section=section_value,
             is_active=True
@@ -459,13 +459,13 @@ class AdmissionFeeSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        school_id = self.context.get('school_id') or (self.context.get('request').user.school.school_id if self.context.get('request') else None)
+        school_id = self.context.get('school_id') or (self.context.get('request').user.school.id if self.context.get('request') else None)
         if not school_id:
             raise serializers.ValidationError("No school_id provided.")
             
         # Get the School instance
         try:
-            school = School.objects.get(school_id=school_id)
+            school = School.objects.get(id=school_id)
             validated_data['school'] = school
             fee = super().create(validated_data)
             section_str = fee.section.name if fee.section else 'All Sections'
@@ -475,13 +475,13 @@ class AdmissionFeeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f"School with school_id {school_id} does not exist")
 
     def update(self, instance, validated_data):
-        school_id = self.context.get('school_id') or (self.context.get('request').user.school.school_id if self.context.get('request') else None)
+        school_id = self.context.get('school_id') or (self.context.get('request').user.school.id if self.context.get('request') else None)
         if not school_id:
             raise serializers.ValidationError("No school_id provided.")
             
         try:
-            school = School.objects.get(school_id=school_id)
-            if instance.school.school_id != school_id:
+            school = School.objects.get(id=school_id)
+            if instance.school.id != school_id:
                 logger.error(f"Invalid school_id {school_id} for updating admission fee {instance.id}")
                 raise serializers.ValidationError("Invalid school_id.")
                 
@@ -513,8 +513,8 @@ class StudentFeeSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
         school_id = self.context.get('school_id') or (self.context.get('request') and self.context.get('request').user.school_id)
         if school_id:
-            self.fields['student'].queryset = Student.objects.filter(school__school_id=school_id)
-            self.fields['admission_fee'].queryset = AdmissionFee.objects.filter(school__school_id=school_id, is_active=True)
+            self.fields['student'].queryset = Student.objects.filter(school_id=school_id)
+            self.fields['admission_fee'].queryset = AdmissionFee.objects.filter(school_id=school_id, is_active=True)
 
     def validate(self, data):
         logger.debug(f"StudentFeeSerializer validate data: {data}")
@@ -523,12 +523,12 @@ class StudentFeeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("No school_id provided.")
         if not data.get('student'):
             raise serializers.ValidationError("Student is required.")
-        if not Student.objects.filter(id=data['student'].id, school__school_id=school_id).exists():
+        if not Student.objects.filter(id=data['student'].id, school_id=school_id).exists():
             logger.error(f"Invalid student_id {data['student'].id} for school_id: {school_id}")
             raise serializers.ValidationError("Invalid student for this school.")
         if not data.get('admission_fee'):
             raise serializers.ValidationError("Admission fee is required.")
-        if not AdmissionFee.objects.filter(id=data['admission_fee'].id, school__school_id=school_id, is_active=True).exists():
+        if not AdmissionFee.objects.filter(id=data['admission_fee'].id, school_id=school_id, is_active=True).exists():
             logger.error(f"Invalid admission_fee_id {data['admission_fee'].id} for school_id: {school_id}")
             raise serializers.ValidationError("Invalid admission fee for this school.")
         if not data.get('amount') or data.get('amount') <= 0:

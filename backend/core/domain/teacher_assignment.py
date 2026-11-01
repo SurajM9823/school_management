@@ -26,7 +26,7 @@ class TeacherAssignment(models.Model):
         return f"{self.teacher.staff.user.name} - {self.class_obj.name} {self.section.name} - {self.subject.name}"
     
 class ClassTeacher(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='class_teachers', to_field='school_id', null=True, blank=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='class_teachers')
     class_id = models.ForeignKey('Class', on_delete=models.CASCADE, related_name='class_teachers')
     section = models.ForeignKey('Section', on_delete=models.CASCADE, related_name='class_teachers', null=True, blank=True)  # Optional section
     teacher = models.ForeignKey('Teacher', on_delete=models.CASCADE, related_name='class_assignments')

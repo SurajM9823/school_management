@@ -7,6 +7,8 @@ Currently, this permission only verifies that the authenticated user
 is assigned to a school, regardless of its subscription status.
 """
 
+# TODO: Implement `has_object_permission` on all permissions
+
 
 class IsSuperUser(BasePermission):
     """
@@ -21,7 +23,7 @@ class IsSuperUser(BasePermission):
         return bool(user and user.is_authenticated and user.is_superuser)
 
 
-class HasSchoolTenant(BasePermission):
+class IsSchoolTenant(BasePermission):
     """
     Allow access only to authenticated users assigned to a school.
     """

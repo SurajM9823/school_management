@@ -33,11 +33,11 @@ class ParentView(APIView):
     def get(self, request):
         try:
             school = request.user.school
-            if not school or not school.school_id:
+            if not school or not school.id:
                 logger.error(f"No school_id for user {request.user.email}")
                 return Response({"error": "No school associated with this user"}, status=status.HTTP_400_BAD_REQUEST)
-            school_id = school.school_id
-            parents = Parent.objects.filter(school__school_id=school_id, user__is_active=True)
+            school_id = school.id
+            parents = Parent.objects.filter(school_id=school_id, user__is_active=True)
             serializer = ParentSerializer(parents, many=True)
             logger.debug(f"Fetched {parents.count()} parents for school_id: {school_id}")
             return Response(serializer.data)
@@ -47,7 +47,7 @@ class ParentView(APIView):
 
     def post(self, request):
         try:
-            school_id = request.user.school.school_id
+            school_id = request.user.school.id
             if not school_id:
                 logger.error(f"No school_id for user {request.user.email}")
                 return Response({"error": "No school associated with this user"}, status=status.HTTP_400_BAD_REQUEST)
@@ -69,8 +69,8 @@ class ParentView(APIView):
 
     def put(self, request, parent_id):
         try:
-            school_id = request.user.school.school_id
-            parent = get_object_or_404(Parent, id=parent_id, school__school_id=school_id)
+            school_id = request.user.school.id
+            parent = get_object_or_404(Parent, id=parent_id, school_id=school_id)
             serializer = ParentSerializer(parent, data=request.data, partial=True, context={'request': request, 'school_id': school_id})
             if serializer.is_valid():
                 serializer.save()
@@ -84,8 +84,8 @@ class ParentView(APIView):
 
     def delete(self, request, parent_id):
         try:
-            school_id = request.user.school.school_id
-            parent = get_object_or_404(Parent, id=parent_id, school__school_id=school_id)
+            school_id = request.user.school.id
+            parent = get_object_or_404(Parent, id=parent_id, school_id=school_id)
             with transaction.atomic():
                 parent.user.is_active = False
                 parent.user.save()
@@ -102,11 +102,11 @@ class StudentView(ModelViewSet):
 
     def get_queryset(self):
         try:
-            school_id = self.request.user.school.school_id
+            school_id = self.request.user.school.id
             if not school_id:
                 logger.error(f"No school_id for user {self.request.user.email}")
                 return self.queryset.none()
-            queryset = self.queryset.filter(school__school_id=school_id, user__is_active=True)
+            queryset = self.queryset.filter(school_id=school_id, user__is_active=True)
             status_filter = self.request.query_params.get('status')
             class_id = self.request.query_params.get('class_id')
             section_id = self.request.query_params.get('section_id')
@@ -114,11 +114,11 @@ class StudentView(ModelViewSet):
             if status_filter:
                 queryset = queryset.filter(status=status_filter)
             if class_id:
-                queryset = queryset.filter(class_id=class_id, class_id__school__school_id=school_id)
+                queryset = queryset.filter(class_id=class_id, class_id__school_id=school_id)
             if section_id:
-                queryset = queryset.filter(section_id=section_id, section__school__school_id=school_id)
+                queryset = queryset.filter(section_id=section_id, section__school_id=school_id)
             if academic_session_id:
-                queryset = queryset.filter(academic_session_id=academic_session_id, academic_session__school__school_id=school_id)
+                queryset = queryset.filter(academic_session_id=academic_session_id, academic_session__school_id=school_id)
             logger.debug(f"Returning {queryset.count()} students for school_id: {school_id}")
             return queryset
         except AttributeError:
@@ -127,12 +127,12 @@ class StudentView(ModelViewSet):
 
     def perform_create(self, serializer):
         try:
-            school_id = self.request.user.school.school_id
+            school_id = self.request.user.school.id
             with transaction.atomic():
                 result = serializer.save(school_id=school_id)
                 student = result['student']
                 admission_fee = AdmissionFee.objects.filter(
-                    school__school_id=school_id,
+                    school_id=school_id,
                     class_id=student.class_id,
                     section=student.section,
                     is_active=True
@@ -157,7 +157,7 @@ class StudentView(ModelViewSet):
 
     def perform_update(self, serializer):
         try:
-            school_id = self.request.user.school.school_id
+            school_id = self.request.user.school.id
             with transaction.atomic():
                 instance = serializer.save(school_id=school_id)
                 logger.info(f"Updated student {instance.id} for school_id: {school_id}")
@@ -171,7 +171,7 @@ class StudentView(ModelViewSet):
 
     def perform_destroy(self, instance):
         try:
-            school_id = self.request.user.school.school_id
+            school_id = self.request.user.school.id
             with transaction.atomic():
                 instance.user.is_active = False
                 instance.user.save()
@@ -184,13 +184,12 @@ class StudentView(ModelViewSet):
     @action(detail=True, methods=['get', 'post'], url_path='documents')
     def documents(self, request, pk=None):
         try:
-            school_id = request.user.school.school_id
+            school_id = request.user.school.id
             student = self.get_object()
-            if student.school.school_id != school_id:
-                logger.error(f"Student {student.id} does not belong to school_id {school_id}")
+            if student.school.id != school_id:
                 return Response({"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
             if request.method == 'GET':
-                documents = StudentDocument.objects.filter(student=student, student__school__school_id=school_id)
+                documents = StudentDocument.objects.filter(student=student, student__school_id=school_id)
                 serializer = StudentDocumentSerializer(documents, many=True)
                 logger.debug(f"Fetched {documents.count()} documents for student {student.id}")
                 return Response(serializer.data)
@@ -204,8 +203,8 @@ class StudentView(ModelViewSet):
                         'file': file,
                         'description': description or file.name,
                         'document_type_id': document_type_id or StudentDocumentType.objects.filter(
-                            school__school_id=school_id
-                        ).first().id if StudentDocumentType.objects.filter(school__school_id=school_id).exists() else None,
+                            school_id=school_id
+                        ).first().id if StudentDocumentType.objects.filter(school_id=school_id).exists() else None,
                         'student': student.id
                     }
                     serializer = StudentDocumentSerializer(data=data, context={'request': request, 'school_id': school_id})
@@ -224,9 +223,9 @@ class StudentView(ModelViewSet):
     @action(detail=True, methods=['put', 'delete'], url_path='documents/(?P<doc_id>\d+)')
     def document_detail(self, request, pk=None, doc_id=None):
         try:
-            school_id = request.user.school.school_id
+            school_id = request.user.school.id
             student = self.get_object()
-            document = StudentDocument.objects.get(id=doc_id, student=student, student__school__school_id=school_id)
+            document = StudentDocument.objects.get(id=doc_id, student=student, student__school_id=school_id)
             if request.method == 'PUT':
                 serializer = StudentDocumentSerializer(document, data=request.data, partial=True, context={'request': request, 'school_id': school_id})
                 if serializer.is_valid():
@@ -253,10 +252,10 @@ class StudentView(ModelViewSet):
     @action(detail=True, methods=['get', 'post'], url_path='parents')
     def parents(self, request, pk=None):
         try:
-            school_id = request.user.school.school_id
+            school_id = request.user.school.id
             student = self.get_object()
             if request.method == 'GET':
-                student_parents = StudentParent.objects.filter(student=student, student__school__school_id=school_id)
+                student_parents = StudentParent.objects.filter(student=student, student__school_id=school_id)
                 serializer = StudentParentSerializer(student_parents, many=True)
                 logger.debug(f"Fetched {student_parents.count()} parents for student {student.id}")
                 return Response(serializer.data)
@@ -275,9 +274,9 @@ class StudentView(ModelViewSet):
     @action(detail=True, methods=['post'], url_path='promote')
     def promote(self, request, pk=None):
         try:
-            school_id = request.user.school.school_id
+            school_id = request.user.school.id
             student = self.get_object()
-            if student.school.school_id != school_id:
+            if student.school.id != school_id:
                 logger.error(f"Student {student.id} does not belong to school_id {school_id}")
                 return Response({"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
             
@@ -299,9 +298,9 @@ class StudentParentView(APIView):
 
     def delete(self, request, student_id, parent_id):
         try:
-            school_id = request.user.school.school_id
-            student = get_object_or_404(Student, id=student_id, school__school_id=school_id)
-            student_parent = get_object_or_404(StudentParent, student=student, parent__id=parent_id, parent__school__school_id=school_id)
+            school_id = request.user.school.id
+            student = get_object_or_404(Student, id=student_id, school_id=school_id)
+            student_parent = get_object_or_404(StudentParent, student=student, parent__id=parent_id, parent__school_id=school_id)
             with transaction.atomic():
                 student_parent.delete()
                 logger.info(f"Removed parent {parent_id} from student {student_id} for school_id: {school_id}")
@@ -316,11 +315,11 @@ class AdmissionFeeView(APIView):
 
     def get(self, request):
         try:
-            school_id = request.user.school.school_id
+            school_id = request.user.school.id
             if not school_id:
                 logger.error(f"No school_id for user {request.user.email}")
                 return Response({"error": "No school associated with this user"}, status=status.HTTP_400_BAD_REQUEST)
-            fees = AdmissionFee.objects.filter(school__school_id=school_id, is_active=True)
+            fees = AdmissionFee.objects.filter(school_id=school_id, is_active=True)
             serializer = AdmissionFeeSerializer(fees, many=True, context={'request': request})
             logger.info(f"Fetched {fees.count()} admission fees for school_id: {school_id}")
             return Response(serializer.data)
@@ -330,7 +329,7 @@ class AdmissionFeeView(APIView):
 
     def post(self, request):
         try:
-            school_id = request.user.school.school_id
+            school_id = request.user.school.id
             school = request.user.school
             
             # Log the request data for debugging
@@ -345,10 +344,10 @@ class AdmissionFeeView(APIView):
             if serializer.is_valid():
                 class_id = serializer.validated_data['class_id']
                 section = serializer.validated_data.get('section')
-                if not Class.objects.filter(id=class_id.id, school__school_id=school_id, is_active=True).exists():
+                if not Class.objects.filter(id=class_id.id, school_id=school_id, is_active=True).exists():
                     logger.error(f"Invalid class_id {class_id.id} for school_id: {school_id}")
                     return Response({"error": "Invalid class for this school"}, status=status.HTTP_400_BAD_REQUEST)
-                if section and not Section.objects.filter(id=section.id, school__school_id=school_id, is_active=True).exists():
+                if section and not Section.objects.filter(id=section.id, school_id=school_id, is_active=True).exists():
                     logger.error(f"Invalid section_id {section.id} for school_id: {school_id}")
                     return Response({"error": "Invalid section for this school"}, status=status.HTTP_400_BAD_REQUEST)
                 fee = serializer.save()
@@ -362,16 +361,16 @@ class AdmissionFeeView(APIView):
 
     def put(self, request, fee_id):
         try:
-            school_id = request.user.school.school_id
-            fee = get_object_or_404(AdmissionFee, id=fee_id, school__school_id=school_id, is_active=True)
+            school_id = request.user.school.id
+            fee = get_object_or_404(AdmissionFee, id=fee_id, school_id=school_id, is_active=True)
             serializer = AdmissionFeeSerializer(fee, data=request.data, partial=True, context={'request': request, 'school_id': school_id})
             if serializer.is_valid():
                 class_id = serializer.validated_data.get('class_id', fee.class_id)
                 section = serializer.validated_data.get('section', fee.section)
-                if not Class.objects.filter(id=class_id.id, school__school_id=school_id, is_active=True).exists():
+                if not Class.objects.filter(id=class_id.id, school_id=school_id, is_active=True).exists():
                     logger.error(f"Invalid class_id {class_id.id} for school_id: {school_id}")
                     return Response({"error": "Invalid class for this school"}, status=status.HTTP_400_BAD_REQUEST)
-                if section and not Section.objects.filter(id=section.id, school__school_id=school_id, is_active=True).exists():
+                if section and not Section.objects.filter(id=section.id, school_id=school_id, is_active=True).exists():
                     logger.error(f"Invalid section_id {section.id} for school_id: {school_id}")
                     return Response({"error": "Invalid section for this school"}, status=status.HTTP_400_BAD_REQUEST)
                 serializer.save()
@@ -385,8 +384,8 @@ class AdmissionFeeView(APIView):
 
     def delete(self, request, fee_id):
         try:
-            school_id = request.user.school.school_id
-            fee = get_object_or_404(AdmissionFee, id=fee_id, school__school_id=school_id, is_active=True)
+            school_id = request.user.school.id
+            fee = get_object_or_404(AdmissionFee, id=fee_id, school_id=school_id, is_active=True)
             with transaction.atomic():
                 fee.is_active = False
                 fee.save()
@@ -401,12 +400,12 @@ class StudentFeeView(APIView):
 
     def get(self, request, student_id=None):
         try:
-            school_id = request.user.school.school_id
+            school_id = request.user.school.id
             if student_id:
-                student = get_object_or_404(Student, id=student_id, school__school_id=school_id)
-                fees = StudentFee.objects.filter(student=student, student__school__school_id=school_id)
+                student = get_object_or_404(Student, id=student_id, school_id=school_id)
+                fees = StudentFee.objects.filter(student=student, student__school_id=school_id)
             else:
-                fees = StudentFee.objects.filter(student__school__school_id=school_id)
+                fees = StudentFee.objects.filter(student__school_id=school_id)
             serializer = StudentFeeSerializer(fees, many=True)
             logger.debug(f"Fetched {fees.count()} student fees for school_id: {school_id}")
             return Response(serializer.data)
@@ -416,9 +415,9 @@ class StudentFeeView(APIView):
 
     def put(self, request, student_id, fee_id):
         try:
-            school_id = request.user.school.school_id
-            student = get_object_or_404(Student, id=student_id, school__school_id=school_id)
-            fee = get_object_or_404(StudentFee, id=fee_id, student=student, student__school__school_id=school_id)
+            school_id = request.user.school.id
+            student = get_object_or_404(Student, id=student_id, school_id=school_id)
+            fee = get_object_or_404(StudentFee, id=fee_id, student=student, student__school_id=school_id)
             serializer = StudentFeeSerializer(fee, data=request.data, partial=True, context={'request': request, 'school_id': school_id})
             if serializer.is_valid():
                 serializer.save()
@@ -435,8 +434,8 @@ class ClassView(APIView):
 
     def get(self, request):
         try:
-            school_id = request.user.school.school_id
-            classes = Class.objects.filter(school__school_id=school_id, is_active=True)
+            school_id = request.user.school.id
+            classes = Class.objects.filter(school_id=school_id, is_active=True)
             serializer = ClassSerializer(classes, many=True)
             logger.debug(f"Fetched {classes.count()} classes for school_id: {school_id}")
             return Response(serializer.data)
@@ -446,7 +445,7 @@ class ClassView(APIView):
 
     def post(self, request):
         try:
-            school_id = request.user.school.school_id
+            school_id = request.user.school.id
             serializer = ClassSerializer(data=request.data, context={'request': request, 'school_id': school_id})
             if serializer.is_valid():
                 serializer.save(school_id=school_id)
@@ -460,8 +459,8 @@ class ClassView(APIView):
 
     def put(self, request, class_id):
         try:
-            school_id = request.user.school.school_id
-            class_obj = get_object_or_404(Class, id=class_id, school__school_id=school_id, is_active=True)
+            school_id = request.user.school.id
+            class_obj = get_object_or_404(Class, id=class_id, school_id=school_id, is_active=True)
             serializer = ClassSerializer(class_obj, data=request.data, partial=True, context={'request': request, 'school_id': school_id})
             if serializer.is_valid():
                 serializer.save()
@@ -475,8 +474,8 @@ class ClassView(APIView):
 
     def delete(self, request, class_id):
         try:
-            school_id = request.user.school.school_id
-            class_obj = get_object_or_404(Class, id=class_id, school__school_id=school_id, is_active=True)
+            school_id = request.user.school.id
+            class_obj = get_object_or_404(Class, id=class_id, school_id=school_id, is_active=True)
             with transaction.atomic():
                 class_obj.is_active = False
                 class_obj.save()
@@ -491,11 +490,11 @@ class SectionView(APIView):
 
     def get(self, request, class_id=None):
         try:
-            school_id = request.user.school.school_id
+            school_id = request.user.school.id
             if class_id:
-                sections = Section.objects.filter(class_id=class_id, class_id__school__school_id=school_id, is_active=True)
+                sections = Section.objects.filter(class_id=class_id, class_id__school_id=school_id, is_active=True)
             else:
-                sections = Section.objects.filter(school__school_id=school_id, is_active=True)
+                sections = Section.objects.filter(school_id=school_id, is_active=True)
             serializer = serializers.ModelSerializer(
                 Section, fields=['id', 'name', 'class_id']
             )(sections, many=True)
@@ -507,8 +506,8 @@ class SectionView(APIView):
 
     def post(self, request, class_id):
         try:
-            school_id = request.user.school.school_id
-            class_obj = get_object_or_404(Class, id=class_id, school__school_id=school_id, is_active=True)
+            school_id = request.user.school.id
+            class_obj = get_object_or_404(Class, id=class_id, school_id=school_id, is_active=True)
             serializer = serializers.ModelSerializer(
                 Section, fields=['id', 'name', 'class_id']
             )(data=request.data, context={'request': request, 'school_id': school_id})
@@ -524,8 +523,8 @@ class SectionView(APIView):
 
     def put(self, request, class_id, section_id):
         try:
-            school_id = request.user.school.school_id
-            section = get_object_or_404(Section, id=section_id, class_id=class_id, school__school_id=school_id, is_active=True)
+            school_id = request.user.school.id
+            section = get_object_or_404(Section, id=section_id, class_id=class_id, school_id=school_id, is_active=True)
             serializer = serializers.ModelSerializer(
                 Section, fields=['id', 'name', 'class_id']
             )(section, data=request.data, partial=True, context={'request': request, 'school_id': school_id})
@@ -541,8 +540,8 @@ class SectionView(APIView):
 
     def delete(self, request, class_id, section_id):
         try:
-            school_id = request.user.school.school_id
-            section = get_object_or_404(Section, id=section_id, class_id=class_id, school__school_id=school_id, is_active=True)
+            school_id = request.user.school.id
+            section = get_object_or_404(Section, id=section_id, class_id=class_id, school_id=school_id, is_active=True)
             with transaction.atomic():
                 section.is_active = False
                 section.save()
@@ -558,8 +557,8 @@ class AcademicSessionView(APIView):
 
     def get(self, request):
         try:
-            school_id = request.user.school.school_id
-            sessions = AcademicSession.objects.filter(school__school_id=school_id)
+            school_id = request.user.school.id
+            sessions = AcademicSession.objects.filter(school_id=school_id)
             serializer = serializers.ModelSerializer(
                 AcademicSession, fields=['id', 'name', 'start_date', 'end_date', 'status']
             )(sessions, many=True)
@@ -571,7 +570,7 @@ class AcademicSessionView(APIView):
 
     def post(self, request):
         try:
-            school_id = request.user.school.school_id
+            school_id = request.user.school.id
             serializer = serializers.ModelSerializer(
                 AcademicSession, fields=['id', 'name', 'start_date', 'end_date', 'status']
             )(data=request.data, context={'request': request, 'school_id': school_id})
@@ -587,8 +586,8 @@ class AcademicSessionView(APIView):
 
     def put(self, request, session_id):
         try:
-            school_id = request.user.school.school_id
-            session = get_object_or_404(AcademicSession, id=session_id, school__school_id=school_id)
+            school_id = request.user.school.id
+            session = get_object_or_404(AcademicSession, id=session_id, school_id=school_id)
             serializer = serializers.ModelSerializer(
                 AcademicSession, fields=['id', 'name', 'start_date', 'end_date', 'status']
             )(session, data=request.data, partial=True, context={'request': request, 'school_id': school_id})
@@ -604,8 +603,8 @@ class AcademicSessionView(APIView):
 
     def delete(self, request, session_id):
         try:
-            school_id = request.user.school.school_id
-            session = get_object_or_404(AcademicSession, id=session_id, school__school_id=school_id)
+            school_id = request.user.school.id
+            session = get_object_or_404(AcademicSession, id=session_id, school_id=school_id)
             with transaction.atomic():
                 session.delete()
                 logger.info(f"Deleted academic session {session_id} for school_id: {school_id}")
@@ -620,8 +619,8 @@ class StudentDocumentTypeView(APIView):
 
     def get(self, request):
         try:
-            school_id = request.user.school.school_id
-            doc_types = StudentDocumentType.objects.filter(school__school_id=school_id)
+            school_id = request.user.school.id
+            doc_types = StudentDocumentType.objects.filter(school_id=school_id)
             serializer = serializers.ModelSerializer(
                 StudentDocumentType, fields=['id', 'name']
             )(doc_types, many=True)
@@ -633,7 +632,7 @@ class StudentDocumentTypeView(APIView):
 
     def post(self, request):
         try:
-            school_id = request.user.school.school_id
+            school_id = request.user.school.id
             serializer = serializers.ModelSerializer(
                 StudentDocumentType, fields=['id', 'name']
             )(data=request.data, context={'request': request, 'school_id': school_id})
@@ -649,8 +648,8 @@ class StudentDocumentTypeView(APIView):
 
     def put(self, request, doc_type_id):
         try:
-            school_id = request.user.school.school_id
-            doc_type = get_object_or_404(StudentDocumentType, id=doc_type_id, school__school_id=school_id)
+            school_id = request.user.school.id
+            doc_type = get_object_or_404(StudentDocumentType, id=doc_type_id, school_id=school_id)
             serializer = serializers.ModelSerializer(
                 StudentDocumentType, fields=['id', 'name']
             )(doc_type, data=request.data, partial=True, context={'request': request, 'school_id': school_id})
@@ -666,8 +665,8 @@ class StudentDocumentTypeView(APIView):
 
     def delete(self, request, doc_type_id):
         try:
-            school_id = request.user.school.school_id
-            doc_type = get_object_or_404(StudentDocumentType, id=doc_type_id, school__school_id=school_id)
+            school_id = request.user.school.id
+            doc_type = get_object_or_404(StudentDocumentType, id=doc_type_id, school_id=school_id)
             with transaction.atomic():
                 doc_type.delete()
                 logger.info(f"Deleted document type {doc_type_id} for school_id: {school_id}")
@@ -681,10 +680,10 @@ class SchoolSettingsView(APIView):
 
     def get(self, request):
         try:
-            school_id = request.user.school.school_id
-            school = get_object_or_404(School, school_id=school_id)
+            school_id = request.user.school.id
+            school = get_object_or_404(School, id=school_id)
             serializer = serializers.ModelSerializer(
-                School, fields=['id', 'school_id', 'name']
+                School, fields=['id', 'name']
             )(school)
             logger.debug(f"Retrieved school settings for school_id: {school_id}")
             return Response([serializer.data])
@@ -699,11 +698,11 @@ class AdmissionView(APIView):
     def post(self, request):
         try:
             school = request.user.school
-            logger.debug(f"School ID from user: {school.school_id}, School integer ID: {school.id}")
-            if not school or not school.school_id:
+            logger.debug(f"School ID from user: {school.id}, School integer ID: {school.id}")
+            if not school or not school.id:
                 logger.error(f"User {request.user.id} has no associated school")
                 return Response({"error": "User has no associated school"}, status=status.HTTP_400_BAD_REQUEST)
-            school_id = school.school_id  # UUID
+            school_id = school.id
             logger.debug(f"Processing admission for school_id: {school_id}, School integer ID: {school.id}")
 
             # Log raw request data for debugging
@@ -819,7 +818,7 @@ class AdmissionView(APIView):
 
                 # Create admission fee if applicable
                 admission_fee = AdmissionFee.objects.filter(
-                    school__school_id=school_id,
+                    school_id=school_id,
                     class_id=student.class_id,
                     section=student.section,
                     is_active=True

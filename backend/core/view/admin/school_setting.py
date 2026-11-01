@@ -54,7 +54,6 @@ class SchoolSettingsView(APIView):
             logger.warning(f"User {request.user} has no school attribute")
             return Response({"error": "User is not associated with any school"}, status=status.HTTP_404_NOT_FOUND)
 
-        logger.info(f"Found school: {school.name}, ID: {school.school_id}")
         serializer = SchoolSerializer(school)
         return Response(serializer.data)
 
@@ -87,7 +86,6 @@ class SchoolSettingsView(APIView):
         serializer = SchoolSerializer(school, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            logger.info(f"School updated: {school.name}, ID: {school.school_id}")
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

@@ -93,7 +93,7 @@ def admin_dashboard_stats(request):
         total_classes = Class.objects.filter(school=school).count()
         if total_classes == 0:
             # Try with school_id
-            total_classes = Class.objects.filter(school_id=school.school_id).count()
+            total_classes = Class.objects.filter(school_id=school.id).count()
         if total_classes == 0:
             # Try without any filter to see if there are any classes at all
             all_classes = Class.objects.all().count()

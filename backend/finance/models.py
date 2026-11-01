@@ -90,7 +90,7 @@ class FinancialYear(TimeStampedMixin):
                 if active_years.exists():
                     raise ValidationError("This school already has an active financial year.")
 
-            return super().save(*args, **kwargs)
+            super().save(*args, **kwargs)
 
 
 class FinanceSettings(TimeStampedMixin, UserAuditMixin):

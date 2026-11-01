@@ -1,8 +1,11 @@
-from rest_framework import serializers
-from core.models import User, School, Subscription
 import logging
 
+from rest_framework import serializers
+
+from core.models import User, School, Subscription
+
 logger = logging.getLogger(__name__)
+
 
 class SuperuserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -55,33 +58,39 @@ class SuperuserSerializer(serializers.ModelSerializer):
         representation['email'] = instance.email or 'unknown@example.com'
         representation['name'] = instance.name or 'Unknown'
         representation['role'] = instance.role or 'admin'
-        representation['school'] = str(instance.school.school_id) if instance.school else None
         representation['plaintext_password'] = instance.plaintext_password or 'Not set'
         return representation
 
+
 class SubscriptionSerializer(serializers.ModelSerializer):
+    status_label = serializers.CharField(source="get_status_display", read_only=True)
+    fulfillment_status_label = serializers.CharField(source="get_fulfillment_status_display", read_only=True)
+
     class Meta:
         model = Subscription
-        fields = ['id', 'school', 'start_date', 'end_date', 'status', 'fulfillment_status']
-        read_only_fields = ['id', 'school', 'created_at', 'updated_at']
-        extra_kwargs = {
-            'start_date': {'required': True},
-            'end_date': {'required': True},
-            'status': {'required': True},
-            'fulfillment_status': {'required': True},
-        }
+        fields = [
+            "id",
+            "school",
+            "start_date",
+            "end_date",
+            "status",
+            "status_label",
+            "fulfillment_status",
+            "fulfillment_status_label",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
 
-    def validate(self, data):
-        logger.debug(f"SubscriptionSerializer validate data: {data}")
-        if data['start_date'] > data['end_date']:
-            raise serializers.ValidationError("Start date must be before end date.")
-        return data
+    def validate(self, attrs):
+        start_date = attrs.get("start_date", self.instance.start_date if self.instance else None)
+        end_date = attrs.get("end_date", self.instance.end_date if self.instance else None)
 
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation['id'] = str(instance.id)
-        representation['school'] = str(instance.school.school_id)
-        return representation
+        if start_date and end_date and start_date > end_date:
+            raise serializers.ValidationError({"end_date": "End date must be after start date."})
+
+        return attrs
+
 
 class SchoolSerializer(serializers.ModelSerializer):
     logo = serializers.ImageField(required=False, allow_null=True)
@@ -90,14 +99,13 @@ class SchoolSerializer(serializers.ModelSerializer):
     class Meta:
         model = School
         fields = [
-            'school_id', 'name', 'address', 'phone', 'email', 'website',
+            'id', 'name', 'address', 'phone', 'email', 'website',
             'academic_year', 'logo', 'founded_date', 'affiliation', 'motto',
             'is_active', 'subscription_status', 'subscription'
         ]
-        read_only_fields = ['school_id', 'created_at', 'updated_at', 'is_active']
+        read_only_fields = ['created_at', 'updated_at', 'is_active']
 
     def validate(self, data):
-        logger.debug(f"SchoolSerializer validate data: {data}")
         if not data.get('name') or not data.get('email') or not data.get('phone'):
             raise serializers.ValidationError("Name, email, and phone are required.")
         if not data.get('academic_year'):
@@ -106,27 +114,8 @@ class SchoolSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("A school with this email already exists.")
         return data
 
-    def create(self, validated_data):
-        try:
-            school = School.objects.create(**validated_data)
-            logger.info(f"School {school.name} created by superuser {self.context['request'].user.email}")
-            return school
-        except Exception as e:
-            logger.error(f"School creation error: {str(e)}")
-            raise serializers.ValidationError(f"Failed to create school: {str(e)}")
-
-    def update(self, instance, validated_data):
-        try:
-            instance = super().update(instance, validated_data)
-            logger.info(f"School {instance.name} updated by superuser {self.context['request'].user.email}")
-            return instance
-        except Exception as e:
-            logger.error(f"School update error: {str(e)}")
-            raise serializers.ValidationError(f"Failed to update school: {str(e)}")
-
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation['school_id'] = str(instance.school_id)
         if instance.logo:
             representation['logo'] = instance.logo.url
         else:

@@ -1,24 +1,23 @@
+import logging
+from datetime import timedelta
+from uuid import UUID
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from django.contrib.auth.models import Permission
+from django.utils import timezone
+from django.utils.crypto import get_random_string
+
 from core.models import User, School, Subscription
 from core.serial.superuser.SuperuserSerializer import SuperuserSerializer, SchoolSerializer, SubscriptionSerializer
 from core.serial.ChangePasswordSerializer import ChangePasswordSerializer as ChangePasswordSerializerClass
-from django.utils import timezone
-from datetime import timedelta
-import logging
-from django.utils.crypto import get_random_string
+from core.permissions import IsSuperUser
 
 logger = logging.getLogger(__name__)
 
-class IsSuperuser(Permission):
-    def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.is_superuser
 
 class SuperuserView(APIView):
-    permission_classes = [IsAuthenticated, IsSuperuser]
+    permission_classes = [IsSuperUser]
 
     def get(self, request):
         """List all schools with stats (for SuperadminDashboard)."""
@@ -81,9 +80,10 @@ class SuperuserView(APIView):
         except Exception as e:
             logger.error(f"Error retrieving schools: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
+
 class SuperuserSchoolCreateView(APIView):
-    permission_classes = [IsAuthenticated, IsSuperuser]
+    permission_classes = [IsSuperUser]
 
     def post(self, request):
         """Create a school and its admin in one request."""
@@ -112,7 +112,7 @@ class SuperuserSchoolCreateView(APIView):
         logger.info(f"Subscription created for school {school.name}")
 
         # Create admin
-        admin_data['school'] = str(school.school_id)
+        admin_data['school'] = school
         admin_data['password'] = admin_data.get('password', get_random_string(12))
         admin_serializer = SuperuserSerializer(data=admin_data, context={'request': request})
         if not admin_serializer.is_valid():
@@ -129,9 +129,10 @@ class SuperuserSchoolCreateView(APIView):
             'admin': admin_serializer.data,
             'subscription': SubscriptionSerializer(subscription).data
         }, status=status.HTTP_201_CREATED)
-    
+
+
 class SuperuserAdminView(APIView):
-    permission_classes = [IsAuthenticated, IsSuperuser]
+    permission_classes = [IsSuperUser]
 
     def post(self, request):
         """Create an admin for a school."""
@@ -143,18 +144,18 @@ class SuperuserAdminView(APIView):
         logger.error(f"Admin creation failed: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class SuperuserSubscriptionView(APIView):
-    permission_classes = [IsAuthenticated, IsSuperuser]
 
-    def get(self, request, school_id):
+class SuperuserSubscriptionView(APIView):
+    permission_classes = [IsSuperUser]
+
+    def get(self, request, school_id: UUID):
         """Get subscription and admin details for a school."""
         try:
-            subscription = Subscription.objects.filter(school__school_id=school_id).last()
+            subscription = Subscription.objects.filter(school_id=school_id).last()
             if not subscription:
-                logger.error(f"No subscription found for school ID {school_id}")
                 return Response({"error": "No subscription found"}, status=status.HTTP_404_NOT_FOUND)
             
-            admin = User.objects.filter(school__school_id=school_id, role='admin').first()
+            admin = User.objects.filter(school_id=school_id, role='admin').first()
             admin_data = SuperuserSerializer(admin, context={'request': request}).data if admin else None
             
             serializer = SubscriptionSerializer(subscription, context={'request': request})
@@ -164,20 +165,18 @@ class SuperuserSubscriptionView(APIView):
             }
             return Response(response_data, status=status.HTTP_200_OK)
         except Exception as e:
-            logger.error(f"Error retrieving subscription for school ID {school_id}: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def patch(self, request, school_id):
+    def patch(self, request, school_id: UUID):
         """Update subscription for a school."""
         try:
-            subscription = Subscription.objects.filter(school__school_id=school_id).last()
+            subscription = Subscription.objects.filter(school_id=school_id).last()
             if not subscription:
-                logger.error(f"No subscription found for school ID {school_id}")
                 return Response({"error": "No subscription found"}, status=status.HTTP_404_NOT_FOUND)
             serializer = SubscriptionSerializer(subscription, data=request.data, partial=True, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
-                school = School.objects.get(school_id=school_id)
+                school = School.objects.get(pk=school_id)
                 school.subscription_status = serializer.validated_data.get('status', school.subscription_status)
                 school.save()
                 logger.info(f"Subscription for school {school.name} updated by superuser {request.user.email}")
@@ -185,18 +184,15 @@ class SuperuserSubscriptionView(APIView):
             logger.error(f"Subscription update failed: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except School.DoesNotExist:
-            logger.error(f"School with ID {school_id} not found")
             return Response({"error": "School not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            logger.error(f"Error updating subscription for school ID {school_id}: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def post(self, request, school_id):
+    def post(self, request, school_id: UUID):
         """Change the admin password for a school."""
         try:
-            admin = User.objects.filter(school__school_id=school_id, role='admin').first()
+            admin = User.objects.filter(school_id=school_id, role='admin').first()
             if not admin:
-                logger.error(f"No admin found for school ID {school_id}")
                 return Response({"error": "No admin found for this school"}, status=status.HTTP_404_NOT_FOUND)
             
             serializer = ChangePasswordSerializerClass(data=request.data)
@@ -205,10 +201,8 @@ class SuperuserSubscriptionView(APIView):
                 admin.set_password(new_password)
                 admin.plaintext_password = new_password
                 admin.save()
-                logger.info(f"Password changed for admin {admin.email} of school ID {school_id} by superuser {request.user.email}")
                 return Response({"message": "Password changed successfully"}, status=status.HTTP_200_OK)
             logger.error(f"Password change failed: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"Error changing password for school ID {school_id}: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

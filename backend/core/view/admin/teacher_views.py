@@ -22,8 +22,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
         """
         Get teachers for the current user's school.
         """
-        logger.info(f"Fetching teachers for user: {self.request.user.email}")
-        school_id = self.request.user.school.school_id if self.request.user.school else None
+        school_id = self.request.user.school_id if self.request.user.school else None
         
         if not school_id:
             logger.warning(f"No school_id found for user: {self.request.user.email}")
@@ -31,7 +30,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
         
         logger.info(f"Fetching teachers for school_id: {school_id}")
         queryset = Teacher.objects.filter(
-            staff__school__school_id=school_id
+            staff__school_id=school_id
         ).select_related(
             'staff', 'staff__user', 'staff__school', 'staff__staff_role', 'staff__department', 'primary_subject'
         )

@@ -806,7 +806,7 @@ export const zScholarshipRequest = z.object({
 });
 
 export const zSchool = z.object({
-  school_id: z.uuid().readonly(),
+  id: z.uuid().readonly(),
   name: z.string().max(255),
   address: z.string(),
   phone: z.string().max(20),
@@ -839,7 +839,7 @@ export const zStaffLeave = z.object({
   leave_type_name: z.string().readonly(),
   academic_session: z.int(),
   academic_session_name: z.string().readonly(),
-  school: z.uuid().nullish(),
+  school: z.uuid(),
   start_date: z.iso.date().optional(),
   end_date: z.iso.date().nullish(),
   days: z.number(),
@@ -850,7 +850,7 @@ export const zStaffLeaveRequest = z.object({
   staff: z.int(),
   leave_type: z.int(),
   academic_session: z.int(),
-  school: z.uuid().nullish(),
+  school: z.uuid(),
   start_date: z.iso.date().optional(),
   end_date: z.iso.date().nullish(),
   days: z.number(),
@@ -1711,7 +1711,7 @@ export const zStaffLeaveWritable = z.object({
   staff: z.int(),
   leave_type: z.int(),
   academic_session: z.int(),
-  school: z.uuid().nullish(),
+  school: z.uuid(),
   start_date: z.iso.date().optional(),
   end_date: z.iso.date().nullish(),
   days: z.number(),

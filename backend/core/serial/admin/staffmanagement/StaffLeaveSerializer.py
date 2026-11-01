@@ -26,7 +26,7 @@ class StaffLeaveSerializer(serializers.ModelSerializer):
         # Skip school validation - the school is already set correctly by the view
         # Just log the values for debugging
         if request and request.user and request.user.school:
-            logger.info(f"Request user school: {request.user.school.school_id}")
+            logger.info(f"Request user school: {request.user.school.id}")
         if school_id:
             logger.info(f"Data school_id: {school_id}")
             

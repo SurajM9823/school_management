@@ -890,7 +890,7 @@ export type ScholarshipTypeEnum =
   | "monthly";
 
 export type School = {
-  readonly school_id: string;
+  readonly id: string;
   name: string;
   address: string;
   phone: string;
@@ -962,7 +962,7 @@ export type StaffLeave = {
   readonly leave_type_name: string;
   academic_session: number;
   readonly academic_session_name: string;
-  school?: string | null;
+  school: string;
   start_date?: string;
   end_date?: string | null;
   days: number;
@@ -973,7 +973,7 @@ export type StaffLeaveRequest = {
   staff: number;
   leave_type: number;
   academic_session: number;
-  school?: string | null;
+  school: string;
   start_date?: string;
   end_date?: string | null;
   days: number;
@@ -1611,7 +1611,7 @@ export type StaffLeaveWritable = {
   staff: number;
   leave_type: number;
   academic_session: number;
-  school?: string | null;
+  school: string;
   start_date?: string;
   end_date?: string | null;
   days: number;

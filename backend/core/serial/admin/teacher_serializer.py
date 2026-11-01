@@ -121,7 +121,7 @@ class TeacherSerializer(serializers.ModelSerializer):
             'provident_fund_number': validated_data.pop('provident_fund_number', ''),
             'status': validated_data.pop('status', 'active'),
             'school': self.context['request'].user.school,
-            'school_id': str(self.context['request'].user.school.school_id),
+            'school_id': str(self.context['request'].user.school.id),
         }
         
         # Create staff using StaffSerializer
@@ -175,7 +175,7 @@ class TeacherSerializer(serializers.ModelSerializer):
         # Update staff if staff_data is not empty
         if staff_data:
             # Add school_id to staff_data
-            staff_data['school_id'] = str(self.context['request'].user.school.school_id)
+            staff_data['school_id'] = str(self.context['request'].user.school.id)
             
             # Handle last_name if it's blank
             if 'last_name' in staff_data and not staff_data['last_name']:

@@ -13,7 +13,7 @@ class NoticeViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         school_id = self.request.user.school_id
         academic_session_id = self.request.query_params.get('academic_session_id')
-        queryset = Notice.objects.filter(school__school_id=school_id, is_active=True)
+        queryset = Notice.objects.filter(school_id=school_id, is_active=True)
         if academic_session_id:
             queryset = queryset.filter(academic_session_id=academic_session_id)
         return queryset.order_by('-created_at')

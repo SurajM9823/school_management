@@ -63,7 +63,7 @@ class TeacherExamMarkClassListAPIView(APIView):
         if not school:
             return Response([], status=status.HTTP_200_OK)
         # Only show classes assigned to this teacher
-        teacher_classes = teacher.classes.filter(is_active=True, school=school.school_id).distinct()
+        teacher_classes = teacher.classes.filter(is_active=True, school=school.id).distinct()
         serializer = TeacherClassSerializer(teacher_classes, many=True, context={'teacher': teacher})
         return Response(serializer.data, status=status.HTTP_200_OK)
 

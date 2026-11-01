@@ -36,7 +36,7 @@ class ClassListAPIView(APIView):
         school = getattr(request.user, 'school', None)
         if not school:
             return Response([], status=status.HTTP_200_OK)
-        classes = Class.objects.filter(is_active=True, school=school.school_id)
+        classes = Class.objects.filter(is_active=True, school=school.id)
         serializer = ClassSerializer(classes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -105,7 +105,7 @@ class AttendanceListAPIView(APIView):
             return Response({'detail': 'No school found for user.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Use UUID for Attendance.class_id__school
-        filters['class_id__school'] = school.school_id
+        filters['class_id__school'] = school.id
 
         if class_id:
             try:

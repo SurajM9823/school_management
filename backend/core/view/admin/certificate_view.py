@@ -67,8 +67,8 @@ class StudentCredentialsView(APIView):
 
     def get(self, request, student_id):
         try:
-            school_id = request.user.school.school_id
-            student = get_object_or_404(Student, id=student_id, school__school_id=school_id)
+            school_id = request.user.school.id
+            student = get_object_or_404(Student, id=student_id, school_id=school_id)
             student_user = student.user
 
             credentials = {
@@ -80,7 +80,7 @@ class StudentCredentialsView(APIView):
                 "parent": None
             }
 
-            student_parent = StudentParent.objects.filter(student=student, parent__school__school_id=school_id).first()
+            student_parent = StudentParent.objects.filter(student=student, parent__school_id=school_id).first()
             if student_parent:
                 parent = student_parent.parent
                 credentials["parent"] = {
@@ -100,8 +100,8 @@ class StudentCredentialsView(APIView):
 
     def put(self, request, student_id):
         try:
-            school_id = request.user.school.school_id
-            student = get_object_or_404(Student, id=student_id, school__school_id=school_id)
+            school_id = request.user.school.id
+            student = get_object_or_404(Student, id=student_id, school_id=school_id)
             student_user = student.user
             new_student_password = request.data.get('student_password')
             new_parent_password = request.data.get('parent_password')
@@ -122,7 +122,7 @@ class StudentCredentialsView(APIView):
                 credentials["student"]["password"] = new_student_password
                 logger.info(f"Password reset for student {student_id}")
 
-            student_parent = StudentParent.objects.filter(student=student, parent__school__school_id=school_id).first()
+            student_parent = StudentParent.objects.filter(student=student, parent__school_id=school_id).first()
             if student_parent and new_parent_password:
                 parent = student_parent.parent
                 parent.user.set_password(new_parent_password)

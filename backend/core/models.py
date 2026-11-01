@@ -14,7 +14,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from core.domain.teacher import Teacher
-from .mixins import TimeStampedMixin, UserAuditMixin
+from core.mixins.models import TimeStampedMixin, UserAuditMixin
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         null=True,
         blank=True,
         related_name='users',
-        to_field='school_id'  # Reference School.school_id (UUID)
     )
     is_staff = models.BooleanField(default=False)
     plaintext_password = models.CharField(max_length=255, null=True, blank=True)  # New field for plaintext password
@@ -78,7 +77,7 @@ class School(models.Model):
         ('inactive', 'Inactive'),
     )
 
-    school_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     address = models.TextField()
     phone = models.CharField(max_length=20)
@@ -113,13 +112,8 @@ class Subscription(models.Model):
         ('expired', 'Expired'),
     )
 
-    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)  # Fixed: Added primary_key=True
-    school = models.ForeignKey(
-        School,
-        on_delete=models.CASCADE,
-        related_name='subscriptions',
-        to_field='school_id'
-    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='subscriptions')
     start_date = models.DateField()
     end_date = models.DateField()
     status = models.CharField(
@@ -143,7 +137,7 @@ class Subscription(models.Model):
         return f"{self.school.name} - {self.status}"
         
 class LocaleSettings(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='localesettingss', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='localesettingss', null=True)
     timezone = models.CharField(max_length=100, choices=[(tz, tz) for tz in pytz.all_timezones])
     language = models.CharField(max_length=10, default='en')  # e.g., 'en', 'ne'
     date_format = models.CharField(max_length=20, default='YYYY-MM-DD')
@@ -162,7 +156,7 @@ class LocaleSettings(models.Model):
 
 
 class AcademicSession(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='academicsessions', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='academicsessions')
     name = models.CharField(max_length=20)  # e.g., "2024-2025"
     status = models.CharField(max_length=20, choices=[('active', 'Active'), ('upcoming', 'Upcoming'), ('completed', 'Completed')])
     start_date = models.DateField()
@@ -178,7 +172,7 @@ class AcademicSession(models.Model):
         return self.name
 
 class Term(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='terms', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='terms')
     session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE, related_name='terms')
     name = models.CharField(max_length=100)  # e.g., "First Term"
     start_date = models.DateField()
@@ -211,7 +205,7 @@ class Holiday(models.Model):
         ('staff_only', 'Staff Only'),
         ('students_only', 'Students Only'),
     ]
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='holidays', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='holidays')
     session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE, related_name='holidays')
     name = models.CharField(max_length=100)
     start_date = models.DateField()
@@ -235,7 +229,7 @@ class GradingSettings(models.Model):
         ('gpa', 'GPA'),
         ('letter', 'Letter Grades'),
     ]
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='grading_settings', null=True)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='grading_settings')
     grading_type = models.CharField(max_length=20, choices=GRADING_TYPE_CHOICES, default='percentage')
     default_passing_grade = models.CharField(max_length=10, default='40')  # e.g., "40", "C", "2.0"
     grade_ranges = models.JSONField(null=True, blank=True)  # e.g., {"A": [90, 100], "B": [80, 89]}
@@ -254,7 +248,7 @@ class AttendanceSettings(models.Model):
         ('detailed', 'Present/Absent/Late/Excused'),
         ('custom', 'Custom Statuses'),
     ]
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='attendance_settings', null=True)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='attendance_settings')
     marking_scheme = models.CharField(max_length=20, choices=MARKING_SCHEME_CHOICES, default='basic')
     default_marking = models.CharField(max_length=10, default='P')  # e.g., 'P' for Present
     custom_statuses = models.JSONField(null=True, blank=True)  # e.g., ["Present", "Absent", "Tardy"]
@@ -524,7 +518,7 @@ class FeePackageItem(TimeStampedMixin):
 
 
 class NotificationSettings(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='notificationsettingss', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='notificationsettingss')
     smtp_host = models.CharField(max_length=255, blank=True, null=True)
     smtp_port = models.IntegerField(blank=True, null=True)
     smtp_username = models.CharField(max_length=255, blank=True, null=True)
@@ -542,7 +536,7 @@ class NotificationSettings(models.Model):
         verbose_name_plural = "Notification Settings"
 
 class NotificationTemplate(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='notificationtemplates', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='notificationtemplates')
     template_id = models.CharField(max_length=50, unique=True)  # e.g., 'admission_confirm'
     name = models.CharField(max_length=100)
     content = models.TextField()  # e.g., "Dear {parent_name}, your child {student_name}..."
@@ -557,7 +551,7 @@ class NotificationTemplate(models.Model):
 
 
 class StaffRole(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='staffroles', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='staffroles')
     name = models.CharField(max_length=100)
     is_active = models.BooleanField(default=True)
 
@@ -589,7 +583,7 @@ class LeaveType(models.Model):
         ('students', 'Students'),
     ]
 
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='leavetypes', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='leavetypes')
     name = models.CharField(max_length=100)  # Enforce unique names
     default_days = models.IntegerField()
     unit = models.CharField(max_length=20, choices=UNIT_CHOICES)
@@ -610,7 +604,7 @@ class LeaveType(models.Model):
     
 
 class Department(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='departments', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='departments')
     name = models.CharField(max_length=100)
     is_active = models.BooleanField(default=True)
 
@@ -622,7 +616,7 @@ class Department(models.Model):
         return self.name
 
 class BulkLeaveAssignment(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='bulkleaveassignments', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='bulkleaveassignments')
     leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE)
     target_group = models.CharField(max_length=50)  # e.g., "all_staff", "all_female_staff"
     days = models.FloatField()
@@ -639,7 +633,7 @@ class BulkLeaveAssignment(models.Model):
         return f"{self.leave_type.name} - {self.reason}"
 
 class Class(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='classes', to_field='school_id', null=True, blank=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='classes')
     name = models.CharField(max_length=100)
     max_capacity = models.IntegerField(null=True, blank=True)  # Made nullable
     is_active = models.BooleanField(default=True, null=True, blank=True)
@@ -653,7 +647,7 @@ class Class(models.Model):
 
 
 class Section(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='sections', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='sections')
     name = models.CharField(max_length=100)
     class_id = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='sections')
     max_capacity = models.IntegerField(null=True, blank=True)  # Optional, defaults to class's max_capacity
@@ -669,7 +663,7 @@ class Section(models.Model):
     
 
 class Subject(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='subjects', to_field='school_id',null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='subjects')
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20)
     subject_type = models.CharField(max_length=20, choices=[('core', 'Core'), ('elective', 'Elective')])
@@ -684,7 +678,7 @@ class Subject(models.Model):
         return self.name
 
 class GradingScale(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='gradingscales', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='gradingscales')
     grade = models.CharField(max_length=10)
     percentage_range = models.CharField(max_length=20)
     gpa = models.CharField(max_length=10)
@@ -699,7 +693,7 @@ class GradingScale(models.Model):
         return self.grade
 
 class PromotionRules(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='promotionrules', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='promotionrules')
     min_overall_percentage = models.IntegerField()
     max_failed_subjects = models.IntegerField()
     consider_attendance = models.BooleanField(default=False)
@@ -710,7 +704,7 @@ class PromotionRules(models.Model):
         verbose_name_plural = "Promotion Rules"
 
 class ClassCapacity(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='classcapacities', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='classcapacities')
     default_capacity = models.IntegerField()
     max_capacity = models.IntegerField()
     updated_at = models.DateTimeField(auto_now=True)
@@ -720,7 +714,7 @@ class ClassCapacity(models.Model):
         verbose_name_plural = "Class Capacities"
 
 class Campus(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='campuses', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='campuses')
     name = models.CharField(max_length=100)
     address = models.TextField()
     contact_person = models.CharField(max_length=100)
@@ -734,7 +728,7 @@ class Campus(models.Model):
         return self.name
 
 class Building(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='buildings', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='buildings')
     campus = models.ForeignKey(Campus, on_delete=models.CASCADE, related_name='buildings')
     name = models.CharField(max_length=100)
     is_active = models.BooleanField(default=True)
@@ -747,7 +741,7 @@ class Building(models.Model):
         return f"{self.name} ({self.campus.name})"
 
 class Room(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='rooms', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='rooms')
     building = models.ForeignKey(Building, on_delete=models.CASCADE, related_name='rooms')
     name = models.CharField(max_length=100)
     capacity = models.IntegerField()
@@ -762,7 +756,7 @@ class Room(models.Model):
         return f"{self.name} ({self.building.name})"
 
 class Resource(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='resources', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='resources')
     name = models.CharField(max_length=100)
     total_count = models.IntegerField()
     available_count = models.IntegerField()
@@ -778,14 +772,9 @@ class Resource(models.Model):
 
 class Parent(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='parent_profile')
-    school = models.ForeignKey(
-        'School',
-        on_delete=models.CASCADE,
-        to_field='id',  # Reference School.id
-        db_column='school_id'
-    )
+    school = models.ForeignKey('School', on_delete=models.CASCADE)
     phone = models.CharField(max_length=20)
-    address = models.TextField(blank=True, null=True)
+    address = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -822,12 +811,7 @@ class Student(models.Model):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_profile')
     academic_session = models.ForeignKey(AcademicSession, on_delete=models.SET_NULL, null=True, related_name='students')
-    school = models.ForeignKey(
-        'School',
-        on_delete=models.CASCADE,
-        to_field='id',  # Reference School.id (integer)
-        db_column='school_id'  # Match the core_student.school_id column
-    )
+    school = models.ForeignKey('School', on_delete=models.CASCADE)
     class_id = models.ForeignKey(Class, on_delete=models.SET_NULL, null=True, related_name='students')
     section = models.ForeignKey(Section, on_delete=models.SET_NULL, null=True, related_name='students')
     admission_number = models.CharField(max_length=50, unique=True, null=True, blank=True)
@@ -887,7 +871,7 @@ class StudentParent(models.Model):
         return f"{self.parent.user.name} - {self.student.user.name} ({self.relationship})"
 
 class AdmissionFee(models.Model):
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='admission_fees', null=True)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='admission_fees')
     class_id = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='admission_fees')
     section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='admission_fees', null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -922,7 +906,7 @@ class StudentFee(models.Model):
 
 
 class StudentDocumentType(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='studentdocumenttypes', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='studentdocumenttypes')
     name = models.CharField(max_length=100, unique=True)  # e.g., "Marksheet", "Transfer Certificate", "ID Card"
     description = models.TextField(blank=True, null=True)
 
@@ -931,7 +915,7 @@ class StudentDocumentType(models.Model):
 
 
 class StudentDocument(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='studentdocuments', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='studentdocuments')
     student = models.ForeignKey('Student', on_delete=models.CASCADE, related_name='documents')
     document_type = models.ForeignKey('StudentDocumentType', on_delete=models.SET_NULL, null=True, related_name='documents')
     session = models.ForeignKey('AcademicSession', on_delete=models.SET_NULL, null=True, blank=True, related_name='student_documents')
@@ -943,7 +927,7 @@ class StudentDocument(models.Model):
         return f"{self.student.user.name} - {self.document_type.name if self.document_type else 'Document'}"
     
 class StaffDocument(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='staffdocuments', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='staffdocuments')
     staff = models.ForeignKey('Staff', on_delete=models.CASCADE, related_name='documents')
     document_type = models.CharField(max_length=50, default='Other')
     description = models.CharField(max_length=255, blank=True, null=True)
@@ -954,7 +938,7 @@ class StaffDocument(models.Model):
         return f"{self.staff.first_name} {self.staff.last_name} - {self.document_type}"
     
 class Certificate(models.Model):
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='certificates', to_field='school_id', null=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='certificates')
     student_id = models.ForeignKey(Student, on_delete=models.CASCADE)
     certificate_type = models.CharField(max_length=20, choices=[('graduation', 'Graduation'), ('leave', 'Leave')])
     issue_date = models.DateField()
@@ -994,13 +978,7 @@ class Staff(models.Model):
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='staff_profile')
-    school = models.ForeignKey(
-        'School',
-        on_delete=models.CASCADE,
-        related_name='staff',
-        to_field='school_id',
-        null=True  # Reference School.school_id (UUID)
-    )
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='staff')
     staff_role = models.ForeignKey(StaffRole, on_delete=models.SET_NULL, null=True, related_name='staff')
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, related_name='staff')
     
@@ -1091,13 +1069,7 @@ class StaffLeave(models.Model):
     staff = models.ForeignKey('Staff', on_delete=models.CASCADE, related_name='leaves')
     leave_type = models.ForeignKey('LeaveType', on_delete=models.CASCADE, related_name='staff_leaves')
     academic_session = models.ForeignKey('AcademicSession', on_delete=models.CASCADE, related_name='staff_leaves')
-    school = models.ForeignKey(
-        'School',
-        on_delete=models.CASCADE,
-        related_name='staff_leaves',
-        to_field='school_id',
-        null=True  # Reference School.school_id (UUID
-    )
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='staff_leaves')
     start_date = models.DateField(default=timezone.now)
     end_date = models.DateField(null=True, blank=True)
     days = models.FloatField()
@@ -1146,34 +1118,12 @@ class Exam(models.Model):
         ('exam', 'Exam'),
     )
     
-    school = models.ForeignKey(
-        School,
-        on_delete=models.CASCADE,
-        related_name='exams',
-        to_field='school_id',
-        null=True
-    )
-    session = models.ForeignKey(
-        AcademicSession,
-        on_delete=models.CASCADE,
-        related_name='exams'
-    )
-    term = models.ForeignKey(
-        Term,
-        on_delete=models.CASCADE,
-        related_name='exams'
-    )
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='exams')
+    session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE, related_name='exams')
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='exams')
     name = models.CharField(max_length=100)
-    exam_type = models.CharField(
-        max_length=20,
-        choices=EXAM_TYPE_CHOICES,
-        default='exam'
-    )
-    classes = models.ManyToManyField(
-        Class,
-        related_name='exams',
-        through='ExamClass'
-    )
+    exam_type = models.CharField(max_length=20, choices=EXAM_TYPE_CHOICES, default='exam')
+    classes = models.ManyToManyField(Class, related_name='exams', through='ExamClass')
     start_date = models.DateField()
     end_date = models.DateField()
     status = models.CharField(
@@ -1592,5 +1542,3 @@ class TeacherAssignmentToStudent(models.Model):
     
     def __str__(self):
         return f"{self.title} - {self.student.name} ({self.class_assigned.name})"
-
-

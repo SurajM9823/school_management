@@ -28,7 +28,7 @@ class StaffViewSet(viewsets.ModelViewSet):
         queryset = Staff.objects.filter(
             user__email__isnull=False,
             user__name__isnull=False,
-            school__school_id=school_id  # Changed from school_id to school__school_id
+            school_id=school_id  # Changed from school_id to school__id
         ).select_related(
             'user', 'school', 'staff_role', 'department'
         ).prefetch_related('classes', 'subjects', 'leaves')
@@ -55,9 +55,9 @@ class StaffViewSet(viewsets.ModelViewSet):
         if user.school:
             try:
                 # Get the school_id from the related School object
-                school_id = user.school.school_id
+                school_id = user.school.id
                 normalized_school_id = str(school_id)
-                logger.info(f"Found User.school.school_id: {normalized_school_id}")
+                logger.info(f"Found User.school.id: {normalized_school_id}")
                 return normalized_school_id
             except Exception as e:
                 logger.error(f"Error accessing school_id: {str(e)}")
@@ -66,7 +66,7 @@ class StaffViewSet(viewsets.ModelViewSet):
         try:
             staff = Staff.objects.get(user=user)
             if staff.school:
-                normalized_school_id = str(staff.school.school_id)
+                normalized_school_id = str(staff.school.id)
                 logger.info(f"Found Staff record with school_id: {normalized_school_id}")
                 return normalized_school_id
             else:
@@ -266,7 +266,7 @@ class StaffProfileImageView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsSchoolAdmin]
 
     def post(self, request, pk):
-        staff = get_object_or_404(Staff, pk=pk, school_id=request.user.school.school_id)
+        staff = get_object_or_404(Staff, pk=pk, school_id=request.user.school.id)
         if 'profile_image' not in request.FILES:
             return Response({"error": "No image provided"}, status=status.HTTP_400_BAD_REQUEST)
         

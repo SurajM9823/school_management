@@ -38,7 +38,7 @@ class NoticeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("School ID is required.")
 
         try:
-            school = School.objects.get(school_id=school_id)
+            school = School.objects.get(id=school_id)
         except School.DoesNotExist:
             logger.error(f"School with school_id {school_id} does not exist.")
             raise serializers.ValidationError(f"School with school_id {school_id} does not exist.")
@@ -54,7 +54,7 @@ class NoticeSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         school_id = validated_data.pop('school_id')
         try:
-            school = School.objects.get(school_id=school_id)
+            school = School.objects.get(id=school_id)
             validated_data['school'] = school
             validated_data['created_by'] = self.context['request'].user
             return super().create(validated_data)
@@ -69,7 +69,7 @@ class NoticeSerializer(serializers.ModelSerializer):
         school_id = validated_data.pop('school_id', None)
         if school_id:
             try:
-                school = School.objects.get(school_id=school_id)
+                school = School.objects.get(id=school_id)
                 instance.school = school
             except School.DoesNotExist:
                 logger.error(f"School with school_id {school_id} does not exist.")

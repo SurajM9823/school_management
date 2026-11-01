@@ -57,7 +57,7 @@ class UserSerializer(serializers.ModelSerializer):
     def get_school(self, obj):
         if obj.school:
             # Return school_id without hyphens
-            return str(obj.school.school_id).replace('-', '')
+            return str(obj.school.id).replace('-', '')
         return None
 
     def validate(self, data):
@@ -102,10 +102,10 @@ class SchoolSerializer(serializers.ModelSerializer):
     class Meta:
         model = School
         fields = [
-            'school_id', 'name', 'address', 'phone', 'email', 'website',
+            'id', 'name', 'address', 'phone', 'email', 'website',
             'academic_year', 'logo', 'founded_date', 'affiliation', 'motto'
         ]
-        read_only_fields = ['school_id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
