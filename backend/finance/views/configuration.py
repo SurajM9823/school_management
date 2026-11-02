@@ -16,14 +16,16 @@ from core.mixins.tenant import SchoolAuditFieldsMixin, SchoolTenantMixin
 from core.pagination import CustomLimitOffsetPagination
 from core.permissions import IsSchoolAccountant, IsSchoolAssignedAdmin
 from finance.filters import AccountFilter
-from finance.models import Account, AccountingPeriod, FinanceSettings, FinancialYear
-from finance.serializers.settings import (
+from finance.models.configuration import Account, AccountingPeriod, FinanceSettings, FinancialYear
+from finance.serializers.configuration import (
     AccountingPeriodReadSerializer,
     AccountingPeriodWriteSerializer,
     AccountReadSerializer,
     AccountWriteSerializer,
     FinanceSettingsReadSerializer,
     FinanceSettingsWriteSerializer,
+    FinancialYearAccountingPeriodReadSerializer,
+    FinancialYearAccountingPeriodWriteSerializer,
     FinancialYearReadSerializer,
     FinancialYearWriteSerializer,
 )
@@ -101,6 +103,51 @@ class FinancialYearViewSet(SchoolTenantMixin, rw_viewsets.ModelViewSet):
         serializer = FinancialYearReadSerializer(obj, context=self.get_serializer_context())
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        methods=["GET"],
+        description="List all accounting periods of a financial year.",
+        responses={200: FinancialYearAccountingPeriodReadSerializer(many=True)},
+    )
+    @extend_schema(
+        methods=["POST"],
+        description="Create a new accounting period.",
+        request=FinancialYearAccountingPeriodWriteSerializer,
+        responses={201: FinancialYearAccountingPeriodReadSerializer},
+    )
+    @action(detail=True, methods=["get", "post"], filter_backends=[], pagination_class=None)
+    def periods(self, request: Request, financial_year_id=None):
+        instance = self.get_object()
+        user = request.user
+        school = user.school
+
+        if request.method == "GET":
+            accounting_periods = AccountingPeriod.objects.filter(school=school, financial_year=instance)
+            serializer = FinancialYearAccountingPeriodReadSerializer(
+                accounting_periods,
+                many=True,
+                context=self.get_serializer_context(),
+            )
+            return Response(serializer.data)
+
+        elif request.method == "POST":
+            serializer = FinancialYearAccountingPeriodWriteSerializer(
+                data=request.data, context=self.get_serializer_context()
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save(school=school, financial_year=instance, created_by=user, updated_by=user)
+            read_serializer = FinancialYearAccountingPeriodReadSerializer(
+                serializer.instance, context=self.get_serializer_context()
+            )
+            return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        description="Generate accounting periods for an existing financial year.",
+        responses=AccountingPeriodReadSerializer,
+    )
+    @action(detail=True, methods=["post"], url_path="generate-periods")
+    def generate_periods(self, request: Request, financial_year_id=None):
+        pass
+
 
 class FinanceSettingsView(generics.RetrieveUpdateAPIView):
     queryset = FinanceSettings.objects.all()
@@ -115,7 +162,7 @@ class FinanceSettingsView(generics.RetrieveUpdateAPIView):
             school=school,
             defaults={
                 "currency": FinanceSettings.Currency.NPR,
-                "opening_date": timezone.now(),
+                "opening_date": timezone.now().date(),
                 "default_financial_year": None,
                 "created_by": self.request.user,
                 "updated_by": self.request.user,

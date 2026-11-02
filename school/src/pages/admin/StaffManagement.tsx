@@ -318,15 +318,6 @@ useEffect(() => {
       api.get('/school/settings/sessions/', { cancelToken }),
     ]);
 
-    console.log('Staff Response:', staffResponse.data);
-    console.log('School Response:', schoolResponse.data);
-    console.log('Staff Roles Response:', roleResponse.data);
-    console.log('Departments Response:', deptResponse.data);
-    console.log('Classes Response:', classResponse.data);
-    console.log('Subjects Response:', subjectResponse.data);
-    console.log('Leave Types Response:', leaveTypeResponse.data);
-    console.log('Sessions Response:', sessionResponse.data);
-
     console.log('Raw staff data:', staffResponse.data);
     const mappedStaff = staffResponse.data.map((staff: any) => {
       const userData = staff.user || {};

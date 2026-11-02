@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
-import { Edit, Plus, Save, Settings, Trash2 } from "lucide-react";
+import { Edit, Save, Settings, Trash2 } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import api from "@/api";
 import { FeeSettingsRead, FeeSettingsWriteRequest, FeeType, FeeTypeRequest } from "@/client";
-import { zFeeSettingsRead, zFeeSettingsUpdateBody, zFeeTypesCreateBody, zLateFeeTypeEnum } from "@/client/zod.gen";
+import { zFeeSettingsUpdateBody, zFeeTypesCreateBody, zLateFeeTypeEnum } from "@/client/zod.gen";
 import Button from "@/components/common/Button";
 import Card from "@/components/common/Card";
 import { handleDrfErrors } from "@/utils/api-error";
+import { feeTypeFrequencies } from "@/constants";
 
 const feeTypeCreateSchema = zFeeTypesCreateBody.safeExtend({
   name: z.string().trim().min(1, { error: "Name is required." }).max(50),
@@ -101,6 +102,7 @@ export default function DefaultValues() {
     defaultValues: {
       name: "",
       default_amount: "",
+      frequency: undefined,
       is_mandatory: true,
     },
     resolver: zodResolver(feeTypeCreateSchema),
@@ -130,6 +132,7 @@ export default function DefaultValues() {
     resetFeeType({
       name: type.name,
       default_amount: type.default_amount,
+      frequency: type.frequency,
       is_mandatory: type.is_mandatory,
     });
 
@@ -522,6 +525,27 @@ export default function DefaultValues() {
                   <p className="mt-1 text-sm text-red-600">{feeTypeErrors.default_amount.message}</p>
                 )}
               </div>
+              <div>
+                <label htmlFor="frequency" className="block text-sm font-medium text-gray-700">
+                  Frequency
+                </label>
+                <select
+                  {...registerFeeType("frequency")}
+                  id="frequency"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  aria-invalid={feeTypeErrors.frequency ? "true" : "false"}
+                >
+                  <option value="">Select type</option>
+                  {feeTypeFrequencies.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+                {feeTypeErrors.frequency && (
+                  <p className="mt-1 text-sm text-red-600">{feeTypeErrors.frequency.message}</p>
+                )}
+              </div>
               <div className="flex items-center">
                 <input
                   type="checkbox"
@@ -541,7 +565,7 @@ export default function DefaultValues() {
                   onClick={() => {
                     setShowFeeTypeModal(false);
                     setEditingFeeTypeId(null);
-                    resetFeeType({ name: "", default_amount: "", is_mandatory: false });
+                    resetFeeType({});
                   }}
                 >
                   Cancel

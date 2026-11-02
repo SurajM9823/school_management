@@ -1,8 +1,9 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
+from core.serializer_base import DynamicFieldsModelSerializer
 from core.validation import handle_django_validation_error
-from finance.models import Account, AccountingPeriod, FinanceSettings, FinancialYear
+from finance.models.configuration import Account, AccountingPeriod, FinanceSettings, FinancialYear
 
 
 class FinancialYearWriteSerializer(serializers.ModelSerializer):
@@ -39,7 +40,7 @@ class FinancialYearWriteSerializer(serializers.ModelSerializer):
             handle_django_validation_error(exc)
 
 
-class FinancialYearReadSerializer(serializers.ModelSerializer):
+class FinancialYearReadSerializer(DynamicFieldsModelSerializer):
     status_label = serializers.CharField(source="get_status_display", read_only=True)
 
     class Meta:
@@ -53,13 +54,46 @@ class FinancialYearReadSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class FinancialYearAccountingPeriodWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AccountingPeriod
+        fields = ["name", "start_date", "end_date"]
+
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except DjangoValidationError as exc:
+            handle_django_validation_error(exc)
+
+    def update(self, instance, validated_data):
+        try:
+            return super().update(instance, validated_data)
+        except DjangoValidationError as exc:
+            handle_django_validation_error(exc)
+
+
+class FinancialYearAccountingPeriodReadSerializer(DynamicFieldsModelSerializer):
+    status_label = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = AccountingPeriod
+        # fmt: off
+        fields = [
+            "id", "name", "start_date", "end_date",
+            "status", "status_label", "closed_at", "closed_by", "locked_at", "locked_by",
+            "created_at", "updated_at", "created_by", "updated_by",
+        ]
+        # fmt: on
+        read_only_fields = fields
+
+
 class FinanceSettingsWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = FinanceSettings
         fields = ["currency", "opening_date", "default_financial_year"]
 
 
-class FinanceSettingsReadSerializer(serializers.ModelSerializer):
+class FinanceSettingsReadSerializer(DynamicFieldsModelSerializer):
     currency_label = serializers.CharField(source="get_currency_display", read_only=True)
 
     class Meta:
@@ -91,7 +125,7 @@ class AccountingPeriodWriteSerializer(serializers.ModelSerializer):
             handle_django_validation_error(exc)
 
 
-class AccountingPeriodReadSerializer(serializers.ModelSerializer):
+class AccountingPeriodReadSerializer(DynamicFieldsModelSerializer):
     financial_year = FinancialYearReadSerializer(read_only=True)
     status_label = serializers.CharField(source="get_status_display", read_only=True)
 
@@ -159,7 +193,7 @@ class AccountParentReadSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class AccountReadSerializer(serializers.ModelSerializer):
+class AccountReadSerializer(DynamicFieldsModelSerializer):
     parent = AccountParentReadSerializer(read_only=True)
     is_root = serializers.ReadOnlyField()
     has_children = serializers.BooleanField(source="_has_children", read_only=True)

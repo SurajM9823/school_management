@@ -1,6 +1,6 @@
 import django_filters
 
-from .models import Account
+from finance.models.configuration import Account
 
 
 class AccountFilter(django_filters.FilterSet):

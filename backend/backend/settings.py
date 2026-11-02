@@ -140,6 +140,7 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     # Split components into request and response parts where appropriate
     'COMPONENT_SPLIT_REQUEST': True,
+    'DISABLE_ERRORS_AND_WARNINGS': True,
 }
 
 AUTH_USER_MODEL = 'core.User'

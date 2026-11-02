@@ -480,7 +480,7 @@ class AttendanceSettingsView(APIView):
 @extend_schema_view(
     list=extend_schema(description="List all fee types for the school."),
     retrieve=extend_schema(description="Retrieve a fee type."),
-    create=extend_schema(description="Create a new fee type for the school."),
+    create=extend_schema(description="Create a new fee type or multiple fee types in bulk for the school."),
     update=extend_schema(description="Update a fee type."),
     partial_update=extend_schema(description="Partially update a fee type."),
     destroy=extend_schema(description="Delete a fee type."),
@@ -496,7 +496,6 @@ class FeeTypeViewSet(SchoolTenantMixin, viewsets.ModelViewSet):
     lookup_url_kwarg = "fee_type_id"
 
     def create(self, request, *args, **kwargs):
-        """Create a single fee type or multiple fee types in bulk."""
         # Check if the incoming payload is a list (bulk creation)
         is_many = isinstance(request.data, list)
 
@@ -839,7 +838,6 @@ class StaffRoleView(APIView):
         if serializer.is_valid():
             serializer.save(school=request.user.school)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        logger.error(f"Create staff role error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, role_id):
@@ -848,13 +846,11 @@ class StaffRoleView(APIView):
         try:
             role = StaffRole.objects.get(id=role_id, school=request.user.school, is_active=True)
         except StaffRole.DoesNotExist:
-            logger.error(f"Staff role with id {role_id} not found for school {request.user.school}")
             return Response({"error": "Staff role not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = StaffRoleSerializer(role, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        logger.error(f"Update staff role error: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, role_id):
@@ -863,11 +859,9 @@ class StaffRoleView(APIView):
         try:
             role = StaffRole.objects.get(id=role_id, school=request.user.school, is_active=True)
         except StaffRole.DoesNotExist:
-            logger.error(f"Staff role with id {role_id} not found for school {request.user.school}")
             return Response({"error": "Staff role not found"}, status=status.HTTP_404_NOT_FOUND)
         role.is_active = False
         role.save()
-        logger.info(f"Staff role '{role.name}' deactivated by user {request.user}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class LeaveTypeView(APIView):
